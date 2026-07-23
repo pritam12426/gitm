@@ -1,12 +1,6 @@
-#include "config.h"
-
-int config_load(const char *p, GitConfig *c)
-{
-	(void) p;
-	(void) c;
-	return 0;
-}
-void config_free(GitConfig *c)
-{
-	(void) c;
-}
+/*
+ * load.c — (merged into config.c)
+ *
+ * Kept as a stub to show original project structure.
+ * All config functions are now in config.c.
+ */

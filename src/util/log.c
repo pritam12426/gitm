@@ -17,9 +17,8 @@
 #include <unistd.h>   // isatty(), fileno()
 
 #ifdef LOG_SHOW_TIME_STAMP
-#include <time.h>     // clock_gettime(), localtime_r(), strftime()
-#endif  // LOG_SHOW_TIME_STAMP
-
+#include <time.h>  // clock_gettime(), localtime_r(), strftime()
+#endif             // LOG_SHOW_TIME_STAMP
 
 // ANSI colour codes
 #define COLOR_RESET        "\x1b[0m"
@@ -30,7 +29,6 @@
 #define COLOR_BOLD_MAGENTA "\x1b[1;35m"
 #define COLOR_BOLD_CYAN    "\x1b[1;36m"
 #define COLOR_DIM          "\x1b[2m"
-
 
 // ── Logger state ─────────────────────────────────────────────────────────────
 //
@@ -43,20 +41,34 @@ static Log_level_t     g_log_level  = LOG_LEVEL_INFO;
 static FILE           *g_log_stream = NULL;  // NULL = not yet initialised
 static bool            g_use_color  = false;
 
-
-// ── Internal helpers (called with read-lock already held) ─────────────────────
+// ── Internal helpers (called with read-lock already held)
+// ─────────────────────
 
 // Print the log-level label without colour
 static void default_log_handler(FILE *out, Log_level_t level)
 {
 	switch (level) {
-		case LOG_LEVEL_FATAL: fprintf(out, "[FATAL] "); break;
-		case LOG_LEVEL_ERROR: fprintf(out, "[ERROR] "); break;
-		case LOG_LEVEL_WARN:  fprintf(out, "[WARN ] "); break;
-		case LOG_LEVEL_INFO:  fprintf(out, "[INFO ] "); break;
-		case LOG_LEVEL_DEBUG: fprintf(out, "[DEBUG] "); break;
-		case LOG_LEVEL_TRACE: fprintf(out, "[TRACE] "); break;
-		default:              fprintf(out, "[UNKWN] "); break;
+	case LOG_LEVEL_FATAL:
+		fprintf(out, "[FATAL] ");
+		break;
+	case LOG_LEVEL_ERROR:
+		fprintf(out, "[ERROR] ");
+		break;
+	case LOG_LEVEL_WARN:
+		fprintf(out, "[WARN ] ");
+		break;
+	case LOG_LEVEL_INFO:
+		fprintf(out, "[INFO ] ");
+		break;
+	case LOG_LEVEL_DEBUG:
+		fprintf(out, "[DEBUG] ");
+		break;
+	case LOG_LEVEL_TRACE:
+		fprintf(out, "[TRACE] ");
+		break;
+	default:
+		fprintf(out, "[UNKWN] ");
+		break;
 	}
 }
 
@@ -64,30 +76,29 @@ static void default_log_handler(FILE *out, Log_level_t level)
 static void color_log_handler(FILE *out, Log_level_t level)
 {
 	switch (level) {
-		case LOG_LEVEL_FATAL:
-			fprintf(out, "💀 [" COLOR_BOLD_BLUE "FATAL" COLOR_RESET "] ");
-			break;
-		case LOG_LEVEL_ERROR:
-			fprintf(out, "🚨 [" COLOR_BOLD_RED "ERROR" COLOR_RESET "] ");
-			break;
-		case LOG_LEVEL_WARN:
-			fprintf(out, "⚠️  [" COLOR_BOLD_YELLOW "WARN " COLOR_RESET "] ");
-			break;
-		case LOG_LEVEL_INFO:
-			fprintf(out, "ℹ️  [" COLOR_BOLD_GREEN "INFO " COLOR_RESET "] ");
-			break;
-		case LOG_LEVEL_DEBUG:
-			fprintf(out, "🛠️  [" COLOR_BOLD_CYAN "DEBUG" COLOR_RESET "] ");
-			break;
-		case LOG_LEVEL_TRACE:
-			fprintf(out, "🔬 [" COLOR_BOLD_MAGENTA "TRACE" COLOR_RESET "] ");
-			break;
-		default:
-			fprintf(out, "[" COLOR_BOLD_BLUE "UNKWN" COLOR_RESET "] ");
-			break;
+	case LOG_LEVEL_FATAL:
+		fprintf(out, "💀 [" COLOR_BOLD_BLUE "FATAL" COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_ERROR:
+		fprintf(out, "🚨 [" COLOR_BOLD_RED "ERROR" COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_WARN:
+		fprintf(out, "⚠️  [" COLOR_BOLD_YELLOW "WARN " COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_INFO:
+		fprintf(out, "ℹ️  [" COLOR_BOLD_GREEN "INFO " COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_DEBUG:
+		fprintf(out, "🛠️  [" COLOR_BOLD_CYAN "DEBUG" COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_TRACE:
+		fprintf(out, "🔬 [" COLOR_BOLD_MAGENTA "TRACE" COLOR_RESET "] ");
+		break;
+	default:
+		fprintf(out, "[" COLOR_BOLD_BLUE "UNKWN" COLOR_RESET "] ");
+		break;
 	}
 }
-
 
 #ifdef LOG_SHOW_TIME_STAMP
 
@@ -114,12 +125,12 @@ static void log_time_stamp_handler(FILE *out, bool use_color)
 
 #endif  // LOG_SHOW_TIME_STAMP
 
-
-// ── Public API ────────────────────────────────────────────────────────────────
+// ── Public API
+// ────────────────────────────────────────────────────────────────
 
 // Initialise the logger. Thread-safe; may be called multiple times.
-//   file_path: log file path, or NULL for stderr (colour auto-disabled for files).
-//   level:     minimum severity to emit (e.g. LOG_LEVEL_INFO).
+//   file_path: log file path, or NULL for stderr (colour auto-disabled for
+//   files). level:     minimum severity to emit (e.g. LOG_LEVEL_INFO).
 void log_init(const char *file_path, Log_level_t level)
 {
 	// Resolve the new stream and color flag BEFORE taking the lock,
@@ -159,7 +170,6 @@ void log_init(const char *file_path, Log_level_t level)
 	pthread_mutex_unlock(&g_log_mutex);
 }
 
-
 // Set the minimum log level; messages below this are suppressed
 void log_set_level(Log_level_t level)
 {
@@ -167,7 +177,6 @@ void log_set_level(Log_level_t level)
 	g_log_level = level;
 	pthread_mutex_unlock(&g_log_mutex);
 }
-
 
 // Get the current minimum log level
 Log_level_t log_get_level(void)
@@ -178,7 +187,6 @@ Log_level_t log_get_level(void)
 	return level;
 }
 
-
 // Check whether ANSI colour is enabled
 bool log_use_color(void)
 {
@@ -188,7 +196,6 @@ bool log_use_color(void)
 	return color;
 }
 
-
 // Get the current log output stream (stderr if not initialised)
 FILE *log_get_file(void)
 {
@@ -197,7 +204,6 @@ FILE *log_get_file(void)
 	pthread_mutex_unlock(&g_log_mutex);
 	return stream;
 }
-
 
 // Core logging function: formats and writes a log message.
 // Called by the LOG_* macros.  Thread-safe via mutex.
@@ -209,23 +215,19 @@ void log_record(Log_level_t level,
                 const char *fmt,
                 ...)
 {
-	if (fmt == NULL) return;
+	if (fmt == NULL)
+		return;
 
 	if (g_log_stream == NULL) {
-
 #ifdef LOG_SHOW_TIME_STAMP
-		fprintf(stderr,
-		        "%s[%s:%d:%s]%s ",
-		        COLOR_DIM,
-		        file,
-		        line,
-		        func,
-		        COLOR_RESET);
+		fprintf(stderr, "%s[%s:%d:%s]%s ", COLOR_DIM, file, line, func, COLOR_RESET);
 #endif  // defined(LOG_SHOW_SOURCE_LOCATION) && defined(DEBUG)
 
-		fprintf(stderr, COLOR_BOLD_RED "[LOG] error: log_init() not called — dropping message" COLOR_RESET);
-		if (new_line) fputc('\n', stderr);
-		return ;
+		fprintf(stderr,
+		        COLOR_BOLD_RED "[LOG] error: log_init() not called — dropping message" COLOR_RESET);
+		if (new_line)
+			fputc('\n', stderr);
+		return;
 	}
 
 	// Take a mutex so only one thread writes at a time
@@ -262,7 +264,8 @@ void log_record(Log_level_t level,
 		vfprintf(g_log_stream, fmt, args);
 		va_end(args);
 
-		if (new_line) fputc('\n', g_log_stream);
+		if (new_line)
+			fputc('\n', g_log_stream);
 
 		fflush(g_log_stream);
 	}
