@@ -1,78 +1,117 @@
 ## gitm
 
-gitm is a lightweight command-line utility for inspecting, querying, and managing Git repositories. It is written in C and communicates directly with the Git executable using `fork()` and `exec()`, avoiding third-party libraries while remaining fully compatible with the user's installed Git version.
-
-The project is designed around Git's plumbing commands and machine-readable output, making it fast, reliable, and suitable for automation, scripting, and working with one or many repositories.
+A fast C17 multi-repo Git registry manager. Maintains a list of Git repositories and provides commands to inspect, manage, and operate on them. No third-party libraries — uses a custom argparse library, system Git, and POSIX APIs.
 
 ### Features
 
 - Zero third-party dependencies
-- Uses the system Git executable
-- Built with Git plumbing commands
-- Fast and lightweight
-- Script-friendly
-- Supports multiple repositories
-- Clean and portable C code
-- Compatible with modern Git features such as worktrees, submodules, and sparse checkouts
+- Custom argparse library (replaces argp)
+- Fork/exec-based process execution with stdout/stderr capture
+- Coloured help output (Rust clap-style)
+- Configurable registry of Git repositories
+- Health checks, batch operations, and per-repo exec
 
-### Philosophy
-
-Rather than reimplementing Git internals, <PROJECT_NAME> treats Git as the source of truth and focuses on providing a clean, efficient interface for retrieving and organizing repository information.
-
-
-## Requirements
+### Requirements
 
 - **C17** compiler (gcc or clang)
-- **argp** — built into glibc on Linux; install via `brew install argp-standalone` on macOS
+- **POSIX** system (macOS, Linux)
 
 ---
 
 ## Build
 
 ```sh
-make help     # show available targets
-make                                # optimised release build -O3
-make debug -B O_DEBUG=1             # debug build with -g3 -DDEBUG
-make install                        # install to /usr/local/bin (use PREFIX= to override)
-make install PREFIX="$HOME/.local"  # install to $HOME/.local
+make          # release build (-O3), outputs ./gitm
+make debug -B O_DEBUG=1   # debug build (-g3, ASan, UBSan)
 make clean
+make install                        # install to /usr/local/bin
+make install PREFIX="$HOME/.local"  # install to $HOME/.local
 ```
 
 ## Usage
 
 ```
-main-binary [OPTION...] [TARGET(s)...]
+gitm [OPTIONS] COMMAND [ARGS]
 ```
 
-### Options
+### Global Options
 
-| Flag          | Short | Place shoulder | Description                                                   |
-| ------------- | ----- | -------------- | ------------------------------------------------------------- |
-| `--dry-run`   | `-n`  | —             | Show what would change without making any changes             |
-| `--log-level` | `-L`  | `LEVEL`        | Set log verbosity: `error`, `warn`, `info` (default), `debug` |
-| `--log-file`  | `-F`  | `FILE`         | Set logging file                                              |
+| Flag          | Short | Placeholder | Description                                      |
+| ------------- | ----- | ----------- | ------------------------------------------------ |
+| `--dry-run`   | `-n`  | —           | Show what would change without making changes    |
+| `--log-level` | `-L`  | `LEVEL`     | Set log verbosity: `error`, `warn`, `info`, `debug` |
+| `--log-file`  | `-F`  | `FILE`      | Set logging file                                 |
+| `--edit-entry`| `-E`  | —           | Open registered_repos.txt in `$EDITOR`           |
+| `--version`   | `-v`  | —           | Show version                                     |
+| `--help`      | `-h`  | —           | Show help message                                |
+
+### Commands
+
+| Command    | Description                                             |
+| ---------- | ------------------------------------------------------- |
+| `list`     | List registered repositories                            |
+| `add`      | Register a Git repository                               |
+| `remove`   | Unregister a repository                                 |
+| `rename`   | Rename a repository alias                               |
+| `status`   | Show status of all registered repos                     |
+| `info`     | Show repository metadata                                |
+| `exec`     | Run a git command on a registered repo                  |
+| `clone`    | Clone a repository and register it                      |
+| `open`     | Open a repository in `$EDITOR`                          |
+| `doctor`   | Health check all registered repositories                |
 
 ### Examples
 
 ```sh
-# See what would be synced without making changes
-main-binary --dry-run
+# List all registered repos
+gitm list
 
-# Verbose debug output
-main-binary --log-level debug
+# Add a repo
+gitm add /path/to/repo:my-alias
+
+# Show status of all repos
+gitm status
+
+# Run git log on a specific repo
+gitm exec my-alias log --oneline -10
+
+# Health check
+gitm doctor
+
+# Open config file in editor
+gitm --edit-entry
 ```
 
 ---
 
-## Project structure
+## Config File
+
+Location: `~/.local/share/gitm/registered_repos.txt`
+
+Format (one per line):
+```
+/Users/pritam/Developer/c_lang/gitm:gitm
+/Users/pritam/Developer/c_lang/local_marks:local_marks
+```
+
+---
+
+## Project Structure
 
 ```
-./main-binary
-└── src/
-│   ├── main.c            # CLI argument parsing, sync loop
-│   ├── log.h             # LOG_ERROR / LOG_WARN / LOG_INFO / LOG_DEBUG macros
-│   ├── log.c             # log_record() implementation
-│   └── project_config.h  # Version, name, global rclone options
+gitm
+├── argparse/                    # custom argument parser library (standalone)
+│   ├── include/argparse.h
+│   └── src/{argparse,lexer,help,error}.c
+├── include/                     # all public headers
+├── src/
+│   ├── main.c                   # entry point: argparse init, dispatch
+│   ├── commands/                # one file per subcommand + cmd.c
+│   ├── config/config.c          # registry load/save/validate/add/remove
+│   ├── git/
+│   │   ├── process.c            # fork/exec wrapper with pipe capture
+│   │   └── git.c                # high-level git helpers
+│   └── util/log.c               # thread-safe logger
 └── Makefile
 ```
 
@@ -86,5 +125,5 @@ MIT — see [LICENSE](LICENSE).
 
 ## See Also
 
-- [PROJECT_BRIEF.md](PROJECT_BRIEF.md) — Architecture, module guide, mental model
 - [AGENTS.md](AGENTS.md) — Agent instructions for this repo
+- [DEV.md](DEV.md) — Implementation plan

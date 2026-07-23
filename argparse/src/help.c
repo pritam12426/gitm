@@ -91,10 +91,10 @@ static void print_option(FILE *out, const ArgOption *opt)
 
 	if (opt->metavar)
 		len += (size_t) snprintf(flags + len, sizeof(flags) - len,
-		                         " %s%s%s", C_DIM, opt->metavar, C_RESET);
+		                         "=%s%s%s", C_DIM, opt->metavar, C_RESET);
 
 	fprintf(out, "  ");
-	print_padded(out, flags, 38);
+	print_padded(out, flags, 25);
 	fprintf(out, " %s%s%s\n", C_DIM, opt->description ? opt->description : "", C_RESET);
 }
 
@@ -113,7 +113,7 @@ static void print_builtin_option(FILE       *out,
 	                         "%s%s%s", C_BOLD_GREEN, long_flag, C_RESET);
 
 	fprintf(out, "  ");
-	print_padded(out, flags, 38);
+	print_padded(out, flags, 25);
 	fprintf(out, " %s%s%s\n", C_DIM, desc, C_RESET);
 }
 
