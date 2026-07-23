@@ -88,10 +88,14 @@ int main(int argc, char *argv[])
 	/* Register all subcommands */
 	cmd_register_all(parser);
 
+	/* Initialize logging early so commands can log during parse.
+	 * Re-init after parsing if user specified different options. */
+	log_init(NULL, LOG_LEVEL_INFO);
+
 	/* Parse */
 	int rc = argparse_parse(parser, argc, argv);
 
-	/* Initialize logging (after parsing so we have the log options) */
+	/* Re-init logging with user-specified options */
 	log_init(g_log_file, parse_log_level(g_log_level_str));
 
 	/* Handle --edit-entry before dispatching to commands */
