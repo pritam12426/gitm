@@ -1,21 +1,131 @@
-#include <stdio.h>
+/*
+ * main.c — gitm entry point
+ *
+ * Parses CLI arguments using the custom argparse library,
+ * registers all commands, and dispatches to the matched command.
+ */
 
-#include "command_line.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "argparse.h"
+#include "cmd.h"
+#include "config.h"
 #include "log.h"
+#include "process.h"
+#include "project_config.h"
+
+/* Global options (stored on root command) */
+static bool        g_dry_run       = false;
+static bool        g_edit_entry    = false;
+static const char *g_log_level_str = NULL;
+static const char *g_log_file      = NULL;
+
+static Log_level_t parse_log_level(const char *str)
+{
+	if (!str)
+		return LOG_LEVEL_INFO;
+	if (strcmp(str, "error") == 0)
+		return LOG_LEVEL_ERROR;
+	if (strcmp(str, "warn") == 0)
+		return LOG_LEVEL_WARN;
+	if (strcmp(str, "info") == 0)
+		return LOG_LEVEL_INFO;
+	if (strcmp(str, "debug") == 0)
+		return LOG_LEVEL_DEBUG;
+	return LOG_LEVEL_INFO;
+}
 
 int main(int argc, char *argv[])
 {
-	if (!command_line_parse(argc, argv)) return 1;
-	log_init(G_args.log_file, G_args.log_level);
-
-	if (LOG_LEVEL_IS_ENABLED(LOG_LEVEL_DEBUG)) {
-		LOG_CUSTOM(LOG_LEVEL_DEBUG, false, "Command-line args: [");
-		for (int i = 0; i < argc; i++) {
-			fprintf(log_get_file(), "\"%s\"", argv[i]);
-			if (i != argc - 1) fputs(", ", log_get_file());
-		}
-		fputs("]\n", log_get_file());
+	/* Create parser */
+	ArgParser *parser = argparse_new(MAIN_BINARY, PROJECT_VERSION);
+	if (!parser) {
+		fprintf(stderr, "%s: failed to initialize parser\n", MAIN_BINARY);
+		return 1;
 	}
 
-	return 0;
+	argparse_set_description(parser, PROJECT_DESCRIPTION);
+
+	/* Register global options */
+	ArgCommand *root = &parser->root;
+
+	argparse_add_option(root,
+	                    "dry-run",
+	                    'n',
+	                    ARG_TYPE_NONE,
+	                    NULL,
+	                    "Show what would change without making changes",
+	                    &g_dry_run);
+
+	argparse_add_option(root,
+	                    "log-level",
+	                    'L',
+	                    ARG_TYPE_STRING,
+	                    "LEVEL",
+	                    "Set log verbosity: error, warn, info, debug",
+	                    &g_log_level_str);
+
+	argparse_add_option(root,
+	                    "log-file",
+	                    'F',
+	                    ARG_TYPE_STRING,
+	                    "FILE",
+	                    "Set logging file",
+	                    &g_log_file);
+
+	argparse_add_option(root,
+	                    "edit-entry",
+	                    'E',
+	                    ARG_TYPE_NONE,
+	                    NULL,
+	                    "Open registered_repos.txt in $EDITOR",
+	                    &g_edit_entry);
+
+	/* Register all subcommands */
+	cmd_register_all(parser);
+
+	/* Parse */
+	int rc = argparse_parse(parser, argc, argv);
+
+	/* Initialize logging (after parsing so we have the log options) */
+	log_init(g_log_file, parse_log_level(g_log_level_str));
+
+	/* Handle --edit-entry before dispatching to commands */
+	if (g_edit_entry) {
+		char *path = config_default_path();
+		if (!path) {
+			LOG_ERROR("could not determine config path");
+			argparse_free(parser);
+			return 1;
+		}
+
+		config_ensure_dir();
+
+		const char *editor = getenv("EDITOR");
+		if (!editor) editor = getenv("VISUAL");
+		if (!editor) {
+			LOG_ERROR("no $EDITOR or $VISUAL set");
+			free(path);
+			argparse_free(parser);
+			return 1;
+		}
+
+		ProcessResult r = process_exec(NULL, (char *const *)(const char *[]){ editor, path, NULL });
+		int editor_rc = r.exit_code;
+		process_result_free(&r);
+		free(path);
+		argparse_free(parser);
+		return editor_rc;
+	}
+
+	/* If no command matched and no error, show help */
+	if (rc == 0 && parser->matched_command == &parser->root) {
+		argparse_help(parser, NULL);
+	}
+
+	argparse_free(parser);
+	return rc;
 }

@@ -22,8 +22,8 @@
 #define _LOG_H_
 
 
-#include <stdbool.h> // bool
-#include <stdio.h>   // FILE
+#include <stdbool.h>  // bool
+#include <stdio.h>    // FILE
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +47,7 @@ typedef enum {
 void log_init(const char *file_path, Log_level_t level);
 
 // Logger configuration
-void        log_set_level(Log_level_t level);
+void log_set_level(Log_level_t level);
 Log_level_t log_get_level(void);
 
 // Returns the current log output stream (either stderr or the file opened
@@ -91,55 +91,42 @@ void log_record(Log_level_t level,
 		perror(" ");                                                               \
 	} while (0)
 
-#define LOG_FATAL(...) \
-	log_record(LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
+#define LOG_FATAL(...) log_record(LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
 
-#define LOG_ERROR(...) \
-	log_record(LOG_LEVEL_ERROR, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
+#define LOG_ERROR(...) log_record(LOG_LEVEL_ERROR, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
 
-#define LOG_WARN(...) \
-	log_record(LOG_LEVEL_WARN, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
+#define LOG_WARN(...) log_record(LOG_LEVEL_WARN, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
 
-#define LOG_INFO(...) \
-	log_record(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
+#define LOG_INFO(...) log_record(LOG_LEVEL_INFO, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
 
-#define LOG_DEBUG(...) \
-	log_record(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
+#define LOG_DEBUG(...) log_record(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
 
-#define LOG_TRACE(...) \
-	log_record(LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
+#define LOG_TRACE(...) log_record(LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, 1, __VA_ARGS__)
 
 #else
 
 // Log with custom newline behaviour (0 = no newline, 1 = with newline)
 // Used internally; prefer LOG_FATAL / LOG_ERROR / LOG_WARN / etc.
-#define LOG_CUSTOM(LOG_LEVEL, NEW_LINE, ...)                                   \
-	log_record(LOG_LEVEL, 0, 0, 0, NEW_LINE, __VA_ARGS__)
+#define LOG_CUSTOM(LOG_LEVEL, NEW_LINE, ...) log_record(LOG_LEVEL, 0, 0, 0, NEW_LINE, __VA_ARGS__)
 
 // Log an error and append strerror(errno) (via perror)
-#define LOG_PERROR(...)                                                            \
-	do {                                                                           \
+#define LOG_PERROR(...)                                       \
+	do {                                                      \
 		log_record(LOG_LEVEL_ERROR, 0, 0, 0, 0, __VA_ARGS__); \
-		perror(" ");                                                               \
+		perror(" ");                                          \
 	} while (0)
 
-#define LOG_FATAL(...) \
-	log_record(LOG_LEVEL_FATAL, 0, 0, 0, 1, __VA_ARGS__)
+#define LOG_FATAL(...) log_record(LOG_LEVEL_FATAL, 0, 0, 0, 1, __VA_ARGS__)
 
-#define LOG_ERROR(...) \
-	log_record(LOG_LEVEL_ERROR, 0, 0, 0, 1, __VA_ARGS__)
+#define LOG_ERROR(...) log_record(LOG_LEVEL_ERROR, 0, 0, 0, 1, __VA_ARGS__)
 
-#define LOG_WARN(...) \
-	log_record(LOG_LEVEL_WARN, 0, 0, 0, 1, __VA_ARGS__)
+#define LOG_WARN(...) log_record(LOG_LEVEL_WARN, 0, 0, 0, 1, __VA_ARGS__)
 
-#define LOG_INFO(...) \
-	log_record(LOG_LEVEL_INFO, 0, 0, 0, 1, __VA_ARGS__)
+#define LOG_INFO(...) log_record(LOG_LEVEL_INFO, 0, 0, 0, 1, __VA_ARGS__)
 
-#define LOG_DEBUG(...) \
-	log_record(LOG_LEVEL_DEBUG, 0, 0, 0, 1, __VA_ARGS__)
+#define LOG_DEBUG(...) log_record(LOG_LEVEL_DEBUG, 0, 0, 0, 1, __VA_ARGS__)
 
-#define LOG_TRACE(...) \
-	log_record(LOG_LEVEL_TRACE, 0, 0, 0, 1, __VA_ARGS__)
+#define LOG_TRACE(...) log_record(LOG_LEVEL_TRACE, 0, 0, 0, 1, __VA_ARGS__)
 
 #endif  // LOG_SHOW_SOURCE_LOCATION
 

@@ -4,7 +4,6 @@ PREFIX ?= /usr/local
 MANPREFIX ?= $(PREFIX)/share/man
 
 STRIP ?= strip
-PKG_CONFIG ?= pkg-config
 INSTALL ?= install
 
 BUILD = build
@@ -13,21 +12,22 @@ BIN   = gitm
 HEADERS   = $(wildcard include/*.h)
 
 SRC       += $(wildcard src/*.c)
-SRC       += $(wildcard commands/*.c)
-SRC       += $(wildcard config/*.c)
-SRC       += $(wildcard core/*.c)
-SRC       += $(wildcard git/*.c)
-SRC       += $(wildcard util/*.c)
+SRC       += $(wildcard src/commands/*.c)
+SRC       += $(wildcard src/config/*.c)
+SRC       += $(wildcard src/core/*.c)
+SRC       += $(wildcard src/git/*.c)
+SRC       += $(wildcard src/util/*.c)
 
-CFLAGS += -Isrc -std=c17 -DCOMPILED_TIME_PREFIX='"$(PREFIX)"'
+# Argparse library
+SRC       += $(wildcard argparse/src/*.c)
+
+CFLAGS += -Isrc -Iinclude -Iargparse/include -std=c17 -DCOMPILED_TIME_PREFIX='"$(PREFIX)"'
 
 CFLAGS +=  -Wshadow -Wconversion \
            -Wall -Wextra -Wpedantic \
            -Wno-missing-field-initializers \
            -Wstrict-prototypes -Wmissing-prototypes
 
-# Common flags
-CFLAGS += -Iinclude -std=c17
 LDLIBS += -lpthread
 
 # Build options (set via command line, e.g. `make O_DEBUG=1`)
@@ -68,8 +68,7 @@ endif
 
 # Platform-specific settings
 ifeq ($(UNAME_S),Darwin)
-	# macOS: need argp from Homebrew (brew install argp-standalone)
-	LDLIBS += -largp
+	# macOS: no argp needed (we use our own argparse)
 else
 	# Linux: _GNU_SOURCE for strptime, etc.
 	CFLAGS += -D_GNU_SOURCE
@@ -99,10 +98,13 @@ $(BUILD)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BIN): $(SRC) $(OUT)  ## Build the linkrot binary
+$(BIN): $(SRC) $(OUT)  ## Build the gitm binary
 	$(CC) $(LDFLAGS) -o $@ $(OUT) $(LDLIBS)
 
 debug: $(BIN)  ## Build the debug binary run `make debug -B O_DEBUG=1`
+
+format:  ## Format every (.c & .h) files of entire code base with `clang-format`
+	clang-format -i $(SRC) $(HEADERS)
 
 install: all  ## Install the gitm binary
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(PREFIX)/bin
