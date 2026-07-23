@@ -9,12 +9,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "argparse.h"
 #include "cmd.h"
 #include "config.h"
 #include "log.h"
-#include "process.h"
 #include "project_config.h"
 
 /* Global options (stored on root command) */
@@ -113,9 +114,28 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 
-		ProcessResult r = process_exec(NULL, (char *const *)(const char *[]){ editor, path, NULL });
-		int editor_rc = r.exit_code;
-		process_result_free(&r);
+		/* Fork directly — process_exec captures stdout/stderr via pipes,
+		 * which breaks interactive editors. We need stdin/stdout/stderr
+		 * connected to the terminal. */
+		pid_t pid = fork();
+		if (pid < 0) {
+			LOG_ERROR("fork failed");
+			free(path);
+			argparse_free(parser);
+			return 1;
+		}
+
+		if (pid == 0) {
+			/* Child: exec editor with config path */
+			execlp(editor, editor, path, (char *) NULL);
+			_exit(127);
+		}
+
+		/* Parent: wait for editor to exit */
+		int status;
+		waitpid(pid, &status, 0);
+
+		int editor_rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 		free(path);
 		argparse_free(parser);
 		return editor_rc;
