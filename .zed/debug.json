@@ -1,5 +1,3 @@
-// https://github.com/vadimcn/codelldb/blob/master/MANUAL.md#starting-a-new-debug-session
-// https://zed.dev/docs/languages/cpp#debugging
 [
 	{
 		"label": "Debug native binary",
@@ -18,7 +16,7 @@
 				}
 			}
 		},
-		"program": "$ZED_WORKTREE_ROOT/main",
+		"program": "$ZED_WORKTREE_ROOT/gitm",
 		"args": [
 			"--log-level",
 			"debug"

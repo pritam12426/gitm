@@ -99,6 +99,7 @@ int cmd_recent(const ArgParseResult *result)
 		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
 			continue;
 
+		LOG_TRACE("fetching date for %s", cfg.entries[i].name);
 		repos[repo_count].name = cfg.entries[i].name;
 		repos[repo_count].path = cfg.entries[i].path;
 

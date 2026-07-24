@@ -52,6 +52,7 @@ int cmd_list(const ArgParseResult *result)
 		if (list_filter_group && !config_entry_has_group(&cfg.entries[i], list_filter_group))
 			continue;
 
+		LOG_TRACE("listing: %s (%s)", cfg.entries[i].name, cfg.entries[i].path);
 		fprintf(stdout, "%s\t%s\n", cfg.entries[i].name, cfg.entries[i].path);
 		shown++;
 	}

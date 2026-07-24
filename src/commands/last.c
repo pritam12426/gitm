@@ -117,6 +117,7 @@ int cmd_last(const ArgParseResult *result)
 		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
 			continue;
 
+		LOG_TRACE("showing last log for %s", cfg.entries[i].name);
 		print_last(cfg.entries[i].name, cfg.entries[i].path, color);
 	}
 

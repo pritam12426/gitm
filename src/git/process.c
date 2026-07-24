@@ -20,6 +20,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "log.h"
+
 /* Initial buffer size for capturing output */
 #define INITIAL_BUF_SIZE 4096
 
@@ -49,12 +51,16 @@ ProcessResult process_exec(const char *cwd, char *const argv[])
 	int stderr_pipe[2] = { -1, -1 };
 
 	if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0) {
+		LOG_ERROR("pipe creation failed: %s", strerror(errno));
 		result.exit_code = -1;
 		return result;
 	}
 
+	LOG_TRACE("exec: %s in %s", argv[0], cwd ? cwd : "(inherit)");
+
 	pid_t pid = fork();
 	if (pid < 0) {
+		LOG_ERROR("fork failed: %s", strerror(errno));
 		close(stdout_pipe[0]);
 		close(stdout_pipe[1]);
 		close(stderr_pipe[0]);

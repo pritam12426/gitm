@@ -114,6 +114,7 @@ int cmd_status(const ArgParseResult *result)
 		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
 			continue;
 
+		LOG_DEBUG("checking status: %s", cfg.entries[i].name);
 		print_header(cfg.entries[i].name, cfg.entries[i].path, color);
 
 		ProcessResult r = git_exec(cfg.entries[i].path, "status", "--porcelain", "--branch", NULL);

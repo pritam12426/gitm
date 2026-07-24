@@ -28,6 +28,7 @@ int cmd_open(const ArgParseResult *result)
 	}
 
 	const char *name = result->positionals[0];
+	LOG_DEBUG("opening repo: %s", name);
 
 	char *config_path = config_default_path();
 	if (!config_path) {
@@ -61,6 +62,7 @@ int cmd_open(const ArgParseResult *result)
 	}
 
 	fprintf(stderr, "Opening %s in %s\n", entry->path, editor);
+	LOG_INFO("opening %s in %s", entry->path, editor);
 
 	ProcessResult r  = process_exec(entry->path,
                                    (char *const *) (const char *[]) { editor, entry->path, NULL });

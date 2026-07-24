@@ -27,6 +27,7 @@ int cmd_exec(const ArgParseResult *result)
 	}
 
 	const char *name = result->positionals[0];
+	LOG_DEBUG("exec on %s: %s", name, result->positional_count > 1 ? result->positionals[1] : "(none)");
 
 	char *config_path = config_default_path();
 	if (!config_path) {

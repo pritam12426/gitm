@@ -114,6 +114,8 @@ int cmd_summary(const ArgParseResult *result)
 	long  total_size     = 0;
 	size_t filtered_count = 0;
 
+	LOG_DEBUG("computing summary for repos");
+
 	for (size_t i = 0; i < cfg.count; i++) {
 		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
 			continue;
@@ -127,6 +129,8 @@ int cmd_summary(const ArgParseResult *result)
 
 	char size_buf[32];
 	format_size(size_buf, sizeof(size_buf), total_size);
+
+	LOG_INFO("summary: %zu repos, %d branches, %s", filtered_count, total_branches, size_buf);
 
 	fprintf(stdout, "Repos:    %zu\n", filtered_count);
 	fprintf(stdout, "Branches: %d\n", total_branches);

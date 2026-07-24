@@ -27,6 +27,7 @@ int cmd_search(const ArgParseResult *result)
 	}
 
 	const char *pattern = result->positionals[0];
+	LOG_DEBUG("searching for pattern: %s", pattern);
 
 	char *config_path = config_default_path();
 	if (!config_path) {
@@ -52,6 +53,7 @@ int cmd_search(const ArgParseResult *result)
 	for (size_t i = 0; i < cfg.count; i++) {
 		if (strcasestr(cfg.entries[i].name, pattern) != NULL ||
 		    strcasestr(cfg.entries[i].path, pattern) != NULL) {
+			LOG_TRACE("match: %s", cfg.entries[i].name);
 			fprintf(stdout, "%s\t%s\n", cfg.entries[i].name, cfg.entries[i].path);
 			found++;
 		}

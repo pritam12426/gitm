@@ -49,6 +49,8 @@ int cmd_doctor(const ArgParseResult *result)
 	int errors = 0;
 	size_t checked = 0;
 
+	LOG_DEBUG("running health check on %zu repos", cfg.count);
+
 	for (size_t i = 0; i < cfg.count; i++) {
 		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
 			continue;
@@ -56,6 +58,7 @@ int cmd_doctor(const ArgParseResult *result)
 			continue;
 
 		checked++;
+		LOG_TRACE("checking %s", cfg.entries[i].name);
 		fprintf(stderr, "%s ... ", cfg.entries[i].name);
 
 		struct stat st;
@@ -79,6 +82,11 @@ int cmd_doctor(const ArgParseResult *result)
 	}
 
 	fprintf(stderr, "\n%d/%zu repositories OK\n", (int) (checked - (size_t) errors), checked);
+
+	if (errors > 0)
+		LOG_WARN("%d/%zu repos failed health check", errors, checked);
+	else
+		LOG_INFO("all %zu repos passed health check", checked);
 
 	config_free(&cfg);
 	free(config_path);

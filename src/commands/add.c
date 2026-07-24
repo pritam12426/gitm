@@ -33,6 +33,8 @@ int cmd_add(const ArgParseResult *result)
 	const char *repo_path = result->positionals[0];
 	const char *repo_name = result->positional_count > 1 ? result->positionals[1] : NULL;
 
+	LOG_DEBUG("adding repo: path=%s name=%s", repo_path, repo_name ? repo_name : "(auto)");
+
 	/* Validate: is it a git repo? */
 	if (!git_is_repo(repo_path)) {
 		LOG_ERROR("not a git repository: %s", repo_path);
@@ -89,6 +91,8 @@ int cmd_add(const ArgParseResult *result)
 	if (add_groups)
 		fprintf(stderr, " groups=%s", add_groups);
 	fprintf(stderr, "\n");
+
+	LOG_INFO("registered %s at %s", repo_name, abs_path);
 
 	config_free(&cfg);
 	free(config_path);

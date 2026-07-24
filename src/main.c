@@ -31,12 +31,15 @@ static const char *g_log_file      = NULL;
 
 static Log_level_t parse_log_level(const char *str)
 {
-	if (!str)                              return LOG_LEVEL_INFO;
+	if (!str)                              return LOG_LEVEL_WARN;
+	if (strcmp(str, "off") == 0)   return LOG_LEVEL_OFF;
+	if (strcmp(str, "fatal") == 0) return LOG_LEVEL_FATAL;
 	if (strcmp(str, "error") == 0) return LOG_LEVEL_ERROR;
 	if (strcmp(str, "warn") == 0)  return LOG_LEVEL_WARN;
 	if (strcmp(str, "info") == 0)  return LOG_LEVEL_INFO;
 	if (strcmp(str, "debug") == 0) return LOG_LEVEL_DEBUG;
-	return                                        LOG_LEVEL_INFO;
+	if (strcmp(str, "trace") == 0) return LOG_LEVEL_TRACE;
+	return                                        LOG_LEVEL_WARN;
 }
 
 int main(int argc, char *argv[])
@@ -64,7 +67,7 @@ int main(int argc, char *argv[])
 	                    'L',
 	                    ARG_TYPE_STRING,
 	                    "LEVEL",
-	                    "Set log verbosity: error, warn, info, debug",
+	                    "Set log verbosity: off, fatal, error, warn, info, debug, trace",
 	                    &g_log_level_str);
 
 	argparse_add_option(root,
@@ -83,18 +86,32 @@ int main(int argc, char *argv[])
 	                    "Open registered_repos.txt in $EDITOR",
 	                    &g_edit_entry);
 
-	/* Register all subcommands */
-	cmd_register_all(parser);
-
 	/* Initialize logging early so commands can log during parse.
 	 * Re-init after parsing if user specified different options. */
-	log_init(NULL, LOG_LEVEL_INFO);
+	log_init(NULL, LOG_LEVEL_WARN);
+
+	/* Register all subcommands */
+	cmd_register_all(parser);
+	LOG_DEBUG("logging initialized at INFO level");
 
 	/* Parse */
 	int rc = argparse_parse(parser, argc, argv);
 
 	/* Re-init logging with user-specified options */
 	log_init(g_log_file, parse_log_level(g_log_level_str));
+
+	if (LOG_LEVEL_IS_ENABLED(LOG_LEVEL_DEBUG)) {
+		LOG_CUSTOM(LOG_LEVEL_DEBUG, false, "Command-line args: [");
+		for (int i = 0; i < argc; i++) {
+			fprintf(log_get_file(), "\"%s\"", argv[i]);
+			if (i != argc - 1) fputs(", ", log_get_file());
+		}
+		fputs("]\n", log_get_file());
+	}
+
+	LOG_DEBUG("logging re-initialized: level=%s file=%s",
+	          g_log_level_str ? g_log_level_str : "info",
+	          g_log_file ? g_log_file : "(stderr)");
 
 	/* Handle --edit-entry before dispatching to commands */
 	if (g_edit_entry) {
