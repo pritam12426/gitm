@@ -1,129 +1,132 @@
-## gitm
+# gitm
 
-A fast C17 multi-repo Git registry manager. Maintains a list of Git repositories and provides commands to inspect, manage, and operate on them. No third-party libraries — uses a custom argparse library, system Git, and POSIX APIs.
+A fast C17 multi-repo Git registry manager. Maintains a list of Git repositories and provides commands to inspect, manage, and operate on them.
 
-### Features
+Zero third-party dependencies. Uses a custom argument parser, system Git, and POSIX APIs.
 
-- Zero third-party dependencies
-- Custom argparse library (replaces argp)
-- Fork/exec-based process execution with stdout/stderr capture
-- Coloured help output (Rust clap-style)
-- Configurable registry of Git repositories
-- Health checks, batch operations, and per-repo exec
+## Features
 
-### Requirements
+- **Registry of Git repositories** — register repos with aliases, tags, and groups
+- **Batch operations** — run status, branch, log, and remote queries across all repos
+- **Tag and group filtering** — filter any command by tag or group
+- **Orphan cleanup** — find and remove repos that no longer exist on disk
+- **Health checks** — verify all registered repos are valid Git repositories
+- **Per-repo exec** — run arbitrary Git commands on a specific repo
+- **Shell completion** — built-in bash, zsh, and fish completion generation
+- **Coloured output** — Rust clap-style coloured help and status output
+
+## Requirements
 
 - **C17** compiler (gcc or clang)
 - **POSIX** system (macOS, Linux)
-
----
+- **Git** installed and available in `$PATH`
 
 ## Build
 
 ```sh
-make          # release build (-O3), outputs ./gitm
-make debug -B O_DEBUG=1   # debug build (-g3, ASan, UBSan)
-make clean
-make install                        # install to /usr/local/bin
-make install PREFIX="$HOME/.local"  # install to $HOME/.local
+make            # release build (-O3), outputs ./gitm
+make debug -B   # debug build (-g3, ASan, UBSan)
+make clean      # remove build artifacts
+make install    # install to /usr/local/bin
+make install PREFIX="$HOME/.local"  # custom prefix
 ```
 
-## Usage
-
-```
-gitm [OPTIONS] COMMAND [ARGS]
-```
-
-### Global Options
-
-| Flag          | Short | Placeholder | Description                                      |
-| ------------- | ----- | ----------- | ------------------------------------------------ |
-| `--dry-run`   | `-n`  | —           | Show what would change without making changes    |
-| `--log-level` | `-L`  | `LEVEL`     | Set log verbosity: `error`, `warn`, `info`, `debug` |
-| `--log-file`  | `-F`  | `FILE`      | Set logging file                                 |
-| `--edit-entry`| `-E`  | —           | Open registered_repos.txt in `$EDITOR`           |
-| `--version`   | `-v`  | —           | Show version                                     |
-| `--help`      | `-h`  | —           | Show help message                                |
-
-### Commands
-
-| Command    | Description                                             |
-| ---------- | ------------------------------------------------------- |
-| `list`     | List registered repositories                            |
-| `add`      | Register a Git repository                               |
-| `remove`   | Unregister a repository                                 |
-| `rename`   | Rename a repository alias                               |
-| `status`   | Show status of all registered repos                     |
-| `info`     | Show repository metadata                                |
-| `exec`     | Run a git command on a registered repo                  |
-| `clone`    | Clone a repository and register it                      |
-| `open`     | Open a repository in `$EDITOR`                          |
-| `doctor`   | Health check all registered repositories                |
-
-### Examples
+## Quick Start
 
 ```sh
+# Register a repository
+gitm add /path/to/repo my-alias
+
+# Register with tags and groups
+gitm add --tag c,project --group learning /path/to/repo my-alias
+
 # List all registered repos
 gitm list
 
-# Add a repo
-gitm add /path/to/repo:my-alias
+# Filter by tag or group
+gitm list --tag c
+gitm list --group learning
 
 # Show status of all repos
 gitm status
 
-# Run git log on a specific repo
+# Run a git command on a specific repo
 gitm exec my-alias log --oneline -10
 
 # Health check
 gitm doctor
 
-# Open config file in editor
+# Open config file in $EDITOR
 gitm --edit-entry
 ```
 
----
+## Commands
 
-## Config File
+| Command    | Aliases      | Description                               |
+| ---------- | ------------ | ----------------------------------------- |
+| `list`     | `ls`         | List registered repositories              |
+| `add`      | —            | Register a Git repository                 |
+| `remove`   | `rm`         | Unregister a repository                   |
+| `rename`   | —            | Rename a repository alias                 |
+| `status`   | `st`, `s`    | Show status of all registered repos       |
+| `info`     | `i`          | Show repository metadata                  |
+| `exec`     | `x`          | Run a git command on a registered repo    |
+| `open`     | `o`          | Open a repository in `$EDITOR`            |
+| `doctor`   | `doc`, `d`   | Health check all registered repositories  |
+| `recent`   | `r`          | List repos sorted by last commit date     |
+| `summary`  | `sum`        | Total repos, branches, and size           |
+| `search`   | `find`, `f`  | Search repos by name or path pattern      |
+| `list-tag` | `tags`, `lt` | Show git tags with messages               |
+| `remote`   | `rem`        | Show remote settings                      |
+| `last`     | `log`, `l`   | Show last commit log for each repo        |
+| `branch`   | `br`, `b`    | Show local branches                       |
+| `clean`    | `prune`      | Remove repos that no longer exist on disk |
 
-Location: `~/.local/share/gitm/registered_repos.txt`
+All commands that iterate repositories support `--tag` and `--group` filters.
 
-Format (one per line):
+## Global Options
+
+| Flag                       | Short | Description                                         |
+| -------------------------- | ----- | --------------------------------------------------- |
+| `--log-level=LEVEL`        | `-L`  | Set log verbosity: `error`, `warn`, `info`, `debug` |
+| `--log-file=FILE`          | `-F`  | Set logging file                                    |
+| `--edit-entry`             | `-E`  | Open registered_repos.txt in `$EDITOR`              |
+| `--help`                   | `-h`  | Show help message                                   |
+| `--version`                | `-v`  | Show version                                        |
+| `--shell-completion=SHELL` | `-S`  | Output completion script (bash, zsh, fish)          |
+
+## Configuration
+
+Config file: `~/.local/share/gitm/registered_repos.txt`
+
+Format (one entry per line):
+
 ```
-/Users/pritam/Developer/c_lang/gitm:gitm
-/Users/pritam/Developer/c_lang/local_marks:local_marks
+/path:name:tag1,tag2:group1,group2
 ```
 
----
-
-## Project Structure
+Fields after `name` are optional. Example:
 
 ```
-gitm
-├── argparse/                    # custom argument parser library (standalone)
-│   ├── include/argparse.h
-│   └── src/{argparse,lexer,help,error}.c
-├── include/                     # all public headers
-├── src/
-│   ├── main.c                   # entry point: argparse init, dispatch
-│   ├── commands/                # one file per subcommand + cmd.c
-│   ├── config/config.c          # registry load/save/validate/add/remove
-│   ├── git/
-│   │   ├── process.c            # fork/exec wrapper with pipe capture
-│   │   └── git.c                # high-level git helpers
-│   └── util/log.c               # thread-safe logger
-└── Makefile
+/Users/dev/project-a:project-a:c,makefile:work,backend
+/Users/dev/project-b:project-b:rust:learning
 ```
 
----
+Lines starting with `#` are comments. Empty lines are ignored.
+
+## Platform Support
+
+| Platform | Status                              |
+| -------- | ----------------------------------- |
+| macOS    | Supported                           |
+| Linux    | Supported                           |
+| Windows  | Not supported (requires POSIX APIs) |
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
----
+## Documentation
 
-## See Also
-
-- [AGENTS.md](AGENTS.md) — Agent instructions for this repo
-- [DEV.md](DEV.md) — Implementation plan
+- [DEV.md](DEV.md) — architecture, build system, and developer guide
+- [DEV_IN_DEPTH.md](DEV_IN_DEPTH.md) — complete source walkthrough and internals
