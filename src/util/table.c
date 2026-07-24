@@ -207,6 +207,7 @@ void table_print(const Table *table, FILE *out)
 			for (size_t j = 0; j < widths[i]; j++)
 				fputc('-', out);
 			if (i < table->col_count - 1) {
+				fputc(' ', out);
 				fputc('+', out);
 				fputc(' ', out);
 			} else {

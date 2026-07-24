@@ -8,8 +8,13 @@
  * config.h — Repository registry configuration
  *
  * Manages the list of registered Git repositories.
- * Config file: ~/.local/share/gitm/registered_repos.txt
- * Format: /absolute/path:name (one per line)
+ *
+ * Config file resolution:
+ *   1. $XDG_DATA_HOME/gitm/registered_repos.txt  (if XDG_DATA_HOME is set)
+ *   2. macOS:  ~/Library/Application Support/gitm/registered_repos.txt
+ *   3. Linux:  ~/.local/share/gitm/registered_repos.txt
+ *
+ * Format: /absolute/path:name[:tags[:groups]] (one per line)
  */
 
 #ifndef _CONFIG_H_
@@ -40,14 +45,15 @@ typedef struct {
 
 
 /*
- * Get the default config file path (~/.local/share/gitm/registered_repos.txt).
+ * Get the default config file path.
+ * Resolution: $XDG_DATA_HOME > macOS ~/Library/Application Support > Linux ~/.local/share
  * Caller must free the returned string.
  */
 char *config_default_path(void);
 
 /*
- * Ensure the config directory exists.
- * Creates ~/.local/share/gitm/ if missing.
+ * Ensure the config directory exists (including any missing parents).
+ * Creates the directory at the resolved config path if missing.
  * Returns 0 on success, -1 on error.
  */
 int config_ensure_dir(void);
