@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * summary.c — `gitm summary` command
  *
  * Shows total repos, total branches, and total size.
@@ -13,6 +19,9 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+
+static const char *filter_tag   = NULL;
+static const char *filter_group = NULL;
 
 static long get_dir_size(const char *path)
 {
@@ -103,16 +112,23 @@ int cmd_summary(const ArgParseResult *result)
 
 	int   total_branches = 0;
 	long  total_size     = 0;
+	size_t filtered_count = 0;
 
 	for (size_t i = 0; i < cfg.count; i++) {
+		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
+			continue;
+		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
+			continue;
+
 		total_branches += count_branches(cfg.entries[i].path);
 		total_size     += get_dir_size(cfg.entries[i].path);
+		filtered_count++;
 	}
 
 	char size_buf[32];
 	format_size(size_buf, sizeof(size_buf), total_size);
 
-	fprintf(stdout, "Repos:    %zu\n", cfg.count);
+	fprintf(stdout, "Repos:    %zu\n", filtered_count);
 	fprintf(stdout, "Branches: %d\n", total_branches);
 	fprintf(stdout, "Size:     %s\n", size_buf);
 
@@ -127,5 +143,11 @@ void cmd_register_summary(ArgParser *parser)
 	                                       "summary",
 	                                       "Total repos, branches, and size",
 	                                       cmd_summary);
+	const char *summary_aliases[] = { "sum" };
+	argparse_command_set_aliases(cmd, summary_aliases, 1);
+	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
+	                    "Filter by tag", &filter_tag);
+	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
+	                    "Filter by group", &filter_group);
 	(void) cmd;
 }

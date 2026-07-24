@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * info.c — `gitm info` command
  *
  * Shows metadata about a registered repository.
@@ -44,6 +50,10 @@ int cmd_info(const ArgParseResult *result)
 
 	fprintf(stderr, "Name:      %s\n", entry->name);
 	fprintf(stderr, "Path:      %s\n", entry->path);
+	if (entry->tags)
+		fprintf(stderr, "Tags:      %s\n", entry->tags);
+	if (entry->groups)
+		fprintf(stderr, "Groups:    %s\n", entry->groups);
 
 	/* Branch */
 	char *branch = git_current_branch(entry->path);
@@ -84,5 +94,7 @@ int cmd_info(const ArgParseResult *result)
 void cmd_register_info(ArgParser *parser)
 {
 	ArgCommand *cmd = argparse_add_command(parser, "info", "Show repository metadata", cmd_info);
+	const char *info_aliases[] = { "i" };
+	argparse_command_set_aliases(cmd, info_aliases, 1);
 	argparse_add_positional(cmd, "name");
 }

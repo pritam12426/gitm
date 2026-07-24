@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
 #ifndef _ANSI_COLOR_H_
 #define _ANSI_COLOR_H_
 

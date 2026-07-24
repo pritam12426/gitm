@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * main.c — gitm entry point
  *
  * Parses CLI arguments using the custom argparse library,
@@ -19,47 +25,39 @@
 #include "project_config.h"
 
 /* Global options (stored on root command) */
-static bool        g_dry_run       = false;
 static bool        g_edit_entry    = false;
 static const char *g_log_level_str = NULL;
 static const char *g_log_file      = NULL;
 
 static Log_level_t parse_log_level(const char *str)
 {
-	if (!str)
-		return LOG_LEVEL_INFO;
-	if (strcmp(str, "error") == 0)
-		return LOG_LEVEL_ERROR;
-	if (strcmp(str, "warn") == 0)
-		return LOG_LEVEL_WARN;
-	if (strcmp(str, "info") == 0)
-		return LOG_LEVEL_INFO;
-	if (strcmp(str, "debug") == 0)
-		return LOG_LEVEL_DEBUG;
-	return LOG_LEVEL_INFO;
+	if (!str)                              return LOG_LEVEL_INFO;
+	if (strcmp(str, "error") == 0) return LOG_LEVEL_ERROR;
+	if (strcmp(str, "warn") == 0)  return LOG_LEVEL_WARN;
+	if (strcmp(str, "info") == 0)  return LOG_LEVEL_INFO;
+	if (strcmp(str, "debug") == 0) return LOG_LEVEL_DEBUG;
+	return                                        LOG_LEVEL_INFO;
 }
 
 int main(int argc, char *argv[])
 {
 	/* Create parser */
-	ArgParser *parser = argparse_new(MAIN_BINARY, PROJECT_VERSION);
+	ArgParserConfig config = {
+		.prog_name   = MAIN_BINARY,
+		.version     = PROJECT_VERSION,
+		.description = PROJECT_DESCRIPTION,
+		.bug_url     = PROJECT_HOMEPAGE_URL "/issues",
+		.author      = AUTH_MESSAGE,
+	};
+
+	ArgParser *parser = argparse_new(&config);
 	if (!parser) {
 		fprintf(stderr, "%s: failed to initialize parser\n", MAIN_BINARY);
 		return 1;
 	}
 
-	argparse_set_description(parser, PROJECT_DESCRIPTION);
-
 	/* Register global options */
 	ArgCommand *root = &parser->root;
-
-	argparse_add_option(root,
-	                    "dry-run",
-	                    'n',
-	                    ARG_TYPE_NONE,
-	                    NULL,
-	                    "Show what would change without making changes",
-	                    &g_dry_run);
 
 	argparse_add_option(root,
 	                    "log-level",

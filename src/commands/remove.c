@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * remove.c — `gitm remove` command
  *
  * Unregisters a repository by name.
@@ -56,5 +62,7 @@ int cmd_remove(const ArgParseResult *result)
 void cmd_register_remove(ArgParser *parser)
 {
 	ArgCommand *cmd = argparse_add_command(parser, "remove", "Unregister a repository", cmd_remove);
+	const char *remove_aliases[] = { "rm" };
+	argparse_command_set_aliases(cmd, remove_aliases, 1);
 	argparse_add_positional(cmd, "name");
 }

@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * log.h — Thread-safe logger interface
  *
  * Logging macros (severity, high → low):

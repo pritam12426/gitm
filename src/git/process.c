@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * process.c — Process execution wrapper
  *
  * Uses fork()/execvp() to run external processes.

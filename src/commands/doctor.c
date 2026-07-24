@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * doctor.c — `gitm doctor` command
  *
  * Health check for all registered repositories.
@@ -12,6 +18,9 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+
+static const char *filter_tag   = NULL;
+static const char *filter_group = NULL;
 
 int cmd_doctor(const ArgParseResult *result)
 {
@@ -38,8 +47,15 @@ int cmd_doctor(const ArgParseResult *result)
 	}
 
 	int errors = 0;
+	size_t checked = 0;
 
 	for (size_t i = 0; i < cfg.count; i++) {
+		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
+			continue;
+		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
+			continue;
+
+		checked++;
 		fprintf(stderr, "%s ... ", cfg.entries[i].name);
 
 		struct stat st;
@@ -62,7 +78,7 @@ int cmd_doctor(const ArgParseResult *result)
 		fprintf(stderr, "ok\n");
 	}
 
-	fprintf(stderr, "\n%d/%zu repositories OK\n", (int) (cfg.count - (size_t) errors), cfg.count);
+	fprintf(stderr, "\n%d/%zu repositories OK\n", (int) (checked - (size_t) errors), checked);
 
 	config_free(&cfg);
 	free(config_path);
@@ -75,5 +91,11 @@ void cmd_register_doctor(ArgParser *parser)
 	                                       "doctor",
 	                                       "Health check all registered repositories",
 	                                       cmd_doctor);
+	const char *doctor_aliases[] = { "doc", "d" };
+	argparse_command_set_aliases(cmd, doctor_aliases, 2);
+	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
+	                    "Filter by tag", &filter_tag);
+	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
+	                    "Filter by group", &filter_group);
 	(void) cmd;
 }

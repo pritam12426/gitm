@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * cmd.c — Command registration
  */
 
@@ -12,7 +18,6 @@ extern void cmd_register_rename(ArgParser *parser);
 extern void cmd_register_status(ArgParser *parser);
 extern void cmd_register_info(ArgParser *parser);
 extern void cmd_register_exec(ArgParser *parser);
-extern void cmd_register_clone(ArgParser *parser);
 extern void cmd_register_open(ArgParser *parser);
 extern void cmd_register_doctor(ArgParser *parser);
 extern void cmd_register_recent(ArgParser *parser);
@@ -22,6 +27,7 @@ extern void cmd_register_list_tag(ArgParser *parser);
 extern void cmd_register_remote(ArgParser *parser);
 extern void cmd_register_last(ArgParser *parser);
 extern void cmd_register_branch(ArgParser *parser);
+extern void cmd_register_clean(ArgParser *parser);
 
 void cmd_register_all(ArgParser *parser)
 {
@@ -32,7 +38,6 @@ void cmd_register_all(ArgParser *parser)
 	cmd_register_status(parser);
 	cmd_register_info(parser);
 	cmd_register_exec(parser);
-	cmd_register_clone(parser);
 	cmd_register_open(parser);
 	cmd_register_doctor(parser);
 	cmd_register_recent(parser);
@@ -42,4 +47,5 @@ void cmd_register_all(ArgParser *parser)
 	cmd_register_remote(parser);
 	cmd_register_last(parser);
 	cmd_register_branch(parser);
+	cmd_register_clean(parser);
 }

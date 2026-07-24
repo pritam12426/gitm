@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * load.c — (merged into config.c)
  *
  * Kept as a stub to show original project structure.
