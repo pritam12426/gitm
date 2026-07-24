@@ -31,7 +31,7 @@ static const char *g_log_file      = NULL;
 
 static Log_level_t parse_log_level(const char *str)
 {
-	if (!str)                              return LOG_LEVEL_WARN;
+	if (!str)                      return LOG_LEVEL_WARN;
 	if (strcmp(str, "off") == 0)   return LOG_LEVEL_OFF;
 	if (strcmp(str, "fatal") == 0) return LOG_LEVEL_FATAL;
 	if (strcmp(str, "error") == 0) return LOG_LEVEL_ERROR;
@@ -39,7 +39,7 @@ static Log_level_t parse_log_level(const char *str)
 	if (strcmp(str, "info") == 0)  return LOG_LEVEL_INFO;
 	if (strcmp(str, "debug") == 0) return LOG_LEVEL_DEBUG;
 	if (strcmp(str, "trace") == 0) return LOG_LEVEL_TRACE;
-	return                                        LOG_LEVEL_WARN;
+	return                                LOG_LEVEL_WARN;
 }
 
 int main(int argc, char *argv[])
