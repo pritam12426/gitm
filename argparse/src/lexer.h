@@ -1,13 +1,17 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * lexer.h — Tokenizer for argv
  */
 
 #ifndef _LEXER_H_
 #define _LEXER_H_
 
-
-#include <stddef.h>
-
+#include <stdbool.h>
 
 typedef enum {
 	TOKEN_COMMAND,
@@ -28,10 +32,11 @@ typedef struct {
 	const char **argv;
 	int          argc;
 	int          pos;
+	bool         stop_options;  /* set after --: remaining are positional */
 } Lexer;
 
-void lexer_init(Lexer *lex, int argc, char **argv);
+void  lexer_init(Lexer *lex, int argc, char **argv);
 Token lexer_next(Lexer *lex);
 
 
-#endif /* _LEXER_H_ */
+#endif  // _LEXER_H_
