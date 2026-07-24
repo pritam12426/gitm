@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "cmd.h"
+#include "cmd_util.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
@@ -89,18 +90,10 @@ int cmd_status(const ArgParseResult *result)
 
 	bool color = log_use_color();
 
-	char *config_path = config_default_path();
-	if (!config_path) {
-		LOG_ERROR("could not determine config path");
-		return 1;
-	}
-
 	GitConfig cfg = { 0 };
-	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR("could not load config");
-		free(config_path);
+	char      *config_path = NULL;
+	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
-	}
 
 	if (cfg.count == 0) {
 		fprintf(stderr, "No repositories registered.\n");
@@ -109,17 +102,9 @@ int cmd_status(const ArgParseResult *result)
 		return 0;
 	}
 
-	/* Collect filtered entries */
 	size_t *indices = calloc(cfg.count, sizeof(size_t));
-	size_t  filtered = 0;
-
-	for (size_t i = 0; i < cfg.count; i++) {
-		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-			continue;
-		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-			continue;
-		indices[filtered++] = i;
-	}
+	size_t  filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
+	                                     indices, cfg.count);
 
 	if (g_table_mode) {
 		const char *headers[] = { "Name", "Status", "Branch" };
@@ -262,10 +247,7 @@ void cmd_register_status(ArgParser *parser)
 	                                       cmd_status);
 	const char *status_aliases[] = { "st", "s" };
 	argparse_command_set_aliases(cmd, status_aliases, 2);
-	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
-	                    "Filter by tag", &filter_tag);
-	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
-	                    "Filter by group", &filter_group);
+	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);
 	cmd_register_table_flag(cmd);
 	(void) cmd;
 }
