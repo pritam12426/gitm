@@ -22,7 +22,7 @@ extern "C" {
 /* ── Limits ─────────────────────────────────────────────────────────────────── */
 
 #define ARGPARSE_MAX_OPTIONS     32
-#define ARGPARSE_MAX_COMMANDS    16
+#define ARGPARSE_MAX_COMMANDS    32
 #define ARGPARSE_MAX_POSITIONAL   8
 #define ARGPARSE_MAX_LINE_LEN   1024
 
