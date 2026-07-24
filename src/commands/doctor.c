@@ -12,12 +12,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "cmd.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
@@ -46,8 +48,11 @@ int cmd_doctor(const ArgParseResult *result)
 		return 0;
 	}
 
-	int errors = 0;
-	size_t checked = 0;
+	/* Collect results */
+	size_t *indices   = calloc(cfg.count, sizeof(size_t));
+	char  **statuses  = calloc(cfg.count, sizeof(char *));
+	size_t  checked   = 0;
+	int     errors    = 0;
 
 	LOG_DEBUG("running health check on %zu repos", cfg.count);
 
@@ -57,37 +62,70 @@ int cmd_doctor(const ArgParseResult *result)
 		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
 			continue;
 
-		checked++;
 		LOG_TRACE("checking %s", cfg.entries[i].name);
-		fprintf(stderr, "%s ... ", cfg.entries[i].name);
 
 		struct stat st;
 		if (stat(cfg.entries[i].path, &st) != 0) {
-			fprintf(stderr, "MISSING\n");
+			statuses[checked] = strdup("MISSING");
 			errors++;
-			continue;
-		}
-		if (!S_ISDIR(st.st_mode)) {
-			fprintf(stderr, "NOT A DIRECTORY\n");
+		} else if (!S_ISDIR(st.st_mode)) {
+			statuses[checked] = strdup("NOT A DIRECTORY");
 			errors++;
-			continue;
-		}
-		if (!git_is_repo(cfg.entries[i].path)) {
-			fprintf(stderr, "NOT A GIT REPO\n");
+		} else if (!git_is_repo(cfg.entries[i].path)) {
+			statuses[checked] = strdup("NOT A GIT REPO");
 			errors++;
-			continue;
+		} else {
+			statuses[checked] = strdup("ok");
 		}
 
-		fprintf(stderr, "ok\n");
+		indices[checked] = i;
+		checked++;
 	}
 
-	fprintf(stderr, "\n%d/%zu repositories OK\n", (int) (checked - (size_t) errors), checked);
+	if (g_table_mode) {
+		const char *headers[] = { "Name", "Status" };
+		Table *t = table_create(2, headers);
+		table_set_color(t, log_use_color());
+
+		for (size_t i = 0; i < checked; i++) {
+			const char *name = cfg.entries[indices[i]].name;
+			const char *status = statuses[i];
+			bool is_ok = (strcmp(status, "ok") == 0);
+
+			if (log_use_color() && is_ok) {
+				char colored[128];
+				snprintf(colored, sizeof(colored), "\x1b[32m%s\x1b[0m", status);
+				const char *cells[] = { name, colored };
+				table_add_row_raw(t, cells, 2);
+			} else if (log_use_color() && !is_ok) {
+				char colored[128];
+				snprintf(colored, sizeof(colored), "\x1b[31m%s\x1b[0m", status);
+				const char *cells[] = { name, colored };
+				table_add_row_raw(t, cells, 2);
+			} else {
+				table_add_row(t, name, status);
+			}
+		}
+
+		table_print(t, stdout);
+		table_free(t);
+	} else {
+		for (size_t i = 0; i < checked; i++) {
+			fprintf(stderr, "%s ... %s\n", cfg.entries[indices[i]].name, statuses[i]);
+		}
+		fprintf(stderr, "\n%d/%zu repositories OK\n", (int) (checked - (size_t) errors), checked);
+	}
 
 	if (errors > 0)
 		LOG_WARN("%d/%zu repos failed health check", errors, checked);
 	else
 		LOG_INFO("all %zu repos passed health check", checked);
 
+	/* Cleanup */
+	for (size_t i = 0; i < checked; i++)
+		free(statuses[i]);
+	free(statuses);
+	free(indices);
 	config_free(&cfg);
 	free(config_path);
 	return errors > 0 ? 1 : 0;
@@ -105,5 +143,6 @@ void cmd_register_doctor(ArgParser *parser)
 	                    "Filter by tag", &filter_tag);
 	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
 	                    "Filter by group", &filter_group);
+	cmd_register_table_flag(cmd);
 	(void) cmd;
 }

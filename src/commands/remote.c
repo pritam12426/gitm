@@ -18,6 +18,7 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
@@ -95,14 +96,86 @@ int cmd_remote(const ArgParseResult *result)
 		return 0;
 	}
 
-	for (size_t i = 0; i < cfg.count; i++) {
-		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-			continue;
-		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-			continue;
+	if (g_table_mode) {
+		const char *headers[] = { "Repository", "Remote", "URL", "Type" };
+		Table *t = table_create(4, headers);
+		table_set_color(t, color);
 
-		LOG_TRACE("showing remotes for %s", cfg.entries[i].name);
-		print_remotes(cfg.entries[i].name, cfg.entries[i].path, color);
+		for (size_t i = 0; i < cfg.count; i++) {
+			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
+				continue;
+			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
+				continue;
+
+			ProcessResult r = git_exec(cfg.entries[i].path, "remote", "-v", NULL);
+
+			if (r.exit_code != 0 || r.stdout_len == 0) {
+				const char *cells[] = { cfg.entries[i].name, "-", "-", "-" };
+				table_add_row_raw(t, cells, 4);
+			} else {
+				const char *p = r.stdout_buf;
+				bool first = true;
+				while (*p) {
+					const char *start = p;
+					while (*p && *p != '\n')
+						p++;
+
+					size_t len = (size_t) (p - start);
+					char   line[512];
+					if (len >= sizeof(line))
+						len = sizeof(line) - 1;
+					memcpy(line, start, len);
+					line[len] = '\0';
+
+					/* Parse: "name\turl (type)" */
+					char *tab = strchr(line, '\t');
+					if (tab) {
+						*tab = '\0';
+						char *name = line;
+						char *rest = tab + 1;
+
+						/* Find "(fetch)" or "(push)" */
+						char *paren = strchr(rest, ' ');
+						char *url = rest;
+						char *type = "-";
+						if (paren) {
+							*paren = '\0';
+							type = paren + 1;
+							/* Strip parens from type */
+							if (*type == '(') {
+								type++;
+								char *close = strchr(type, ')');
+								if (close)
+									*close = '\0';
+							}
+						}
+
+						const char *repo_name = first ? cfg.entries[i].name : "";
+						const char *cells[] = { repo_name, name, url, type };
+						table_add_row_raw(t, cells, 4);
+						first = false;
+					}
+
+					if (*p == '\n')
+						p++;
+				}
+			}
+
+			process_result_free(&r);
+		}
+
+		table_print(t, stdout);
+		table_free(t);
+	} else {
+		for (size_t i = 0; i < cfg.count; i++) {
+			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
+				continue;
+			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
+				continue;
+
+			LOG_TRACE("showing remotes for %s", cfg.entries[i].name);
+			print_remotes(cfg.entries[i].name, cfg.entries[i].path, color);
+		}
 	}
 
 	config_free(&cfg);
@@ -122,5 +195,6 @@ void cmd_register_remote(ArgParser *parser)
 	                    "Filter by tag", &filter_tag);
 	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
 	                    "Filter by group", &filter_group);
+	cmd_register_table_flag(cmd);
 	(void) cmd;
 }

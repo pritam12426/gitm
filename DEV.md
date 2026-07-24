@@ -23,16 +23,17 @@ flowchart TD
 
 ### Major Components
 
-| Component             | Location              | Responsibility                                                            |
-| --------------------- | --------------------- | ------------------------------------------------------------------------- |
-| **Entry point**       | `src/main.c`          | Parser init, global options, `--edit-entry` handler, dispatch             |
-| **Commands**          | `src/commands/`       | One file per subcommand, each with a callback and registration function   |
-| **Command registry**  | `src/commands/cmd.c`  | Central `cmd_register_all()` that calls every `cmd_register_*`            |
-| **Config**            | `src/config/config.c` | Load, save, validate, add, remove, rename, tag/group/orphan helpers       |
-| **Git execution**     | `src/git/git.c`       | Variadic `git_exec()` wrapper, `git_is_repo()`, `git_current_branch()`    |
-| **Process execution** | `src/git/process.c`   | `fork()`/`execvp()` with stdout/stderr pipe capture                       |
-| **Logger**            | `src/util/log.c`      | Six severity levels, ANSI colour, optional timestamps and source location |
-| **Argparse**          | `argparse/`           | Standalone library — nested subcommands, shell completion, coloured help  |
+| Component             | Location              | Responsibility                                                                          |
+| --------------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| **Entry point**       | `src/main.c`          | Parser init, global options, `--edit-entry` handler, dispatch                           |
+| **Commands**          | `src/commands/`       | One file per subcommand, each with a callback and registration function                 |
+| **Command registry**  | `src/commands/cmd.c`  | Central `cmd_register_all()`, shared `g_table_mode`, `cmd_register_table_flag()`        |
+| **Config**            | `src/config/config.c` | Load, save, validate, add, remove, rename, tag/group/orphan helpers                     |
+| **Git execution**     | `src/git/git.c`       | Variadic `git_exec()` wrapper, `git_is_repo()`, `git_current_branch()`                  |
+| **Process execution** | `src/git/process.c`   | `fork()`/`execvp()` with stdout/stderr pipe capture                                     |
+| **Logger**            | `src/util/log.c`      | Seven severity levels (off–trace), ANSI colour, optional timestamps and source location |
+| **Table formatter**   | `src/util/table.c`    | Auto-width, pipe-separated columns with ANSI-aware width calculation                    |
+| **Argparse**          | `argparse/`           | Standalone library — nested subcommands, shell completion, coloured help                |
 
 ### Data Flow
 
@@ -42,7 +43,7 @@ flowchart TD
 4. The callback calls `config_default_path()` → `config_load()` to load the registry
 5. For batch commands, the callback iterates `cfg.entries[]` and calls `git_exec()` per repo
 6. For single-repo commands, the callback calls `config_find()` to resolve a name
-7. Results are printed to stderr (coloured) or stdout (plain)
+7. Results are printed to stderr (coloured) or stdout (plain); `--table` mode uses the table formatter
 8. If the command mutated the config, `config_save()` writes it back
 
 ## Build System
@@ -98,20 +99,21 @@ gitm/
 ├── Makefile                    # Build system
 ├── include/                    # Public headers
 │   ├── config.h                # GitConfig / RepoEntry API
-│   ├── cmd.h                   # cmd_register_all() declaration
+│   ├── cmd.h                   # cmd_register_all(), g_table_mode, cmd_register_table_flag()
 │   ├── git.h                   # git_exec() and helpers
 │   ├── process.h               # process_exec() API
-│   ├── log.h                   # Logger macros and API
+│   ├── log.h                   # Logger macros and API (7 levels: off–trace)
+│   ├── table.h                 # Table formatter API (table_create, table_add_row, table_print)
+│   ├── str_util.h              # String utility functions (renamed from string.h to avoid shadowing)
 │   ├── project_config.h        # Version, name, description constants
-│   ├── ansi_color.h            # ANSI escape code macros
-│   └── table.h                 # Empty stub
+│   └── ansi_color.h            # ANSI escape code macros
 ├── src/
 │   ├── main.c                  # Entry point
 │   ├── commands/               # One file per subcommand
-│   │   ├── cmd.c               # Registration hub
+│   │   ├── cmd.c               # Registration hub + shared g_table_mode
 │   │   ├── add.c               # gitm add
 │   │   ├── remove.c            # gitm remove
-│   │   ├── status.c            # gitm status
+│   │   ├── status.c            # gitm status (colourised + table mode)
 │   │   └── ... (17 files)
 │   ├── config/
 │   │   └── config.c            # All config logic
@@ -119,7 +121,8 @@ gitm/
 │   │   ├── process.c           # fork/exec wrapper
 │   │   └── git.c               # Git helper functions
 │   └── util/
-│       └── log.c               # Logger implementation
+│       ├── log.c               # Logger implementation
+│       └── table.c             # Table formatter implementation
 └── argparse/                   # Standalone argument parser
     ├── include/argparse.h
     ├── DOC.md
@@ -147,7 +150,8 @@ gitm/
 3. Implement `void cmd_register_mycommand(ArgParser *parser)`
 4. Add `extern void cmd_register_mycommand(ArgParser *parser);` to `src/commands/cmd.c`
 5. Call `cmd_register_mycommand(parser);` in `cmd_register_all()`
-6. Run `make` to verify
+6. If the command supports `--table`, call `cmd_register_table_flag(cmd)` on the `ArgCommand *cmd`
+7. Run `make` to verify
 
 ### Logging
 
@@ -158,9 +162,36 @@ LOG_ERROR("could not open file: %s", path);
 LOG_WARN("skipping malformed entry");
 LOG_INFO("added %s", name);
 LOG_DEBUG("config has %zu entries", cfg.count);
+LOG_TRACE("entering %s", __func__);
 ```
 
+Seven severity levels (high → low): `off`, `fatal`, `error`, `warn`, `info`, `debug`, `trace`. Default level is `warn`.
+
 Output goes to stderr by default, or to a file if `--log-file` is specified.
+
+### Table Output
+
+For commands that support `--table`, use the table API:
+
+```c
+if (g_table_mode) {
+    const char *headers[] = { "Name", "Status", "Branch" };
+    Table *t = table_create(3, headers);
+    table_set_color(t, log_use_color());
+
+    table_add_row(t, "my-repo", "clean", "main");
+    table_add_row_raw(t, (const char *[]){"my-repo", "\x1b[32mclean\x1b[0m", "main"}, 3);
+
+    table_print(t, stdout);
+    table_free(t);
+}
+```
+
+Register the flag in `cmd_register_mycommand()`:
+
+```c
+cmd_register_table_flag(cmd);
+```
 
 ### Error Handling
 
