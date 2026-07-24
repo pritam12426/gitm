@@ -6,8 +6,8 @@ No third-party libraries. No POSIX extensions. Just standard C.
 
 ## Features
 
-- Nested subcommands (multi-level command trees)
-- Global options inherited by subcommands
+- Nested subcommands (genuinely multi-level — `app remote add url`, as deep as you register them)
+- Global options inherited by subcommands, at any depth
 - Short and long options (`-v`, `--verbose`, `-j4`, `--output=file`)
 - Mutually exclusive option groups
 - Required option validation
@@ -133,6 +133,16 @@ ArgCommand *remote_rm  = argparse_add_subcommand(remote, "remove", "Remove a rem
 // Usage: myapp remote add origin https://...
 ```
 
+Nesting isn't limited to one level — a subcommand returned by `argparse_add_subcommand` can itself be passed as the `parent` to another call, and so on:
+
+```c
+ArgCommand *remote_add_url = argparse_add_subcommand(remote_add, "url", "Set the remote URL", cmd_remote_add_url);
+
+// Usage: myapp remote add url origin --type=ssh
+```
+
+Options resolve up the whole chain: a global option on `&parser->root` is visible from `remote_add_url`, an option on `remote` is visible from `remote_add` and `remote_add_url`, and an option on `remote_add` is only visible from `remote_add` and below it — regardless of how deep the tree goes.
+
 ### Command aliases
 
 ```c
@@ -150,6 +160,9 @@ Users can generate completion scripts without any extra code:
 myapp --shell-completion bash > /etc/bash_completion.d/myapp
 myapp --shell-completion zsh  > ~/.zsh/completions/_myapp
 myapp --shell-completion fish > ~/.config/fish/completions/myapp.fish
+
+# -S is the short form of --shell-completion
+myapp -S bash > /etc/bash_completion.d/myapp
 ```
 
 Supported shells: `bash`, `zsh`, `fish`.
@@ -169,19 +182,21 @@ static int cmd_example(const ArgParseResult *result)
 
 These are available on every parser automatically — no code needed:
 
-| Option | Description |
-|---|---|
-| `-h`, `--help` | Show help message |
-| `-v`, `--version` | Show version |
-| `--shell-completion=SHELL` | Output completion script (bash, zsh, fish) |
+| Option                           | Description                                |
+| -------------------------------- | ------------------------------------------ |
+| `-h`, `--help`                   | Show help message                          |
+| `-v`, `--version`                | Show version                               |
+| `-S`, `--shell-completion=SHELL` | Output completion script (bash, zsh, fish) |
+
+These are default bindings, not reserved words — register your own `-v` or `-h` on a command and yours wins there (see [DOC_IN_DEPTH.md](DOC_IN_DEPTH.md#built-in-options) for details). That's why the `list` example above can safely use `-v` for `--verbose`.
 
 ## Return Values
 
-| `argparse_parse()` | Meaning |
-|---|---|
-| `0` | Success (help/version/completion may have been printed) |
-| `-1` | Error (message already printed to stderr) |
-| Callback return | Your callback's return value is passed through |
+| `argparse_parse()` | Meaning                                                 |
+| ------------------ | ------------------------------------------------------- |
+| `0`                | Success (help/version/completion may have been printed) |
+| `-1`               | Error (message already printed to stderr)               |
+| Callback return    | Your callback's return value is passed through          |
 
 ## Help Output
 
@@ -190,26 +205,58 @@ Automatic. Users get coloured output with:
 ```
 Usage: myapp [OPTIONS] COMMAND [ARGS]
 
-My awesome tool
+Example application demonstrating nested subcommands
 
 Commands:
-  build           Build the project
-  test            Run tests
+  list (ls)     List items
+  remote        Manage remotes
+    add           Add a remote
+      url           Set the remote URL
+    remove        Remove a remote
 
 Options:
-  -n, --dry-run           Dry run
-  -v, --verbose           Verbose output
-  -o, --output=FILE       Output file     [$OUTPUT]
-  -h, --help              Show this help message
-  -v, --version           Show version
-      --shell-completion=SHELL  Output shell completion script (bash, zsh, fish)
+  -n, --dry-run                   Dry run (don't actually do anything)
+  -V, --verbose                   Increase verbosity (repeatable)
+  -e, --editor=EDITOR             Text editor to use [$EDITOR]
+  -h, --help                      Show this help message
+  -v, --version                   Show version
+  -S, --shell-completion=SHELL    Output shell completion script (bash, zsh, fish)
+
+See 'myapp COMMAND --help' for more information on a command.
+
+Report bugs to: https://github.com/me/myapp/issues
+Pritam
 ```
 
-Command aliases show in bold cyan:
+The flag/description gutter is sized to whatever's actually being printed (with sane min/max bounds), so alignment stays clean whether option names are short or long — no fixed column width to fight with.
+
+Command aliases show in bold cyan, right after the name:
 
 ```
-  status          (st, s) Show status of all registered repos
+list (ls)     List items
 ```
+
+Nested subcommand help builds the full usage path (however deep it is) and lists its own options, its own subcommands (if any), and the inherited built-ins separately:
+
+```
+Usage: myapp remote add NAME URL [OPTIONS] [SUBCOMMAND]
+
+Add a remote
+
+Options:
+  -f, --fetch      Fetch after add
+
+Subcommands:
+  url           Set the remote URL
+
+Options (inherited):
+  -h, --help       Show this help message
+  -v, --version    Show version
+
+See 'myapp remote add SUBCOMMAND --help' for more information.
+```
+
+`--shell-completion` is a root-only feature and is intentionally left out of nested help — completion scripts are generated for the whole program, not per-subcommand, so repeating that line at every level would just be noise.
 
 Options can display annotations:
 

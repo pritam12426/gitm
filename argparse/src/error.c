@@ -35,12 +35,12 @@ static int levenshtein(const char *a, const char *b)
 
 	for (int i = 1; i <= la; i++) {
 		for (int j = 1; j <= lb; j++) {
-			int cost = (tolower((unsigned char) a[i - 1]) == tolower((unsigned char) b[j - 1])) ? 0
-			                                                                                    : 1;
-			int del  = d[i - 1][j] + 1;
-			int ins  = d[i][j - 1] + 1;
-			int sub  = d[i - 1][j - 1] + cost;
-			d[i][j]  = del < ins ? (del < sub ? del : sub) : (ins < sub ? ins : sub);
+			int cost
+			    = (tolower((unsigned char) a[i - 1]) == tolower((unsigned char) b[j - 1])) ? 0 : 1;
+			int del = d[i - 1][j] + 1;
+			int ins = d[i][j - 1] + 1;
+			int sub = d[i - 1][j - 1] + cost;
+			d[i][j] = del < ins ? (del < sub ? del : sub) : (ins < sub ? ins : sub);
 		}
 	}
 	return d[la][lb];

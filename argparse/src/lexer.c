@@ -22,10 +22,10 @@
 
 void lexer_init(Lexer *lex, int argc, char **argv)
 {
-	lex->argv           = (const char **) argv;
-	lex->argc           = argc;
-	lex->pos            = 0;
-	lex->stop_options   = false;
+	lex->argv         = (const char **) argv;
+	lex->argc         = argc;
+	lex->pos          = 0;
+	lex->stop_options = false;
 }
 
 Token lexer_next(Lexer *lex)

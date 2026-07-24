@@ -27,4 +27,4 @@ void arg_error_unknown_command(const char        *program,
                                int                known_count);
 
 
-#endif /* _ARGPARSE_ERROR_H_ */
+#endif  // _ARGPARSE_ERROR_H_
