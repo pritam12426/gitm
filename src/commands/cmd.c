@@ -12,6 +12,15 @@
 
 #include "log.h"
 
+/* Shared --table flag */
+bool g_table_mode = false;
+
+void cmd_register_table_flag(ArgCommand *cmd)
+{
+	argparse_add_option(cmd, "table", 'T', ARG_TYPE_NONE, NULL,
+	                    "Show output in tabular format", &g_table_mode);
+}
+
 /* Registration functions (defined in each command file) */
 extern void cmd_register_list(ArgParser *parser);
 extern void cmd_register_add(ArgParser *parser);

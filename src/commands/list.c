@@ -16,6 +16,7 @@
 #include "cmd.h"
 #include "config.h"
 #include "log.h"
+#include "table.h"
 
 static const char *list_filter_tag   = NULL;
 static const char *list_filter_group = NULL;
@@ -45,21 +46,50 @@ int cmd_list(const ArgParseResult *result)
 		return 0;
 	}
 
-	int shown = 0;
+	/* Collect filtered entries */
+	size_t *indices = calloc(cfg.count, sizeof(size_t));
+	size_t  filtered = 0;
+
 	for (size_t i = 0; i < cfg.count; i++) {
 		if (list_filter_tag && !config_entry_has_tag(&cfg.entries[i], list_filter_tag))
 			continue;
 		if (list_filter_group && !config_entry_has_group(&cfg.entries[i], list_filter_group))
 			continue;
-
-		LOG_TRACE("listing: %s (%s)", cfg.entries[i].name, cfg.entries[i].path);
-		fprintf(stdout, "%s\t%s\n", cfg.entries[i].name, cfg.entries[i].path);
-		shown++;
+		indices[filtered++] = i;
 	}
 
-	if (shown == 0)
+	if (filtered == 0) {
 		fprintf(stderr, "No repos match the given filters.\n");
+		free(indices);
+		config_free(&cfg);
+		free(path);
+		return 0;
+	}
 
+	if (g_table_mode) {
+		const char *headers[] = { "Name", "Path", "Tags", "Groups" };
+		Table *t = table_create(4, headers);
+		table_set_color(t, log_use_color());
+
+		for (size_t i = 0; i < filtered; i++) {
+			RepoEntry *e = &cfg.entries[indices[i]];
+			table_add_row(t,
+			              e->name,
+			              e->path,
+			              e->tags ? e->tags : "-",
+			              e->groups ? e->groups : "-");
+		}
+
+		table_print(t, stdout);
+		table_free(t);
+	} else {
+		for (size_t i = 0; i < filtered; i++) {
+			RepoEntry *e = &cfg.entries[indices[i]];
+			fprintf(stdout, "%s\t%s\n", e->name, e->path);
+		}
+	}
+
+	free(indices);
 	config_free(&cfg);
 	free(path);
 	return 0;
@@ -74,5 +104,6 @@ void cmd_register_list(ArgParser *parser)
 	                    "Filter by tag", &list_filter_tag);
 	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
 	                    "Filter by group", &list_filter_group);
+	cmd_register_table_flag(cmd);
 	(void) cmd;
 }

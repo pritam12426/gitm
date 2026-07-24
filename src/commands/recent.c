@@ -18,6 +18,7 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
@@ -127,9 +128,23 @@ int cmd_recent(const ArgParseResult *result)
 
 	qsort(repos, repo_count, sizeof(RepoDate), cmp_repo_date);
 
-	for (size_t i = 0; i < repo_count; i++) {
-		fprintf(stdout, "%-20s %-40s %s\n", repos[i].name, repos[i].path, repos[i].date_str);
-		free((char *) repos[i].date_str);
+	if (g_table_mode) {
+		const char *headers[] = { "Name", "Path", "Last Commit" };
+		Table *t = table_create(3, headers);
+		table_set_color(t, log_use_color());
+
+		for (size_t i = 0; i < repo_count; i++) {
+			table_add_row(t, repos[i].name, repos[i].path, repos[i].date_str);
+			free((char *) repos[i].date_str);
+		}
+
+		table_print(t, stdout);
+		table_free(t);
+	} else {
+		for (size_t i = 0; i < repo_count; i++) {
+			fprintf(stdout, "%-20s %-40s %s\n", repos[i].name, repos[i].path, repos[i].date_str);
+			free((char *) repos[i].date_str);
+		}
 	}
 
 	free(repos);
@@ -150,5 +165,6 @@ void cmd_register_recent(ArgParser *parser)
 	                    "Filter by tag", &filter_tag);
 	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
 	                    "Filter by group", &filter_group);
+	cmd_register_table_flag(cmd);
 	(void) cmd;
 }

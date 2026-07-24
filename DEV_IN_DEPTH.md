@@ -9,6 +9,7 @@ Complete source walkthrough for contributors and AI agents. This document is the
 - [Source File Walkthrough](#source-file-walkthrough)
 - [Config System](#config-system)
 - [Process Execution](#process-execution)
+- [Table Formatter](#table-formatter)
 - [Argparse Library](#argparse-library)
 - [Adding New Features](#adding-new-features)
 - [Edge Cases and Gotchas](#edge-cases-and-gotchas)
@@ -22,47 +23,42 @@ Every `gitm` invocation follows this path:
 ```
 main()
   ├── argparse_init()
-  ├── argparse_set_help_colored(1)
-  ├── global_options_init()         // --log-level, --log-file, --edit-entry, -S
-  ├── cmd_register_all()            // registers all 17 subcommands
-  ├── log_init()                    // first init with defaults
+  ├── global_options_init()         // --log-level, --log-file, --edit-entry
+  ├── log_init(NULL, LOG_LEVEL_WARN) // early init so commands can log during parse
+  ├── cmd_register_all()            // registers all 17 subcommands (each may call cmd_register_table_flag)
   ├── argparse_parse()              // matches command, calls callback
   │   └── cmd_callback()            // e.g. cmd_status()
   │       ├── config_default_path()
   │       ├── config_load()
   │       ├── git_exec() per repo
+  │       ├── table output (if --table)
   │       └── config_save() if mutated
-  ├── log_reinit()                  // re-init with user's --log-level / --log-file
+  ├── log_init(user_file, user_level) // re-init with user's --log-level / --log-file
   └── argparse_free()
 ```
 
 ### Step by step
 
-1. **`main.c`**: Creates an `ArgParser` via `argparse_init()`. Sets colored help to enabled.
+1. **`main.c`**: Creates an `ArgParser` via `argparse_new()`. Registers `-L`, `-F`, `-E` on the root command.
 
-2. **Global options**: Four options are registered directly on the parser (not nested):
-   - `-L/--log-level=LEVEL` — log verbosity
-   - `-F/--log-file=FILE` — redirect log output to file
-   - `-E/--edit-entry` — open config file in `$EDITOR`
-   - `-S/--shell-completion=SHELL` — output shell completion script
+2. **`log_init(NULL, LOG_LEVEL_WARN)`**: Early init at WARN level so that `LOG_DEBUG`/`LOG_TRACE` messages during command registration are suppressed by default, but `LOG_ERROR`/`LOG_WARN` messages are visible. This is called _before_ `cmd_register_all()` so that `LOG_TRACE` in `cmd.c` works correctly.
 
-3. **`cmd_register_all()`** in `src/commands/cmd.c`: Calls each `cmd_register_*` function. These functions create subcommands with `argparse_subcommand()` and optionally add options with `argparse_add_option()` or `argparse_add_flag()`.
+3. **`cmd_register_all()`** in `src/commands/cmd.c`: Calls each `cmd_register_*` function. These functions create subcommands with `argparse_add_command()` and add options with `argparse_add_option()`. Commands that support `--table` call `cmd_register_table_flag(cmd)`.
 
-4. **`log_init()`**: Initializes the logger before parsing so that `--log-level error` suppresses info/debug messages during parse itself.
+4. **`argparse_parse()`**: Tokenizes argv, matches the subcommand, calls its callback. Returns before `main()` continues if the command was `--help`, `--version`, `--shell-completion`, or `--edit-entry`.
 
-5. **`argparse_parse()`**: Tokenizes argv, matches the subcommand, calls its callback. Returns before `main()` continues if the command was `--help`, `--version`, `--shell-completion`, or `--edit-entry`.
-
-6. **Command callback**: Each command follows the pattern:
+5. **Command callback**: Each command follows the pattern:
    - Extract string options from `ArgParseResult` via `argparse_result_get()`
    - Resolve config path via `config_default_path()` or user override
    - Load config via `config_load()`
    - Perform work (iterate repos, run git, etc.)
+   - If `g_table_mode` is true, use the table formatter for output
    - If the config was mutated, call `config_save()`
    - Free config with `config_free()`
 
-7. **`log_reinit()`**: Re-initializes the logger with user-supplied `--log-level` and `--log-file`. This ensures parsing-phase messages still use defaults while the actual command respects user choices.
+6. **`log_init(user_file, user_level)`**: Re-initializes the logger with user-supplied `--log-level` and `--log-file`. Default level is WARN (not INFO). This ensures parsing-phase messages use defaults while the actual command respects user choices.
 
-8. **Cleanup**: `argparse_free()` frees all parser memory. No global state leaks.
+7. **Cleanup**: `argparse_free()` frees all parser memory. No global state leaks.
 
 ---
 
@@ -145,6 +141,32 @@ typedef struct {
 } ProcessResult;
 ```
 
+### `Table` / `TableRow` (in `include/table.h`)
+
+```c
+typedef struct {
+    char **cells;      // array of cell strings (may contain ANSI codes)
+    int    count;      // number of cells in this row
+} TableRow;
+
+typedef struct {
+    TableRow *rows;
+    size_t    row_count;
+    size_t    row_capacity;
+
+    const char **headers;
+    int          col_count;
+
+    bool show_header;
+    bool use_color;
+} Table;
+```
+
+- Created via `table_create(col_count, headers)`.
+- Rows added via `table_add_row(table, ...)` (plain text) or `table_add_row_raw(table, cells, count)` (pre-formatted/ANSI).
+- Width calculation skips ANSI escape sequences via `visible_width()`.
+- Auto-detects TTY for color via `isatty(fileno(stderr))`.
+
 ---
 
 ## Source File Walkthrough
@@ -153,16 +175,18 @@ typedef struct {
 
 #### `src/main.c`
 
-- Declares the global `Logger` instance: `Logger g_logger = { ... }`
-- Calls `global_options_init()` to register `-L`, `-F`, `-E`, `-S` on the parser
-- The `--edit-entry` handler opens `$EDITOR` (falling back to `vi`) with `fork()`/`execlp()` — uses raw fork, not `process_exec`, because editors require TTY access
-- Calls `log_init(0, LOG_LEVEL_INFO, NULL)` before parse, `log_reinit()` after
+- Declares the global options: `g_edit_entry`, `g_log_level_str`, `g_log_file`
+- `parse_log_level()` accepts all 7 levels: `off`, `fatal`, `error`, `warn`, `info`, `debug`, `trace` — defaults to `LOG_LEVEL_WARN`
+- `--edit-entry` handler opens `$EDITOR` (falling back to `vi`) with `fork()`/`execlp()` — uses raw fork, not `process_exec`, because editors require TTY access
+- Calls `log_init(NULL, LOG_LEVEL_WARN)` before parse, `log_init(user_file, user_level)` after
 
 ### Command System
 
 #### `src/commands/cmd.c`
 
 - Contains `cmd_register_all(ArgParser *parser)` which calls all 17 `cmd_register_*` functions
+- Defines `bool g_table_mode` (shared global, set by argparse storage pointer)
+- Implements `cmd_register_table_flag(ArgCommand *cmd)` which registers `--table`/`-T` flag bound to `g_table_mode`
 - This is the only file that needs modification when adding a new command
 
 #### Command Callback Pattern
@@ -180,10 +204,25 @@ int cmd_example(const ArgParseResult *result) {
     config_load(&cfg, config_default_path());
 
     // 3. Perform work
-    for (size_t i = 0; i < cfg.count; i++) {
-        RepoEntry *e = &cfg.entries[i];
-        if (tag && !config_entry_has_tag(e, tag)) continue;
-        // ... do something with e
+    if (g_table_mode) {
+        // Table output path
+        const char *headers[] = { "Name", "Status" };
+        Table *t = table_create(2, headers);
+        table_set_color(t, log_use_color());
+
+        for (size_t i = 0; i < cfg.count; i++) {
+            RepoEntry *e = &cfg.entries[i];
+            table_add_row(t, e->name, "ok");
+        }
+
+        table_print(t, stdout);
+        table_free(t);
+    } else {
+        // Plain output path
+        for (size_t i = 0; i < cfg.count; i++) {
+            RepoEntry *e = &cfg.entries[i];
+            fprintf(stdout, "%s\n", e->name);
+        }
     }
 
     // 4. Save if mutated
@@ -197,18 +236,18 @@ int cmd_example(const ArgParseResult *result) {
 
 #### Commands That Invoke Git
 
-Eight commands call `git_exec()` for each repo. All support `--tag`/`--group` filtering:
+Eight commands call `git_exec()` for each repo. All support `--tag`/`--group` filtering.
 
-| Command    | File         | What it runs                               |
-| ---------- | ------------ | ------------------------------------------ |
-| `status`   | `status.c`   | `git status --short`                       |
-| `branch`   | `branch.c`   | `git branch`                               |
-| `last`     | `last.c`     | `git log --oneline -1`                     |
-| `recent`   | `recent.c`   | `git log -1 --format=%ct` (for sorting)    |
-| `remote`   | `remote.c`   | `git remote -v`                            |
-| `list-tag` | `list_tag.c` | `git tag -l -n1`                           |
-| `summary`  | `summary.c`  | `git branch` (count), `du -sh` (size)      |
-| `doctor`   | `doctor.c`   | `git rev-parse --git-dir` (validity check) |
+| Command    | File         | What it runs                               | `--table` |
+| ---------- | ------------ | ------------------------------------------ | --------- |
+| `status`   | `status.c`   | `git status --porcelain --branch`          | Yes       |
+| `branch`   | `branch.c`   | `git branch`                               | Yes       |
+| `last`     | `last.c`     | `git log -1 --format=%h\|%an\|%ar\|%s`     | Yes       |
+| `recent`   | `recent.c`   | `git log -1 --format=%ct` (for sorting)    | Yes       |
+| `remote`   | `remote.c`   | `git remote -v`                            | Yes       |
+| `list-tag` | `list_tag.c` | `git tag -l -n1`                           | Yes       |
+| `summary`  | `summary.c`  | `git branch` (count), `du -sh` (size)      | —         |
+| `doctor`   | `doctor.c`   | `git rev-parse --git-dir` (validity check) | Yes       |
 
 #### Commands That Modify Config
 
@@ -298,14 +337,52 @@ Tag/group matching: checks if the comma-separated string _contains_ the substrin
 - Child closes unused pipe ends, redirects stdout/stderr, then `execvp(cmd, args)`
 - Parent waits for child with `waitpid()`
 - Result is heap-allocated and must be freed with `process_result_free()`
+- LOG_ERROR for pipe/fork failures includes `strerror(errno)`
+- LOG_TRACE logs each `execvp` call
 
-**Buffer limitation:** stdout and stderr are each limited to 1024 bytes. Commands that produce more output will be truncated silently. This is a known limitation.
+**Buffer limitation:** stdout and stderr are each limited to 1024 bytes. Commands producing more output will be truncated silently. This is a known limitation.
 
 #### `src/git/git.c`
 
 - `git_exec(cwd, args, result)` — convenience wrapper that calls `process_exec("git", args, result)`
-- `git_is_repo(path)` — runs `git -C path rev-parse --git-dir`, checks exit code
+- `git_is_repo(path)` — runs `git -C path rev-parse --git-dir`, checks exit code (LOG_TRACE)
 - `git_current_branch(path)` — runs `git -C path rev-parse --abbrev-ref HEAD`, strips newline
+
+### Table Formatter
+
+#### `src/util/table.c` / `include/table.h`
+
+A standalone utility for rendering aligned, pipe-separated tabular output. Used by 8 commands via `--table`/`-T` flag.
+
+**API:**
+
+| Function                                 | Purpose                                                 |
+| ---------------------------------------- | ------------------------------------------------------- |
+| `table_create(col_count, headers)`       | Allocate table with column headers (NULL for no header) |
+| `table_add_row(table, ...)`              | Add a row of plain text cells (varargs, `const char *`) |
+| `table_add_row_raw(table, cells, count)` | Add a row with pre-formatted cells (may contain ANSI)   |
+| `table_set_header(table, show)`          | Enable/disable header row                               |
+| `table_set_color(table, use_color)`      | Enable/disable ANSI color in output                     |
+| `table_print(table, FILE *out)`          | Render table to a FILE stream                           |
+| `table_free(table)`                      | Free all allocated memory                               |
+
+**Width calculation:**
+
+- `visible_width(s)` counts visible characters, skipping ANSI escape sequences (`\x1b[...m`)
+- Column width = max of header width and all row widths in that column
+- Columns are padded with spaces, separated by `|`
+
+**Color handling:**
+
+- `table_set_color()` defaults to `isatty(fileno(stderr))` — auto-detects TTY
+- Headers are rendered in bold when color is enabled
+- Separator line uses `-` and `+` characters
+
+**Shared flag:**
+
+- `bool g_table_mode` (defined in `cmd.c`, declared in `cmd.h`)
+- Registered per-command via `cmd_register_table_flag(ArgCommand *cmd)` — adds `--table`/`-T` flag bound to `g_table_mode`
+- Commands check `if (g_table_mode)` to choose between table and plain output
 
 ### Argparse Library
 
@@ -356,30 +433,38 @@ Core parser. Key internals:
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "table.h"
 
 int cmd_newcmd(const ArgParseResult *result) {
     const char *name = argparse_result_get(result, "repo");
 
     GitConfig cfg;
-    if (config_load(&cfg, config_default_path()) != 0) {
+    if (config_load(config_default_path(), &cfg) != 0) {
         LOG_ERROR("failed to load config");
         return -1;
     }
 
-    // Your logic here
+    if (g_table_mode) {
+        const char *headers[] = { "Name", "Status" };
+        Table *t = table_create(2, headers);
+        table_set_color(t, log_use_color());
+        // ... populate and print table
+        table_print(t, stdout);
+        table_free(t);
+    } else {
+        // ... plain output
+    }
 
     config_free(&cfg);
     return 0;
 }
 
 void cmd_register_newcmd(ArgParser *parser) {
-    ArgParserConfig cmd_config = argparse_config_create();
-    cmd_config.program_name = "newcmd";
-    cmd_config.program_description = "Description of the new command";
-
-    argparse_add_positional(&cmd_config, "repo", "Repository name or alias", 0);
-
-    argparse_subcommand(parser, &cmd_config, cmd_newcmd);
+    ArgCommand *cmd = argparse_add_command(parser, "newcmd",
+                                           "Description of the new command",
+                                           cmd_newcmd);
+    // Add --table support
+    cmd_register_table_flag(cmd);
 }
 ```
 
@@ -403,14 +488,12 @@ In the command's `cmd_register_*` function, add an option after creating the sub
 
 ```c
 void cmd_register_example(ArgParser *parser) {
-    ArgParserConfig cmd_config = argparse_config_create();
-    cmd_config.program_name = "example";
-    cmd_config.program_description = "Example command";
-
-    argparse_add_option(&cmd_config, "tag", "Filter by tag", 0, NULL);
-    argparse_add_flag(&cmd_config, "verbose", "Show detailed output", 'v');
-
-    argparse_subcommand(parser, &cmd_config, cmd_example);
+    ArgCommand *cmd = argparse_add_command(parser, "example",
+                                           "Example command", cmd_example);
+    argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
+                        "Filter by tag", &filter_tag);
+    argparse_add_flag(cmd, "verbose", 'v', ARG_TYPE_NONE, NULL,
+                      "Show detailed output", &verbose_flag);
 }
 ```
 
@@ -424,13 +507,12 @@ const char *verbose = argparse_result_get(result, "verbose");
 
 ### Adding a New Global Option
 
-In `main.c`, inside `global_options_init()`:
+In `main.c`, inside the global options block:
 
 ```c
-static void global_options_init(ArgParser *parser) {
-    argparse_add_option(parser, "my-option", "Description", 'm', NULL);
-    argparse_add_flag(parser, "my-flag", "Description", 'M');
-}
+static const char *g_my_option = NULL;
+argparse_add_option(root, "my-option", 'm', ARG_TYPE_STRING, "VALUE",
+                    "Description", &g_my_option);
 ```
 
 Retrieve in `main()` after `argparse_parse()`.
@@ -473,6 +555,16 @@ int config_entry_has_tag(const RepoEntry *entry, const char *tag) {
 9. **Argparse completion mode**: When `--shell-completion` is used, the parser enters a special mode that prints completion candidates and exits. This is not a regular command.
 
 10. **`ARGPARSE_MAX_COMMANDS`**: Currently set to 32. If you add more than 32 subcommands total, increase this constant in `argparse/include/argparse.h`.
+
+11. **Default log level is WARN**: `log_init()` defaults to `LOG_LEVEL_WARN`, not `INFO`. `LOG_INFO` and below are suppressed unless `--log-level info` (or lower) is passed. The `parse_log_level()` function also defaults to WARN when given an unrecognized string.
+
+12. **`log_init()` called before `cmd_register_all()`**: The logger is initialized at WARN level _before_ command registration. This means `LOG_TRACE` in `cmd.c` (e.g., `"registering all commands"`) is visible by default. After parsing, `log_init()` is called again with the user's chosen level.
+
+13. **Table output writes to stdout**: Unlike plain output which may use stderr for coloured status, table output goes to stdout. This allows piping `gitm list --table` to other commands.
+
+14. **Table ANSI width**: `table.c` uses `visible_width()` to skip ANSI escape sequences when calculating column widths. This ensures columns align correctly even when cells contain colour codes.
+
+15. **`str_util.h` not `string.h`**: The custom string utility header is named `include/str_util.h` to avoid shadowing the system `<string.h>`. Do not rename it back.
 
 ---
 
