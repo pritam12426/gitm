@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 
 #include "cmd.h"
+#include "cmd_util.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
@@ -28,18 +29,10 @@ int cmd_doctor(const ArgParseResult *result)
 {
 	(void) result;
 
-	char *config_path = config_default_path();
-	if (!config_path) {
-		LOG_ERROR("could not determine config path");
-		return 1;
-	}
-
 	GitConfig cfg = { 0 };
-	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR("could not load config");
-		free(config_path);
+	char      *config_path = NULL;
+	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
-	}
 
 	if (cfg.count == 0) {
 		fprintf(stderr, "No repositories registered.\n");
@@ -139,10 +132,7 @@ void cmd_register_doctor(ArgParser *parser)
 	                                       cmd_doctor);
 	const char *doctor_aliases[] = { "doc", "d" };
 	argparse_command_set_aliases(cmd, doctor_aliases, 2);
-	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
-	                    "Filter by tag", &filter_tag);
-	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
-	                    "Filter by group", &filter_group);
+	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);
 	cmd_register_table_flag(cmd);
 	(void) cmd;
 }
