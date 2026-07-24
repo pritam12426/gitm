@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * help.c — Automatic help generation with colour
  *
  * Produces formatted, coloured help output from the command tree.
@@ -6,7 +12,7 @@
  *   - Section headers: bold
  *   - Command names: bold cyan
  *   - Option flags: bold green
- *   - Metavars: cyan
+ *   - Metavars: dim
  *   - Descriptions: dim
  *   - Usage keywords: bold
  */
@@ -15,11 +21,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "project_config.h"
 #include "argparse.h"
 
-/* ── Internal ANSI codes (no external deps) ──────────────────────────────────
- */
+/* ── Internal ANSI codes ──────────────────────────────────────────────────── */
 
 static int g_use_color = -1; /* -1 = not detected yet */
 
@@ -37,10 +41,8 @@ static void detect_color(void)
 #define C_BOLD_CYAN  (g_use_color ? "\x1b[1;36m" : "")
 #define C_BOLD_GREEN (g_use_color ? "\x1b[1;32m" : "")
 
-
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 
-/* Count visible characters, skipping ANSI escape sequences */
 static size_t visible_len(const char *s)
 {
 	size_t      vis = 0;
@@ -48,7 +50,6 @@ static size_t visible_len(const char *s)
 
 	while (*p) {
 		if (*p == '\x1b' && *(p + 1) == '[') {
-			/* Skip ANSI escape: \x1b[...<letter> */
 			p += 2;
 			while (*p && !((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z')))
 				p++;
@@ -61,7 +62,6 @@ static size_t visible_len(const char *s)
 	return vis;
 }
 
-/* Print a string padded to `width` visible columns */
 static void print_padded(FILE *out, const char *s, size_t width)
 {
 	size_t vis = visible_len(s);
@@ -72,7 +72,6 @@ static void print_padded(FILE *out, const char *s, size_t width)
 			fputc(' ', out);
 	}
 }
-
 
 static void print_option(FILE *out, const ArgOption *opt)
 {
@@ -95,9 +94,19 @@ static void print_option(FILE *out, const ArgOption *opt)
 
 	fprintf(out, "  ");
 	print_padded(out, flags, 25);
-	fprintf(out, " %s%s%s\n", C_DIM, opt->description ? opt->description : "", C_RESET);
-}
+	fprintf(out, " %s%s%s", C_DIM, opt->description ? opt->description : "", C_RESET);
 
+	if (opt->env_var)
+		fprintf(out, " %s[$%s]%s", C_DIM, opt->env_var, C_RESET);
+	if (opt->required)
+		fprintf(out, " %s(required)%s", C_DIM, C_RESET);
+	if (opt->default_val)
+		fprintf(out, " %s[default: %s]%s", C_DIM, opt->default_val, C_RESET);
+	if (opt->exclusive_group > 0)
+		fprintf(out, " %s[group: %d]%s", C_DIM, opt->exclusive_group, C_RESET);
+
+	fprintf(out, "\n");
+}
 
 static void print_builtin_option(FILE       *out,
                                  const char *short_flag,
@@ -107,8 +116,12 @@ static void print_builtin_option(FILE       *out,
 	char   flags[128] = { 0 };
 	size_t len        = 0;
 
-	len += (size_t) snprintf(flags + len, sizeof(flags) - len,
-	                         "%s%s%s, ", C_BOLD_GREEN, short_flag, C_RESET);
+	if (short_flag)
+		len += (size_t) snprintf(flags + len, sizeof(flags) - len,
+		                         "%s%s%s, ", C_BOLD_GREEN, short_flag, C_RESET);
+	else
+		len += (size_t) snprintf(flags + len, sizeof(flags) - len, "    ");
+
 	len += (size_t) snprintf(flags + len, sizeof(flags) - len,
 	                         "%s%s%s", C_BOLD_GREEN, long_flag, C_RESET);
 
@@ -117,6 +130,35 @@ static void print_builtin_option(FILE       *out,
 	fprintf(out, " %s%s%s\n", C_DIM, desc, C_RESET);
 }
 
+/* ── Command tree printing ─────────────────────────────────────────────────── */
+
+static void print_commands_flat(const ArgParser *parser, const ArgCommand *cmd, int depth)
+{
+	int indent = depth * 2;
+
+	for (int i = 0; i < cmd->subcommand_count; i++) {
+		ArgCommand *sub = cmd->subcommands[i];
+
+		fprintf(stderr, "%*s", indent, "");
+		fprintf(stderr, "  ");
+		print_padded(stderr, sub->name, 15);
+		if (sub->alias_count > 0) {
+			fprintf(stderr, " %s(", C_BOLD_CYAN);
+			for (int j = 0; j < sub->alias_count; j++) {
+				if (j > 0) fprintf(stderr, ", ");
+				fputs(sub->aliases[j], stderr);
+			}
+			fprintf(stderr, ")%s", C_RESET);
+		}
+		fprintf(stderr, " %s%s%s\n",
+		        C_DIM,
+		        sub->description ? sub->description : "",
+		        C_RESET);
+
+		/* Recurse for deeper nesting */
+		print_commands_flat(parser, (const ArgCommand *) sub, depth + 1);
+	}
+}
 
 /* ── Public API ────────────────────────────────────────────────────────────── */
 
@@ -137,12 +179,26 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 		if (parser->command_count > 0) {
 			fprintf(stderr, "%sCommands:%s\n", C_BOLD, C_RESET);
 			for (int i = 0; i < parser->command_count; i++) {
+				const ArgCommand *c = &parser->commands[i];
+
 				fprintf(stderr, "  ");
-				print_padded(stderr, parser->commands[i].name, 15);
+				print_padded(stderr, c->name, 15);
+				if (c->alias_count > 0) {
+					fprintf(stderr, " %s(", C_BOLD_CYAN);
+					for (int j = 0; j < c->alias_count; j++) {
+						if (j > 0) fprintf(stderr, ", ");
+						fputs(c->aliases[j], stderr);
+					}
+					fprintf(stderr, ")%s", C_RESET);
+				}
 				fprintf(stderr, " %s%s%s\n",
 				        C_DIM,
-				        parser->commands[i].description ? parser->commands[i].description : "",
+				        c->description ? c->description : "",
 				        C_RESET);
+
+				/* Show nested subcommands */
+				if (c->subcommand_count > 0)
+					print_commands_flat(parser, (const ArgCommand *) c, 1);
 			}
 			fprintf(stderr, "\n");
 		}
@@ -150,31 +206,47 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 		/* Global options */
 		if (parser->root.option_count > 0) {
 			fprintf(stderr, "%sOptions:%s\n", C_BOLD, C_RESET);
-			for (int i = 0; i < parser->root.option_count; i++) {
+			for (int i = 0; i < parser->root.option_count; i++)
 				print_option(stderr, &parser->root.options[i]);
-			}
 		}
 
-		/* Always show --help and --version */
 		print_builtin_option(stderr, "-h", "--help", "Show this help message");
 		print_builtin_option(stderr, "-v", "--version", "Show version");
+		print_builtin_option(stderr, NULL, "--shell-completion=SHELL", "Output shell completion script (bash, zsh, fish)");
 		fprintf(stderr, "\n");
 
+		/* Footer */
 		fputs(C_DIM, stderr);
-		fputs("Report bugs to: " PROJECT_HOMEPAGE_URL "/issues\n" , stderr);
-		fputs(AUTH_MESSAGE "\n", stderr);
+		if (parser->bug_url)
+			fprintf(stderr, "Report bugs to: %s\n", parser->bug_url);
+		if (parser->author)
+			fprintf(stderr, "%s\n", parser->author);
 		fputs(C_RESET, stderr);
 
 		return;
 	}
 
-	/* Subcommand help */
-	fprintf(stderr, "%sUsage:%s %s%s %s%s",
-	        C_BOLD, C_RESET, C_BOLD, parser->prog_name, cmd->name, C_RESET);
+	/* Subcommand help — build full usage name */
+	fprintf(stderr, "%sUsage:%s %s%s", C_BOLD, C_RESET, C_BOLD, parser->prog_name);
 
-	for (int i = 0; i < cmd->positional_count; i++) {
-		fprintf(stderr, " %s%s%s", C_DIM, cmd->positionals[i], C_RESET);
+	/* Walk parent chain for nested commands */
+	const ArgCommand *chain[32];
+	int                chain_len = 0;
+	const ArgCommand  *p = cmd;
+
+	while (p && p->parent && p->parent->name && p->parent->name[0] != '\0') {
+		chain[chain_len++] = p;
+		p = p->parent;
 	}
+
+	/* Print in reverse order */
+	for (int i = chain_len - 1; i >= 0; i--)
+		fprintf(stderr, " %s%s%s", C_BOLD, chain[i]->name, C_RESET);
+
+	fprintf(stderr, " %s%s%s", C_BOLD, cmd->name, C_RESET);
+
+	for (int i = 0; i < cmd->positional_count; i++)
+		fprintf(stderr, " %s%s%s", C_DIM, cmd->positionals[i], C_RESET);
 
 	if (cmd->option_count > 0)
 		fprintf(stderr, " %s[OPTIONS]%s", C_DIM, C_RESET);
@@ -186,11 +258,33 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 
 	if (cmd->option_count > 0) {
 		fprintf(stderr, "%sOptions:%s\n", C_BOLD, C_RESET);
-		for (int i = 0; i < cmd->option_count; i++) {
+		for (int i = 0; i < cmd->option_count; i++)
 			print_option(stderr, &cmd->options[i]);
+	}
+
+	/* Show subcommands if any */
+	if (cmd->subcommand_count > 0) {
+		fprintf(stderr, "\n%sSubcommands:%s\n", C_BOLD, C_RESET);
+		for (int i = 0; i < cmd->subcommand_count; i++) {
+			ArgCommand *sub = cmd->subcommands[i];
+			fprintf(stderr, "  ");
+			print_padded(stderr, sub->name, 15);
+			if (sub->alias_count > 0) {
+				fprintf(stderr, " %s(", C_BOLD_CYAN);
+				for (int j = 0; j < sub->alias_count; j++) {
+					if (j > 0) fprintf(stderr, ", ");
+					fputs(sub->aliases[j], stderr);
+				}
+				fprintf(stderr, ")%s", C_RESET);
+			}
+			fprintf(stderr, " %s%s%s\n",
+			        C_DIM,
+			        sub->description ? sub->description : "",
+			        C_RESET);
 		}
 	}
 
 	print_builtin_option(stderr, "-h", "--help", "Show this help message");
+	print_builtin_option(stderr, NULL, "--shell-completion=SHELL", "Output shell completion script (bash, zsh, fish)");
 	fprintf(stderr, "\n");
 }

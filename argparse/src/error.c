@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * error.c — Error messages with suggestions
  *
  * Provides helpful error output when parsing fails.
