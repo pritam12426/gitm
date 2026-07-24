@@ -28,6 +28,7 @@ int cmd_clone(const ArgParseResult *result)
 
 	const char *url  = result->positionals[0];
 	const char *name = result->positional_count > 1 ? result->positionals[1] : NULL;
+	LOG_DEBUG("cloning %s", url);
 
 	/* Derive name from URL if not provided */
 	char name_buf[256];
@@ -93,6 +94,7 @@ int cmd_clone(const ArgParseResult *result)
 	}
 
 	fprintf(stderr, "Registered as '%s'\n", name);
+	LOG_INFO("cloned and registered as %s", name);
 
 	config_free(&cfg);
 	free(config_path);

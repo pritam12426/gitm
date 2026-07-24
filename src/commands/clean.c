@@ -47,6 +47,8 @@ int cmd_clean(const ArgParseResult *result)
 	size_t orphans[256];
 	size_t orphan_count = config_find_orphans(&cfg, orphans, 256);
 
+	LOG_DEBUG("found %zu orphaned repos", orphan_count);
+
 	if (orphan_count == 0) {
 		fprintf(stderr, "No orphaned repositories found.\n");
 		config_free(&cfg);
@@ -98,6 +100,8 @@ int cmd_clean(const ArgParseResult *result)
 
 	fprintf(stderr, "Removed %zu %s.\n", orphan_count,
 	        orphan_count == 1 ? "entry" : "entries");
+
+	LOG_INFO("removed %zu orphaned entries", orphan_count);
 
 	config_free(&cfg);
 	free(config_path);

@@ -25,6 +25,7 @@ int cmd_remove(const ArgParseResult *result)
 	}
 
 	const char *name = result->positionals[0];
+	LOG_DEBUG("removing repo: %s", name);
 
 	char *config_path = config_default_path();
 	if (!config_path) {
@@ -53,6 +54,7 @@ int cmd_remove(const ArgParseResult *result)
 	}
 
 	fprintf(stderr, "Removed %s\n", name);
+	LOG_INFO("removed %s", name);
 
 	config_free(&cfg);
 	free(config_path);

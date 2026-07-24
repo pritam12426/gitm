@@ -10,6 +10,8 @@
 
 #include "cmd.h"
 
+#include "log.h"
+
 /* Registration functions (defined in each command file) */
 extern void cmd_register_list(ArgParser *parser);
 extern void cmd_register_add(ArgParser *parser);
@@ -31,6 +33,7 @@ extern void cmd_register_clean(ArgParser *parser);
 
 void cmd_register_all(ArgParser *parser)
 {
+	LOG_TRACE("registering all commands");
 	cmd_register_list(parser);
 	cmd_register_add(parser);
 	cmd_register_remove(parser);
@@ -48,4 +51,5 @@ void cmd_register_all(ArgParser *parser)
 	cmd_register_last(parser);
 	cmd_register_branch(parser);
 	cmd_register_clean(parser);
+	LOG_TRACE("all commands registered");
 }

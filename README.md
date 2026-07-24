@@ -88,7 +88,7 @@ All commands that iterate repositories support `--tag` and `--group` filters.
 
 | Flag                       | Short | Description                                         |
 | -------------------------- | ----- | --------------------------------------------------- |
-| `--log-level=LEVEL`        | `-L`  | Set log verbosity: `error`, `warn`, `info`, `debug` |
+| `--log-level=LEVEL` | `-L` | Set log verbosity: `off`, `fatal`, `error`, `warn`, `info`, `debug`, `trace` |
 | `--log-file=FILE`          | `-F`  | Set logging file                                    |
 | `--edit-entry`             | `-E`  | Open registered_repos.txt in `$EDITOR`              |
 | `--help`                   | `-h`  | Show help message                                   |

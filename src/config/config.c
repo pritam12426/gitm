@@ -117,9 +117,13 @@ int config_load(const char *path, GitConfig *cfg)
 	cfg->count    = 0;
 	cfg->capacity = 0;
 
+	LOG_DEBUG("loading config from %s", path);
+
 	FILE *f = fopen(path, "r");
-	if (!f)
+	if (!f) {
+		LOG_DEBUG("config file not found, starting empty");
 		return 0; /* File not found → empty config */
+	}
 
 	char line[MAX_LINE_LEN];
 	while (fgets(line, sizeof(line), f)) {
@@ -213,6 +217,7 @@ int config_load(const char *path, GitConfig *cfg)
 	}
 
 	fclose(f);
+	LOG_DEBUG("loaded %zu entries from config", cfg->count);
 	return 0;
 }
 
@@ -239,6 +244,7 @@ int config_save(const char *path, const GitConfig *cfg)
 	}
 
 	fclose(f);
+	LOG_DEBUG("saved %zu entries to config", cfg->count);
 	return 0;
 }
 
@@ -288,6 +294,7 @@ int config_add(GitConfig *cfg, const char *path, const char *name,
 	cfg->entries[cfg->count].groups = groups ? strdup(groups) : NULL;
 	cfg->count++;
 
+	LOG_DEBUG("added entry: %s (%s)", name, path);
 	return 0;
 }
 
@@ -308,6 +315,7 @@ int config_remove(GitConfig *cfg, const char *name)
 				cfg->entries[j] = cfg->entries[j + 1];
 			}
 			cfg->count--;
+			LOG_DEBUG("removed entry: %s", name);
 			return 0;
 		}
 	}
@@ -346,6 +354,7 @@ int config_rename(GitConfig *cfg, const char *old_name, const char *new_name)
 
 	free(entry->name);
 	entry->name = strdup(new_name);
+	LOG_DEBUG("renamed %s -> %s", old_name, new_name);
 	return 0;
 }
 

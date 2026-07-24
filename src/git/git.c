@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "log.h"
+
 /* Max args we accept */
 #define GIT_MAX_ARGS 32
 
@@ -78,6 +80,7 @@ bool git_is_repo(const char *path)
 {
 	ProcessResult r       = git_exec(path, "rev-parse", "--is-inside-work-tree", NULL);
 	bool          is_repo = (r.exit_code == 0 && r.stdout_len > 0);
+	LOG_TRACE("git_is_repo(%s) = %s", path, is_repo ? "true" : "false");
 	process_result_free(&r);
 	return is_repo;
 }

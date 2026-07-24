@@ -26,6 +26,7 @@ int cmd_info(const ArgParseResult *result)
 	}
 
 	const char *name = result->positionals[0];
+	LOG_DEBUG("showing info for: %s", name);
 
 	char *config_path = config_default_path();
 	if (!config_path) {

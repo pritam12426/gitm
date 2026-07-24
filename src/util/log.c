@@ -35,7 +35,7 @@
 #define COLOR_DIM          "\x1b[2m"
 
 // Logger state
-static Log_level_t g_log_level  = LOG_LEVEL_INFO;
+static Log_level_t g_log_level  = LOG_LEVEL_WARN;
 static FILE       *g_log_stream = NULL;
 static bool        g_use_color  = false;
 

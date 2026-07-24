@@ -26,6 +26,7 @@ int cmd_rename(const ArgParseResult *result)
 
 	const char *old_name = result->positionals[0];
 	const char *new_name = result->positionals[1];
+	LOG_DEBUG("renaming %s -> %s", old_name, new_name);
 
 	char *config_path = config_default_path();
 	if (!config_path) {
@@ -54,6 +55,7 @@ int cmd_rename(const ArgParseResult *result)
 	}
 
 	fprintf(stderr, "Renamed %s -> %s\n", old_name, new_name);
+	LOG_INFO("renamed %s -> %s", old_name, new_name);
 
 	config_free(&cfg);
 	free(config_path);
