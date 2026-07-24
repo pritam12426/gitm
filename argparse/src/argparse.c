@@ -11,14 +11,27 @@
  * Manages the command tree and performs the actual parsing.
  *
  * Features:
- *   - Nested subcommands (multi-level)
- *   - Global options inherited by subcommands
+ *   - Nested subcommands (arbitrary depth, not just one level)
+ *   - Global options inherited by every level below them
  *   - Mutually exclusive option groups
  *   - Required options with validation
  *   - Default values wired to storage
  *   - Environment variable fallback
  *   - Subcommand aliases
  *   - Shell completion generation
+ *
+ * Parsing model
+ * -------------
+ * The whole command tree — root, top-level commands, and every nested
+ * subcommand — forms a single tree where every node's `parent` points
+ * upward, all the way to `&parser->root` (whose own parent is NULL).
+ * Parsing is therefore a single forward pass over the token stream:
+ * we track a "current" node starting at the root, and each time a
+ * positional token matches one of `current`'s subcommands we descend
+ * into it. Options are resolved by walking upward from `current`
+ * through its ancestors, so a global option registered on root is
+ * visible no matter how deep we've descended, and a subcommand's own
+ * options are only visible once we've actually entered it.
  */
 
 #include "argparse.h"
@@ -47,18 +60,36 @@ ArgParser *argparse_new(const ArgParserConfig *config)
 	p->bug_url     = config->bug_url;
 	p->author      = config->author;
 
-	/* Root command for global options */
+	/* Root command for global options. Its parent is NULL — this is
+	 * the one node in the tree that terminates the upward walk. */
 	p->root.name        = "";
 	p->root.description = NULL;
-	p->root.callback    = NULL;
+	p->root.callback     = NULL;
+	p->root.parent       = NULL;
 
 	return p;
+}
+
+/* Recursively free every heap-allocated subcommand under cmd (but not
+ * cmd itself — cmd may be stack/array/struct-embedded, e.g. a
+ * top-level command living inside parser->commands[], or the root). */
+static void free_subtree(ArgCommand *cmd)
+{
+	for (int i = 0; i < cmd->subcommand_count; i++) {
+		free_subtree(cmd->subcommands[i]);
+		free(cmd->subcommands[i]);
+	}
 }
 
 void argparse_free(ArgParser *parser)
 {
 	if (!parser)
 		return;
+
+	for (int i = 0; i < parser->command_count; i++)
+		free_subtree(&parser->commands[i]);
+	free_subtree(&parser->root);
+
 	free(parser);
 }
 
@@ -96,7 +127,12 @@ ArgCommand *argparse_add_command(ArgParser   *parser,
 	cmd->name        = name;
 	cmd->description = description;
 	cmd->callback    = callback;
-	cmd->parent      = NULL;
+
+	/* Top-level commands are children of root, not orphans — this is
+	 * what lets option lookup and help text walk the tree uniformly
+	 * all the way up, instead of treating "top-level" as a special
+	 * case with no ancestor. */
+	cmd->parent = &parser->root;
 
 	return cmd;
 }
@@ -109,12 +145,19 @@ ArgCommand *argparse_add_subcommand(ArgCommand  *parent,
 	if (!parent || parent->subcommand_count >= ARGPARSE_MAX_COMMANDS)
 		return NULL;
 
-	ArgCommand *cmd  = parent->subcommands[parent->subcommand_count++];
-	memset(cmd, 0, sizeof(ArgCommand));
+	/* `subcommands` is an array of pointers — each entry needs real
+	 * storage behind it. (Previously this indexed the array as if it
+	 * already held a valid ArgCommand*, which it never did.) */
+	ArgCommand *cmd = calloc(1, sizeof(ArgCommand));
+	if (!cmd)
+		return NULL;
+
 	cmd->name        = name;
 	cmd->description = description;
 	cmd->callback    = callback;
 	cmd->parent      = parent;
+
+	parent->subcommands[parent->subcommand_count++] = cmd;
 
 	return cmd;
 }
@@ -232,28 +275,24 @@ static ArgOption *find_option_short(ArgCommand *cmd, char c)
 	return NULL;
 }
 
-static ArgOption *find_option_global(ArgParser *parser, const char *long_name)
+/* Walk upward from `cmd` through every ancestor (to root) looking for
+ * the option. This is what makes "global options inherited by
+ * subcommands" work at any depth, and also what makes a subcommand's
+ * own options finally reachable while parsing that subcommand. */
+static ArgOption *find_option_long_chain(ArgCommand *cmd, const char *name)
 {
-	ArgOption *opt = find_option_long(&parser->root, long_name);
-	if (opt)
-		return opt;
-
-	for (int i = 0; i < parser->command_count; i++) {
-		opt = find_option_long(&parser->commands[i], long_name);
+	for (ArgCommand *c = cmd; c; c = c->parent) {
+		ArgOption *opt = find_option_long(c, name);
 		if (opt)
 			return opt;
 	}
 	return NULL;
 }
 
-static ArgOption *find_option_global_short(ArgParser *parser, char c)
+static ArgOption *find_option_short_chain(ArgCommand *cmd, char name)
 {
-	ArgOption *opt = find_option_short(&parser->root, c);
-	if (opt)
-		return opt;
-
-	for (int i = 0; i < parser->command_count; i++) {
-		opt = find_option_short(&parser->commands[i], c);
+	for (ArgCommand *c = cmd; c; c = c->parent) {
+		ArgOption *opt = find_option_short(c, name);
 		if (opt)
 			return opt;
 	}
@@ -358,9 +397,10 @@ static void print_completion_bash(const ArgParser *parser)
 	printf("    COMPREPLY=()\n");
 	printf("    cur=\"${COMP_WORDS[COMP_CWORD]}\"\n");
 	printf("    prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n");
-	printf("    commands=\"%s", parser->commands[0].name);
-	for (int i = 1; i < parser->command_count; i++)
-		printf(" %s", parser->commands[i].name);
+
+	printf("    commands=\"");
+	for (int i = 0; i < parser->command_count; i++)
+		printf("%s%s", i > 0 ? " " : "", parser->commands[i].name);
 	printf("\"\n\n");
 
 	printf("    case \"${prev}\" in\n");
@@ -407,11 +447,12 @@ static void print_completion_zsh(const ArgParser *parser)
 	for (int i = 0; i < parser->root.option_count; i++) {
 		const ArgOption *opt = &parser->root.options[i];
 		if (!opt->long_name) continue;
+		const char *desc = opt->description ? opt->description : "";
 		printf("        '");
 		if (opt->short_name)
-			printf("-%c[%%s]--%s[%%s]'", opt->short_name, opt->long_name);
+			printf("-%c[%s]--%s[%s]'", opt->short_name, desc, opt->long_name, desc);
 		else
-			printf("--%s[%%s]'", opt->long_name);
+			printf("--%s[%s]'", opt->long_name, desc);
 		printf(" \\\n");
 	}
 
@@ -503,6 +544,16 @@ static void print_completion_fish(const ArgParser *parser)
 
 static void shell_completion(const ArgParser *parser, const char *shell)
 {
+	if (parser->command_count == 0 &&
+	    (strcmp(shell, "bash") == 0 || strcmp(shell, "zsh") == 0)) {
+		/* bash/zsh generators assume at least one registered command
+		 * exists; with none, still emit a minimal, valid script
+		 * instead of touching commands[0] out of bounds. */
+		fprintf(stderr, "%s: no commands registered, nothing to complete\n",
+		        parser->prog_name);
+		return;
+	}
+
 	if (strcmp(shell, "bash") == 0) {
 		print_completion_bash(parser);
 	} else if (strcmp(shell, "zsh") == 0) {
@@ -515,28 +566,77 @@ static void shell_completion(const ArgParser *parser, const char *shell)
 	}
 }
 
+/* ── Command matching ──────────────────────────────────────────────────────── */
+
+static ArgCommand *match_command(ArgParser *parser, const char *name)
+{
+	for (int i = 0; i < parser->command_count; i++) {
+		ArgCommand *cmd = &parser->commands[i];
+
+		if (strcmp(cmd->name, name) == 0)
+			return cmd;
+
+		for (int j = 0; j < cmd->alias_count; j++) {
+			if (cmd->aliases[j] && strcmp(cmd->aliases[j], name) == 0)
+				return cmd;
+		}
+	}
+	return NULL;
+}
+
+static ArgCommand *match_subcommand(ArgCommand *parent, const char *name)
+{
+	for (int i = 0; i < parent->subcommand_count; i++) {
+		ArgCommand *cmd = parent->subcommands[i];
+
+		if (strcmp(cmd->name, name) == 0)
+			return cmd;
+
+		for (int j = 0; j < cmd->alias_count; j++) {
+			if (cmd->aliases[j] && strcmp(cmd->aliases[j], name) == 0)
+				return cmd;
+		}
+	}
+	return NULL;
+}
+
+/* Program name to use in error/usage messages for whichever node in
+ * the tree we're currently parsing. */
+static const char *chain_program_name(const ArgParser *parser, const ArgCommand *cmd)
+{
+	return (cmd == &parser->root) ? parser->prog_name : cmd->name;
+}
+
 /* ── Token processing ──────────────────────────────────────────────────────── */
 
-static int parse_tokens(ArgParser  *parser,
-                        ArgCommand *cmd,
-                        Lexer      *lex,
-                        ArgParseResult *result)
+/*
+ * Single forward pass over the whole token stream. `current` starts at
+ * root and descends into a subcommand every time a positional token
+ * matches one of `current`'s children — to any depth, not just one
+ * level. `chain` records every node entered (root included) so the
+ * caller can apply defaults/validation at every level afterward.
+ */
+static int parse_tokens(ArgParser      *parser,
+                        Lexer          *lex,
+                        ArgParseResult *result,
+                        ArgCommand    **chain,
+                        int            *chain_len,
+                        ArgCommand    **current_out)
 {
-	const char *program = parser->prog_name;
-	if (cmd != &parser->root && cmd->name && cmd->name[0] != '\0')
-		program = cmd->name;
+	ArgCommand *current = *current_out;
 
 	while (1) {
 		Token tok = lexer_next(lex);
+		const char *program = chain_program_name(parser, current);
 
 		switch (tok.type) {
 		case TOKEN_END:
+			*current_out = current;
 			return 0;
 
 		case TOKEN_LONG_OPTION: {
 			const char *raw = tok.value + 2; /* skip "--" */
 
-			/* Split on '=' */
 			char        key[256] = { 0 };
 			const char *eq       = strchr(raw, '=');
 			const char *val      = NULL;
@@ -551,18 +651,22 @@ static int parse_tokens(ArgParser  *parser,
 				snprintf(key, sizeof(key), "%s", raw);
 			}
 
-			/* Special: --help */
-			if (strcmp(key, "help") == 0) {
-				argparse_help(parser, cmd);
+			/* User-registered options take priority over the
+			 * built-ins below — e.g. if you deliberately give your
+			 * own option the long name "help", yours wins. The
+			 * built-ins are a sensible default binding, not a
+			 * reserved word. */
+			ArgOption *opt = find_option_long_chain(current, key);
+
+			if (!opt && strcmp(key, "help") == 0) {
+				argparse_help(parser, current == &parser->root ? NULL : current);
 				return -2;
 			}
-			/* Special: --version */
-			if (strcmp(key, "version") == 0) {
+			if (!opt && strcmp(key, "version") == 0) {
 				fprintf(stderr, "%s %s\n", parser->prog_name, parser->version);
 				return -3;
 			}
-			/* Special: --shell-completion <shell> */
-			if (strcmp(key, "shell-completion") == 0) {
+			if (!opt && strcmp(key, "shell-completion") == 0) {
 				const char *shell = val;
 				if (!shell) {
 					Token vtok = lexer_next(lex);
@@ -577,14 +681,11 @@ static int parse_tokens(ArgParser  *parser,
 				return -4;
 			}
 
-			ArgOption *opt = find_option_long(cmd, key);
-			if (!opt && cmd != &parser->root)
-				opt = find_option_long(&parser->root, key);
 			if (!opt) {
 				const char *known[ARGPARSE_MAX_OPTIONS];
 				int         known_count = 0;
-				for (int i = 0; i < cmd->option_count; i++)
-					known[known_count++] = cmd->options[i].long_name;
+				for (int i = 0; i < current->option_count; i++)
+					known[known_count++] = current->options[i].long_name;
 				arg_error_unknown_option(program, tok.value, known, known_count);
 				return -1;
 			}
@@ -628,27 +729,45 @@ static int parse_tokens(ArgParser  *parser,
 			for (size_t i = 0; flags[i] != '\0'; i++) {
 				char c = flags[i];
 
-				if (c == 'h') {
-					argparse_help(parser, cmd);
+				/* Same priority rule as long options: a
+				 * user-registered -h, -v, or -S wins over the
+				 * built-in default. */
+				ArgOption *opt = find_option_short_chain(current, c);
+
+				if (!opt && c == 'h') {
+					argparse_help(parser, current == &parser->root ? NULL : current);
 					return -2;
 				}
-				if (c == 'v') {
+				if (!opt && c == 'v') {
 					fprintf(stderr, "%s %s\n", parser->prog_name, parser->version);
 					return -3;
 				}
+				if (!opt && c == 'S') {
+					const char *shell;
+					if (flags[i + 1] != '\0') {
+						/* Attached: -Sbash */
+						shell = &flags[i + 1];
+					} else {
+						Token vtok = lexer_next(lex);
+						if (vtok.type == TOKEN_END || vtok.type == TOKEN_LONG_OPTION
+						    || vtok.type == TOKEN_SHORT_OPTION) {
+							arg_error_missing_value(program, "-S");
+							return -1;
+						}
+						shell = vtok.value;
+					}
+					shell_completion(parser, shell);
+					return -4;
+				}
 
-				ArgOption *opt = find_option_short(cmd, c);
-				if (!opt && cmd != &parser->root)
-					opt = find_option_short(&parser->root, c);
 				if (!opt) {
 					char        short_str[3] = { '-', c, '\0' };
 					const char *known[ARGPARSE_MAX_OPTIONS];
 					int         known_count = 0;
-					for (int j = 0; j < cmd->option_count; j++) {
-						known[known_count++] = cmd->options[j].long_name
-						                        ? cmd->options[j].long_name
+					for (int j = 0; j < current->option_count; j++)
+						known[known_count++] = current->options[j].long_name
+						                        ? current->options[j].long_name
 						                        : "?";
-					}
 					arg_error_unknown_option(program, short_str, known, known_count);
 					return -1;
 				}
@@ -676,7 +795,6 @@ static int parse_tokens(ArgParser  *parser,
 						}
 						goto short_done;
 					} else {
-						/* Next token is value */
 						Token vtok = lexer_next(lex);
 						if (vtok.type == TOKEN_END || vtok.type == TOKEN_LONG_OPTION
 						    || vtok.type == TOKEN_SHORT_OPTION) {
@@ -699,52 +817,52 @@ static int parse_tokens(ArgParser  *parser,
 			break;
 		}
 
-		case TOKEN_POSITIONAL:
-			if (result->positional_count < ARGPARSE_MAX_POSITIONAL) {
-				result->positionals[result->positional_count++] = tok.value;
+		case TOKEN_POSITIONAL: {
+			/* Tokens after "--" are raw data, never subcommands. */
+			if (lex->stop_options) {
+				if (result->rest_count < ARGPARSE_MAX_POSITIONAL)
+					result->rest[result->rest_count++] = tok.value;
+				break;
 			}
+
+			ArgCommand *sub = (current == &parser->root)
+			                    ? match_command(parser, tok.value)
+			                    : match_subcommand(current, tok.value);
+
+			if (sub && *chain_len < ARGPARSE_MAX_CHAIN_DEPTH) {
+				chain[(*chain_len)++] = sub;
+				current               = sub;
+				break;
+			}
+
+			bool expects_subcommand = (current == &parser->root)
+			                            ? (parser->command_count > 0)
+			                            : (current->subcommand_count > 0);
+
+			if (expects_subcommand && current->positional_count == 0) {
+				const char *known[ARGPARSE_MAX_COMMANDS];
+				int         known_count = 0;
+
+				if (current == &parser->root) {
+					for (int i = 0; i < parser->command_count; i++)
+						known[known_count++] = parser->commands[i].name;
+				} else {
+					for (int i = 0; i < current->subcommand_count; i++)
+						known[known_count++] = current->subcommands[i]->name;
+				}
+				arg_error_unknown_command(program, tok.value, known, known_count);
+				return -1;
+			}
+
+			if (result->positional_count < ARGPARSE_MAX_POSITIONAL)
+				result->positionals[result->positional_count++] = tok.value;
 			break;
+		}
 
 		default:
 			break;
 		}
 	}
-}
-
-/* ── Command matching ──────────────────────────────────────────────────────── */
-
-static ArgCommand *match_command(ArgParser *parser, const char *name)
-{
-	for (int i = 0; i < parser->command_count; i++) {
-		ArgCommand *cmd = &parser->commands[i];
-
-		/* Match by name */
-		if (strcmp(cmd->name, name) == 0)
-			return cmd;
-
-		/* Match by aliases */
-		for (int j = 0; j < cmd->alias_count; j++) {
-			if (cmd->aliases[j] && strcmp(cmd->aliases[j], name) == 0)
-				return cmd;
-		}
-	}
-	return NULL;
-}
-
-static ArgCommand *match_subcommand(ArgCommand *parent, const char *name)
-{
-	for (int i = 0; i < parent->subcommand_count; i++) {
-		ArgCommand *cmd = parent->subcommands[i];
-
-		if (strcmp(cmd->name, name) == 0)
-			return cmd;
-
-		for (int j = 0; j < cmd->alias_count; j++) {
-			if (cmd->aliases[j] && strcmp(cmd->aliases[j], name) == 0)
-				return cmd;
-		}
-	}
-	return NULL;
 }
 
 /* ── Main parse entry point ────────────────────────────────────────────────── */
@@ -756,94 +874,19 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 
 	Lexer lex;
 	lexer_init(&lex, argc, argv);
+	lexer_next(&lex); /* skip argv[0] (program name) */
 
-	/* Skip argv[0] (program name) */
-	lexer_next(&lex);
-
-	/* First pass: scan past global options to find command name.
-	 * This allows: gitm -L debug list, gitm --dry-run status, etc.
-	 *
-	 * We do a manual scan of argv[1..] looking for the first
-	 * non-option positional that matches a command name. */
-	int cmd_argc    = argc - 1;
-	char **cmd_argv = argv + 1;
-
-	ArgCommand *matched         = NULL;
-	int         command_arg_pos = -1;
-
-	for (int i = 0; i < cmd_argc; i++) {
-		const char *arg = cmd_argv[i];
-
-		/* Skip options and their values */
-		if (arg[0] == '-') {
-			if (arg[1] == '-') {
-				/* Long option */
-				if (arg[2] == '\0')
-					break; /* "--" stops option scanning */
-				/* Check for --key=val (no value consumed) */
-				if (strchr(arg + 2, '=') != NULL)
-					continue;
-				/* Check if this is a known long option that takes a value */
-				ArgOption *opt = find_option_global(parser, arg + 2);
-				if (opt && (opt->type == ARG_TYPE_INT || opt->type == ARG_TYPE_STRING))
-					i++; /* skip value */
-				continue;
-			}
-			/* Short option(s) */
-			const char *flags = arg + 1;
-			for (size_t j = 0; flags[j] != '\0'; j++) {
-				ArgOption *opt = find_option_global_short(parser, flags[j]);
-				if (opt && (opt->type == ARG_TYPE_INT || opt->type == ARG_TYPE_STRING)) {
-					if (flags[j + 1] != '\0') {
-						/* Attached value like -Ldebug — rest of flags is value */
-						break;
-					}
-					i++; /* skip next token as value */
-					break;
-				}
-			}
-			continue;
-		}
-
-		/* Found a non-option — check if it matches a command */
-		ArgCommand *cmd = match_command(parser, arg);
-		if (cmd) {
-			matched         = cmd;
-			command_arg_pos = i;
-			break;
-		}
-
-		/* Unknown positional — stop scanning */
-		break;
-	}
-
-	if (!matched)
-		matched = &parser->root;
-
-	/* Build result */
 	ArgParseResult result = { 0 };
 	result.parser         = parser;
-	result.command        = matched;
 	result.argc           = argc;
 	result.argv           = argv;
 
-	/* Reset lexer to start parsing from command position.
-	 * We need to re-init the lexer so parse_tokens processes
-	 * everything from the beginning (argv[0] is skipped by lexer_next). */
-	lexer_init(&lex, argc, argv);
-	lexer_next(&lex); /* skip argv[0] */
+	ArgCommand *chain[ARGPARSE_MAX_CHAIN_DEPTH];
+	int         chain_len = 0;
+	chain[chain_len++]    = &parser->root;
+	ArgCommand *current   = &parser->root;
 
-	/* If we found a command at command_arg_pos, skip to it in the lexer */
-	if (command_arg_pos >= 0) {
-		/* Skip global args + the command token itself */
-		for (int i = 0; i < command_arg_pos; i++)
-			lexer_next(&lex);
-		/* Consume the command token */
-		lexer_next(&lex);
-	}
-
-	/* Parse tokens */
-	int rc = parse_tokens(parser, matched, &lex, &result);
+	int rc = parse_tokens(parser, &lex, &result, chain, &chain_len, &current);
 
 	if (rc == -2 || rc == -3 || rc == -4) {
 		/* help, version, or shell-completion was already printed */
@@ -855,62 +898,33 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 	if (rc != 0)
 		return -1;
 
-	/* Apply defaults and env var fallback */
-	apply_defaults(matched);
-
-	/* Validate exclusive groups */
-	if (validate_exclusive(matched, parser->prog_name) != 0)
-		return -1;
-
-	/* Validate required options */
-	if (validate_required(matched, parser->prog_name) != 0)
-		return -1;
-
-	/* Check for nested subcommands */
-	ArgCommand *sub = NULL;
-	if (result.positional_count > 0) {
-		sub = match_subcommand(matched, result.positionals[0]);
-		if (sub) {
-			/* Shift positionals: remove matched subcommand name */
-			result.positional_count--;
-			for (int i = 0; i < result.positional_count; i++)
-				result.positionals[i] = result.positionals[i + 1];
-
-			/* Apply defaults to subcommand too */
-			apply_defaults(sub);
-			if (validate_exclusive(sub, parser->prog_name) != 0)
-				return -1;
-			if (validate_required(sub, parser->prog_name) != 0)
-				return -1;
-		}
+	/* Apply defaults/env fallback and validate every level that was
+	 * actually entered — root through the deepest matched subcommand.
+	 * (Previously only the top-level command and the one subcommand
+	 * below it were handled, so root-level required/default/exclusive
+	 * options were silently skipped whenever any command ran.) */
+	for (int i = 0; i < chain_len; i++) {
+		apply_defaults(chain[i]);
+		if (validate_exclusive(chain[i], parser->prog_name) != 0)
+			return -1;
+		if (validate_required(chain[i], parser->prog_name) != 0)
+			return -1;
 	}
 
-	/* Store results */
-	parser->matched_command    = matched;
-	parser->matched_subcommand = sub;
+	parser->matched_command    = (chain_len > 1) ? chain[1] : NULL;
+	parser->matched_subcommand = (chain_len > 2) ? chain[chain_len - 1] : NULL;
 	parser->argc               = argc;
 	parser->argv               = argv;
 
-	/* Execute callback — deepest matched command first, then parent */
-	if (sub && sub->callback) {
-		ArgParseResult *heap_result = malloc(sizeof(ArgParseResult));
+	result.command = current;
+
+	if (current->callback) {
+		ArgParseResult *heap_result = malloc(sizeof(*heap_result));
 		if (!heap_result)
 			return -1;
-		memcpy(heap_result, &result, sizeof(ArgParseResult));
-		heap_result->command = sub;
+		memcpy(heap_result, &result, sizeof(result));
 
-		int cb_rc = sub->callback(heap_result);
-		free(heap_result);
-		return cb_rc;
-	}
-
-	if (matched->callback) {
-		ArgParseResult *heap_result = malloc(sizeof(ArgParseResult));
-		if (!heap_result)
-			return -1;
-		memcpy(heap_result, &result, sizeof(ArgParseResult));
-
-		int cb_rc = matched->callback(heap_result);
+		int cb_rc = current->callback(heap_result);
 		free(heap_result);
 		return cb_rc;
 	}
@@ -928,56 +942,41 @@ void argparse_complete(const ArgParser *parser, int argc, char **argv)
 
 	const char *cur = argv[argc - 1];
 
-	/* If currently typing an option */
+	/* Walk as deep into the command tree as the already-typed words
+	 * allow, so completion works at any nesting depth, not just one
+	 * level below root. */
+	ArgCommand *current = (ArgCommand *) &parser->root;
+	for (int i = 1; i < argc - 1; i++) {
+		ArgCommand *next = (current == &parser->root)
+		                     ? match_command((ArgParser *) parser, argv[i])
+		                     : match_subcommand(current, argv[i]);
+		if (!next)
+			break;
+		current = next;
+	}
+
 	if (cur[0] == '-') {
-		/* Determine which command we're completing for */
-		const ArgCommand *cmd = &parser->root;
-
-		for (int i = 1; i < argc - 1; i++) {
-			const ArgCommand *found = match_command((ArgParser *) parser, argv[i]);
-			if (found) {
-				cmd = found;
-				break;
-			}
-		}
-
-		/* Long options */
 		if (cur[1] == '-') {
-			for (int i = 0; i < cmd->option_count; i++) {
-				if (cmd->options[i].long_name)
-					printf("--%s\n", cmd->options[i].long_name);
-			}
+			for (ArgCommand *c = current; c; c = c->parent)
+				for (int i = 0; i < c->option_count; i++)
+					if (c->options[i].long_name)
+						printf("--%s\n", c->options[i].long_name);
 		} else {
-			/* Short options */
-			for (int i = 0; i < cmd->option_count; i++) {
-				if (cmd->options[i].short_name)
-					printf("-%c\n", cmd->options[i].short_name);
-			}
+			for (ArgCommand *c = current; c; c = c->parent)
+				for (int i = 0; i < c->option_count; i++)
+					if (c->options[i].short_name)
+						printf("-%c\n", c->options[i].short_name);
 		}
 		return;
 	}
 
-	/* Completing a command name */
-	/* First find the deepest matched command */
-	const ArgCommand *parent = &parser->root;
-
-	for (int i = 1; i < argc - 1; i++) {
-		const ArgCommand *found = match_command((ArgParser *) parser, argv[i]);
-		if (found)
-			parent = found;
-	}
-
-	/* If we're at root, list top-level commands */
-	if (parent == &parser->root) {
-		for (int i = 0; i < parser->command_count; i++) {
+	if (current == &parser->root) {
+		for (int i = 0; i < parser->command_count; i++)
 			if (strncmp(parser->commands[i].name, cur, strlen(cur)) == 0)
 				printf("%s\n", parser->commands[i].name);
-		}
 	} else {
-		/* List subcommands of parent */
-		for (int i = 0; i < parent->subcommand_count; i++) {
-			if (strncmp(parent->subcommands[i]->name, cur, strlen(cur)) == 0)
-				printf("%s\n", parent->subcommands[i]->name);
-		}
+		for (int i = 0; i < current->subcommand_count; i++)
+			if (strncmp(current->subcommands[i]->name, cur, strlen(cur)) == 0)
+				printf("%s\n", current->subcommands[i]->name);
 	}
 }

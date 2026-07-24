@@ -162,23 +162,23 @@ The parser automatically matches the command name from `argv`, calls the right c
 
 Options are added to commands. Each option has:
 
-| Field | Purpose |
-|---|---|
-| `long_name` | `"verbose"` → becomes `--verbose` |
-| `short_name` | `'v'` → becomes `-v`. Use `'\0'` for no short form |
-| `type` | What kind of value it takes (see below) |
-| `metavar` | Placeholder in help text, e.g. `"FILE"` |
-| `description` | Explains what the option does |
-| `storage` | Pointer to a variable where the parsed value is stored |
+| Field         | Purpose                                                |
+| ------------- | ------------------------------------------------------ |
+| `long_name`   | `"verbose"` → becomes `--verbose`                      |
+| `short_name`  | `'v'` → becomes `-v`. Use `'\0'` for no short form     |
+| `type`        | What kind of value it takes (see below)                |
+| `metavar`     | Placeholder in help text, e.g. `"FILE"`                |
+| `description` | Explains what the option does                          |
+| `storage`     | Pointer to a variable where the parsed value is stored |
 
 ### Option types
 
-| Type | CLI form | Storage type | Behaviour |
-|---|---|---|---|
-| `ARG_TYPE_NONE` | `--verbose`, `-v` | `bool*` | Sets to `true` when present |
-| `ARG_TYPE_STRING` | `--output=file`, `-o file` | `const char**` | Stores the string pointer |
-| `ARG_TYPE_INT` | `--count=5`, `-c 5` | `int*` | Stores the integer |
-| `ARG_TYPE_COUNT` | `-v -v -v` | `int*` | Increments by 1 each time |
+| Type              | CLI form                   | Storage type   | Behaviour                   |
+| ----------------- | -------------------------- | -------------- | --------------------------- |
+| `ARG_TYPE_NONE`   | `--verbose`, `-v`          | `bool*`        | Sets to `true` when present |
+| `ARG_TYPE_STRING` | `--output=file`, `-o file` | `const char**` | Stores the string pointer   |
+| `ARG_TYPE_INT`    | `--count=5`, `-c 5`        | `int*`         | Stores the integer          |
+| `ARG_TYPE_COUNT`  | `-v -v -v`                 | `int*`         | Increments by 1 each time   |
 
 ### Adding options
 
@@ -266,21 +266,24 @@ argparse_add_option(&parser->root, "dry-run",  'n', ARG_TYPE_NONE,  NULL, "Dry r
 argparse_add_option(&parser->root, "verbose",  'v', ARG_TYPE_COUNT, NULL, "Verbose", &g_verbose);
 ```
 
-Now both `myapp --dry-run list` and `myapp list --dry-run` work. The parser scans past global options to find the command, and also falls back to root options when a command-specific option is not found.
+Now both `myapp --dry-run list` and `myapp list --dry-run` work. Option lookup walks upward from whatever command is currently being parsed, through its parents, all the way to root — so a global option is visible no matter how deeply you've descended into subcommands.
 
-This means you can mix global and command-specific options in any order:
+This means you can mix global and command-specific options in any order, at any depth:
 
 ```sh
-myapp -v --dry-run list           # global before command
-myapp list -v --dry-run           # global after command
-myapp --dry-run list -v           # mixed
+myapp -v --dry-run list                    # global before command
+myapp list -v --dry-run                    # global after command
+myapp --dry-run list -v                    # mixed
+myapp remote add -v origin url --fetch     # global mixed with a 2-level-deep subcommand's own option
 ```
+
+Defaults, environment-variable fallback, and `required`/exclusive-group validation for root-level (global) options are applied and checked every time you parse — whether or not a command was given — not only when the command line happens to stop at the root.
 
 ---
 
 ## Nested Subcommands
 
-Commands can have subcommands, forming a tree:
+Commands can have subcommands, forming a tree — and the tree isn't limited to one level. Anything returned by `argparse_add_command` or `argparse_add_subcommand` can be passed as the `parent` argument to `argparse_add_subcommand` again, so you can nest as deep as your CLI actually needs:
 
 ```c
 ArgCommand *remote = argparse_add_command(parser, "remote", "Manage remotes", NULL);
@@ -288,25 +291,45 @@ ArgCommand *remote = argparse_add_command(parser, "remote", "Manage remotes", NU
 ArgCommand *remote_add = argparse_add_subcommand(remote, "add",    "Add a remote",    cmd_remote_add);
 ArgCommand *remote_rm  = argparse_add_subcommand(remote, "remove", "Remove a remote", cmd_remote_rm);
 ArgCommand *remote_ls  = argparse_add_subcommand(remote, "list",   "List remotes",    cmd_remote_ls);
+
+/* One more level: myapp remote add url origin --type=ssh */
+ArgCommand *remote_add_url = argparse_add_subcommand(remote_add, "url", "Set the remote URL", cmd_remote_add_url);
 ```
 
-Usage: `myapp remote add origin https://github.com/...`
+Usage: `myapp remote add origin https://github.com/...` or, three levels deep, `myapp remote add url origin --type=ssh`.
 
-Each level can have its own options:
+Each level can have its own options, visible only from that level and below:
 
 ```c
 argparse_add_option(remote_add, "fetch", 'f', ARG_TYPE_NONE, NULL, "Fetch after add", &g_fetch);
+argparse_add_option(remote_add_url, "type", 't', ARG_TYPE_STRING, "TYPE", "URL type", &g_url_type);
 ```
 
-The help output shows nested structure:
+`--fetch` is usable at `remote add` and at `remote add url` (options are inherited downward); `--type` is only usable at `remote add url` itself.
+
+If a positional word doesn't match any subcommand at the current level, and that level has subcommands registered but no positional arguments of its own declared, the parser treats it as a typo rather than silently accepting it as a plain argument — you get the same "Did you mean?" suggestion as an unknown option:
+
+```
+$ myapp remote adde origin url
+remote: unknown command: adde
+Did you mean: add
+Try 'remote --help' for usage information.
+```
+
+The help output shows the nested structure at every depth:
 
 ```
 Commands:
-  remote           Manage remotes
-    add            Add a remote
-    remove         Remove a remote
-    list           List remotes
+  list (ls)     List items
+  remote        Manage remotes
+    add           Add a remote
+      url           Set the remote URL
+    remove        Remove a remote
 ```
+
+### A note on ambiguity
+
+If a command has both its own subcommands _and_ its own positional arguments, a positional value that happens to match a subcommand's name will be interpreted as that subcommand, not as your value — e.g. with `url` registered as a subcommand of `add`, running `myapp remote add origin url` treats `url` as a request to descend into that subcommand, not as a second positional argument. This is the same ambiguity any CLI with this shape runs into. If you need to pass a value that collides with a subcommand name, put `--` before it — everything after `--` is taken literally and never matched against subcommands (see [Parse Result](#parse-result) for where it ends up).
 
 ---
 
@@ -332,7 +355,7 @@ You can set up to `ARGPARSE_MAX_ALIASES` (4) aliases per command.
 Aliases are shown in the help output with **bold cyan** colour, making them visually distinct from the dim description text:
 
 ```
-  status          (st, s) Show status of all registered repos
+status          (st, s) Show status of all registered repos
 ```
 
 ---
@@ -403,11 +426,13 @@ for (int i = 0; i < cmd->option_count; i++) {
 
 These options are available on every parser automatically — you don't need to register them:
 
-| Option | Description |
-|---|---|
-| `-h`, `--help` | Prints help to stderr and returns |
-| `-v`, `--version` | Prints version to stderr and returns |
-| `--shell-completion=SHELL` | Outputs a shell completion script to stdout |
+| Option                           | Description                                 |
+| -------------------------------- | ------------------------------------------- |
+| `-h`, `--help`                   | Prints help to stderr and returns           |
+| `-v`, `--version`                | Prints version to stderr and returns        |
+| `-S`, `--shell-completion=SHELL` | Outputs a shell completion script to stdout |
+
+These are default bindings, not reserved words: if you deliberately register your own option using short name `'h'`, `'v'`, or `'S'` (or long name `"help"`, `"version"`, or `"shell-completion"`) on a command, your option wins on that command and everything nested under it. This is what lets you give `--verbose` the short form `-v` — a very natural choice — without losing `--version`: its long form keeps working everywhere, and only its short form `-v` is shadowed on the specific command (and descendants) where you've claimed `-v` for something else.
 
 ### `--shell-completion`
 
@@ -417,9 +442,14 @@ Generates completion scripts for bash, zsh, or fish. Output goes to stdout so us
 myapp --shell-completion bash > /etc/bash_completion.d/myapp
 myapp --shell-completion zsh  > ~/.zsh/completions/_myapp
 myapp --shell-completion fish > ~/.config/fish/completions/myapp.fish
+
+# -S is the short form, and takes an attached or separate value just
+# like any other string option: -Sbash works the same as -S bash
+myapp -S bash > /etc/bash_completion.d/myapp
 ```
 
 The generated scripts include:
+
 - All registered commands and their descriptions
 - All global options
 - Command-specific options (with correct subcommand detection)
@@ -448,13 +478,16 @@ struct ArgParseResult {
 };
 ```
 
-The `rest` array contains arguments after `--`:
+The `rest` array contains arguments after `--`. Everything following `--` is treated as raw data — never matched against subcommand names, never parsed as an option:
 
 ```sh
 myapp list -- file1 file2
 # result->rest[0] = "file1"
 # result->rest[1] = "file2"
+# result->rest_count = 2
 ```
+
+This also means `--` is the way to pass a value that happens to look like a flag or a subcommand name, e.g. `myapp add -- --not-an-option`.
 
 ### Return values
 
@@ -469,27 +502,57 @@ Your callback's return value is passed through as the program's exit code.
 
 ## Help Output
 
-Help is fully automatic. Users get it by typing `--help` or `-h`:
+Help is fully automatic. Users get it by typing `--help` or `-h`, at any level of the command tree — `myapp --help`, `myapp remote --help`, `myapp remote add --help`, and so on however deep the tree goes:
 
 ```
 Usage: myapp [OPTIONS] COMMAND [ARGS]
 
-My awesome tool
+Example application demonstrating nested subcommands
 
 Commands:
-  list             (ls)    List items
-  add                      Add an item
-  build                    Build project
+  list (ls)     List items
+  remote        Manage remotes
+    add           Add a remote
+      url           Set the remote URL
+    remove        Remove a remote
 
 Options:
-  -n, --dry-run           Dry run
-  -v, --verbose           Verbose output
-  -o, --output=FILE       Output file     [$OUTPUT]
-  -j, --json              JSON output    [group: 1]
-  -h, --help              Show this help message
-  -V, --version           Show version
-      --shell-completion=SHELL  Output shell completion script (bash, zsh, fish)
+  -n, --dry-run                   Dry run (don't actually do anything)
+  -V, --verbose                   Increase verbosity (repeatable)
+  -e, --editor=EDITOR             Text editor to use [$EDITOR]
+  -h, --help                      Show this help message
+  -v, --version                   Show version
+  -S, --shell-completion=SHELL    Output shell completion script (bash, zsh, fish)
+
+See 'myapp COMMAND --help' for more information on a command.
+
+Report bugs to: https://github.com/me/myapp/issues
+Pritam
 ```
+
+And for a nested subcommand — the usage line reflects the full path (`remote add`, not just `add`), and options/subcommands/inherited built-ins are shown in their own clearly separated blocks:
+
+```
+Usage: myapp remote add NAME URL [OPTIONS] [SUBCOMMAND]
+
+Add a remote
+
+Options:
+  -f, --fetch      Fetch after add
+
+Subcommands:
+  url           Set the remote URL
+
+Options (inherited):
+  -h, --help       Show this help message
+  -v, --version    Show version
+
+See 'myapp remote add SUBCOMMAND --help' for more information.
+```
+
+`--shell-completion` only appears in root-level help — it's a whole-program feature (see [Shell Completion](#shell-completion)), so it isn't repeated in every nested subcommand's help.
+
+The flag/description gutter width is computed from whatever's actually being printed in that section (clamped to a sane min/max), so alignment doesn't depend on a hardcoded column count — it looks right whether your longest option is `-h` or `--some-quite-long-option-name=VALUE`. A metavar (the `=VALUE` part, as in `--editor=EDITOR` or `--shell-completion=SHELL`) is coloured the same way everywhere it appears: the flag itself is green, the `=` is left in the terminal's default colour, and the value after it is dim.
 
 ### Annotations shown automatically
 
@@ -497,7 +560,7 @@ Options:
 - `(required)` — option must be provided
 - `[default: val]` — option has a default value
 - `[group: N]` — option belongs to a mutually exclusive group
-- `(alias1, alias2)` — command aliases (shown in bold cyan)
+- `(alias1, alias2)` — command aliases (shown in bold cyan, right after the name)
 
 ### Colour
 
@@ -657,13 +720,13 @@ myapp --shell-completion bash
 
 These can be changed by editing the `#define`s at the top of `argparse.h`:
 
-| Constant | Default | Description |
-|---|---|---|
-| `ARGPARSE_MAX_OPTIONS` | 32 | Options per command |
-| `ARGPARSE_MAX_COMMANDS` | 32 | Top-level commands |
-| `ARGPARSE_MAX_POSITIONAL` | 8 | Positional args per command |
-| `ARGPARSE_MAX_ALIASES` | 4 | Aliases per command |
-| `ARGPARSE_MAX_EXCLUSIVE_GROUPS` | 8 | Mutually exclusive groups |
+| Constant                        | Default | Description                 |
+| ------------------------------- | ------- | --------------------------- |
+| `ARGPARSE_MAX_OPTIONS`          | 32      | Options per command         |
+| `ARGPARSE_MAX_COMMANDS`         | 32      | Top-level commands          |
+| `ARGPARSE_MAX_POSITIONAL`       | 8       | Positional args per command |
+| `ARGPARSE_MAX_ALIASES`          | 4       | Aliases per command         |
+| `ARGPARSE_MAX_EXCLUSIVE_GROUPS` | 8       | Mutually exclusive groups   |
 
 ---
 
@@ -690,5 +753,13 @@ Try 'myapp --help' for usage information.
 ```
 myapp: unsupported shell: powershell (use bash, zsh, or fish)
 ```
+
+```
+remote: unknown command: adde
+Did you mean: add
+Try 'remote --help' for usage information.
+```
+
+That last one applies at any depth: mistype a command name or a subcommand name and you get the same Levenshtein-based "Did you mean?" suggestion, with the error attributed to whichever level in the tree was expecting that name.
 
 You don't need to write any error handling code — the parser takes care of it.

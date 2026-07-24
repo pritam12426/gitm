@@ -32,10 +32,10 @@ typedef struct {
 	const char **argv;
 	int          argc;
 	int          pos;
-	bool         stop_options;  /* set after --: remaining are positional */
+	bool         stop_options; /* set after --: remaining are positional */
 } Lexer;
 
-void  lexer_init(Lexer *lex, int argc, char **argv);
+void lexer_init(Lexer *lex, int argc, char **argv);
 Token lexer_next(Lexer *lex);
 
 
