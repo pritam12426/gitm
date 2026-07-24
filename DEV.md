@@ -74,6 +74,15 @@ Set via command line: `make O_DEBUG=1`
 
 Running `make debug` auto-enables all three.
 
+### Config File Location
+
+Resolution order:
+1. `$XDG_DATA_HOME/gitm/registered_repos.txt` (if `XDG_DATA_HOME` is set)
+2. macOS: `~/Library/Application Support/gitm/registered_repos.txt`
+3. Linux: `~/.local/share/gitm/registered_repos.txt`
+
+Parent directories are created automatically via `config_ensure_dir()` (called by `add`, `clone`, and `--edit-entry`).
+
 ### Compiler Flags
 
 - Standard: `-std=c17`

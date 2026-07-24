@@ -275,8 +275,11 @@ This is the largest source file (~600 lines). It handles everything related to t
 
 **Config path resolution:**
 
-- `config_default_path()` returns `~/.local/share/gitm/registered_repos.txt`
-- Resolved via `getenv("HOME")` — no XDG support
+- `config_default_path()` resolves the config file path in this order:
+  1. `$XDG_DATA_HOME/gitm/registered_repos.txt` — if `$XDG_DATA_HOME` is set and non-empty
+  2. `~/Library/Application Support/gitm/registered_repos.txt` — on macOS (`__APPLE__`)
+  3. `~/.local/share/gitm/registered_repos.txt` — on Linux (fallback)
+- `config_ensure_dir()` creates the parent directory (and any missing parents) at the resolved path
 
 **File format:**
 
@@ -538,7 +541,7 @@ int config_entry_has_tag(const RepoEntry *entry, const char *tag) {
 
 1. **stdout/stderr truncation**: `process_exec()` captures only 1024 bytes per stream. Commands producing more output (e.g., `git log` on a large repo) will be truncated silently.
 
-2. **Config path on missing HOME**: `config_default_path()` calls `getenv("HOME")`. If `HOME` is unset, this returns `NULL` and `config_load()` will fail. No XDG fallback.
+2. **Config path on missing HOME**: `config_default_path()` calls `getenv("HOME")`. If `HOME` is unset and `$XDG_DATA_HOME` is not set, this returns `NULL` and `config_load()` will fail. When `$XDG_DATA_HOME` is set, `HOME` is not required for path resolution.
 
 3. **Tag/group matching is substring, not token-based**: `config_entry_has_tag(e, "c")` matches both `"c"` and `"c,makefile"`, but also `"rust,c++"`. This is by design for simplicity.
 

@@ -26,6 +26,7 @@ Zero third-party dependencies. Uses a custom argument parser, system Git, and PO
 ## Build
 
 ```sh
+make help       # show available targets
 make            # release build (-O3), outputs ./gitm
 make debug -B   # debug build (-g3, ASan, UBSan)
 make clean      # remove build artifacts
@@ -103,7 +104,11 @@ All commands that iterate repositories support `--tag` and `--group` filters.
 
 ## Configuration
 
-Config file: `~/.local/share/gitm/registered_repos.txt`
+Config file resolution order:
+
+1. `$XDG_DATA_HOME/gitm/registered_repos.txt` (if `XDG_DATA_HOME` is set)
+2. macOS: `~/Library/Application Support/gitm/registered_repos.txt`
+3. Linux: `~/.local/share/gitm/registered_repos.txt`
 
 Format (one entry per line):
 
