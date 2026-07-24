@@ -19,6 +19,7 @@
 
 int cmd_load_config(GitConfig *cfg, char **path_out)
 {
+	LOG_TRACE("cmd_load_config");
 	*path_out = config_default_path();
 	if (!*path_out) {
 		LOG_ERROR("could not determine config path");
@@ -43,6 +44,7 @@ size_t cmd_filter_entries(const GitConfig *cfg,
 {
 	size_t count = 0;
 
+	LOG_TRACE("cmd_filter_entries(tag=%s, group=%s)", filter_tag ? filter_tag : "-", filter_group ? filter_group : "-");
 	for (size_t i = 0; i < cfg->count && count < max; i++) {
 		if (filter_tag && !config_entry_has_tag(&cfg->entries[i], filter_tag))
 			continue;

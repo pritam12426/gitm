@@ -32,6 +32,7 @@ int config_load(const char *path, GitConfig *cfg)
 	if (!cfg)
 		return -1;
 
+	LOG_TRACE("config_load(%s)", path);
 	cfg->entries  = NULL;
 	cfg->count    = 0;
 	cfg->capacity = 0;
@@ -146,6 +147,7 @@ int config_save(const char *path, const GitConfig *cfg)
 	if (!cfg)
 		return -1;
 
+	LOG_TRACE("config_save(%s, %zu entries)", path, cfg->count);
 	FILE *f = fopen(path, "w");
 	if (!f) {
 		LOG_ERROR("could not open config for writing: %s", path);
@@ -172,6 +174,8 @@ void config_free(GitConfig *cfg)
 {
 	if (!cfg)
 		return;
+
+	LOG_TRACE("config_free(%zu entries)", cfg->count);
 	for (size_t i = 0; i < cfg->count; i++) {
 		free(cfg->entries[i].path);
 		free(cfg->entries[i].name);

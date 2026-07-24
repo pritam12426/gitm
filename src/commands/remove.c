@@ -24,6 +24,7 @@ int cmd_remove(const ArgParseResult *result)
 		return 1;
 	}
 
+	LOG_TRACE("cmd_remove");
 	const char *name = result->positionals[0];
 	LOG_DEBUG("removing repo: %s", name);
 

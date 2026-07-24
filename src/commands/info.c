@@ -25,6 +25,7 @@ int cmd_info(const ArgParseResult *result)
 		return 1;
 	}
 
+	LOG_TRACE("cmd_info");
 	const char *name = result->positionals[0];
 	LOG_DEBUG("showing info for: %s", name);
 

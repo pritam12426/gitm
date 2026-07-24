@@ -44,6 +44,7 @@ int config_validate(GitConfig *cfg)
 	if (!cfg)
 		return 0;
 
+	LOG_TRACE("config_validate(%zu entries)", cfg->count);
 	int errors = 0;
 
 	/* Check for duplicate names and paths */
@@ -85,6 +86,7 @@ size_t config_find_orphans(const GitConfig *cfg, size_t *out_indices, size_t max
 	if (!cfg || !out_indices)
 		return 0;
 
+	LOG_TRACE("config_find_orphans(%zu entries)", cfg->count);
 	size_t found = 0;
 
 	for (size_t i = 0; i < cfg->count; i++) {
@@ -104,6 +106,7 @@ int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count
 	if (!cfg || !indices || count == 0)
 		return -1;
 
+	LOG_TRACE("config_remove_at_indices(%zu indices)", count);
 	/*
 	 * Process indices in reverse order so earlier indices remain valid
 	 * as we shift entries.

@@ -26,6 +26,7 @@ int cmd_clone(const ArgParseResult *result)
 		return 1;
 	}
 
+	LOG_TRACE("cmd_clone");
 	const char *url  = result->positionals[0];
 	const char *name = result->positional_count > 1 ? result->positionals[1] : NULL;
 	LOG_DEBUG("cloning %s", url);

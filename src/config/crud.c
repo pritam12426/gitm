@@ -59,6 +59,7 @@ int config_add(GitConfig *cfg, const char *path, const char *name,
 	if (!cfg || !path || !name)
 		return -1;
 
+	LOG_TRACE("config_add(%s, %s)", name, path);
 	if (has_duplicate_path(cfg, path, cfg->count)) {
 		LOG_ERROR("path already registered: %s", path);
 		return -1;
@@ -92,6 +93,7 @@ int config_remove(GitConfig *cfg, const char *name)
 	if (!cfg || !name)
 		return -1;
 
+	LOG_TRACE("config_remove(%s)", name);
 	for (size_t i = 0; i < cfg->count; i++) {
 		if (strcmp(cfg->entries[i].name, name) == 0) {
 			free(cfg->entries[i].path);
@@ -117,10 +119,14 @@ RepoEntry *config_find(GitConfig *cfg, const char *name)
 	if (!cfg || !name)
 		return NULL;
 
+	LOG_TRACE("config_find(%s)", name);
 	for (size_t i = 0; i < cfg->count; i++) {
-		if (strcmp(cfg->entries[i].name, name) == 0)
+		if (strcmp(cfg->entries[i].name, name) == 0) {
+			LOG_TRACE("config_find: found at index %zu", i);
 			return &cfg->entries[i];
+		}
 	}
+	LOG_TRACE("config_find: not found");
 	return NULL;
 }
 
@@ -129,6 +135,7 @@ int config_rename(GitConfig *cfg, const char *old_name, const char *new_name)
 	if (!cfg || !old_name || !new_name)
 		return -1;
 
+	LOG_TRACE("config_rename(%s -> %s)", old_name, new_name);
 	RepoEntry *entry = config_find(cfg, old_name);
 	if (!entry) {
 		LOG_ERROR("repo not found: %s", old_name);

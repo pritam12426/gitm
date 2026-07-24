@@ -27,6 +27,7 @@ int cmd_open(const ArgParseResult *result)
 		return 1;
 	}
 
+	LOG_TRACE("cmd_open");
 	const char *name = result->positionals[0];
 	LOG_DEBUG("opening repo: %s", name);
 
