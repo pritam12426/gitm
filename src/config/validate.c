@@ -118,8 +118,6 @@ int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count
 
 		free(cfg->entries[i].path);
 		free(cfg->entries[i].name);
-		free(cfg->entries[i].tags);
-		free(cfg->entries[i].groups);
 
 		for (size_t j = i; j < cfg->count - 1; j++)
 			cfg->entries[j] = cfg->entries[j + 1];

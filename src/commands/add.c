@@ -43,14 +43,14 @@ int cmd_add(const ArgParseResult *result)
 	}
 
 	/* Resolve to absolute path */
-	char abs_path[512];
+	char abs_path[MAX_PATH_LEN];
 	if (realpath(repo_path, abs_path) == NULL) {
 		LOG_ERROR("could not resolve path: %s", repo_path);
 		return 1;
 	}
 
 	/* Derive name from path if not provided */
-	char name_buf[256];
+	char name_buf[MAX_NAME_LEN];
 	if (!repo_name) {
 		const char *base = strrchr(abs_path, '/');
 		if (base && *(base + 1)) {
@@ -63,7 +63,7 @@ int cmd_add(const ArgParseResult *result)
 
 	char *config_path = config_default_path();
 	if (!config_path) {
-		LOG_ERROR("could not determine config path");
+		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return 1;
 	}
 
@@ -80,7 +80,7 @@ int cmd_add(const ArgParseResult *result)
 	}
 
 	if (config_save(config_path, &cfg) != 0) {
-		LOG_ERROR("could not save config");
+		LOG_ERROR(MSG_CFG_SAVE_ERR);
 		config_free(&cfg);
 		free(config_path);
 		return 1;

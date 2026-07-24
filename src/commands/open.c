@@ -33,13 +33,13 @@ int cmd_open(const ArgParseResult *result)
 
 	char *config_path = config_default_path();
 	if (!config_path) {
-		LOG_ERROR("could not determine config path");
+		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return 1;
 	}
 
 	GitConfig cfg = { 0 };
 	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR("could not load config");
+		LOG_ERROR(MSG_CFG_LOAD_ERR);
 		free(config_path);
 		return 1;
 	}

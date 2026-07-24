@@ -26,19 +26,19 @@ int cmd_clean(const ArgParseResult *result)
 	LOG_TRACE("cmd_clean");
 	char *config_path = config_default_path();
 	if (!config_path) {
-		LOG_ERROR("could not determine config path");
+		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return 1;
 	}
 
 	GitConfig cfg = { 0 };
 	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR("could not load config");
+		LOG_ERROR(MSG_CFG_LOAD_ERR);
 		free(config_path);
 		return 1;
 	}
 
 	if (cfg.count == 0) {
-		fprintf(stderr, "No repositories registered.\n");
+		fprintf(stderr, MSG_NO_REPOS);
 		config_free(&cfg);
 		free(config_path);
 		return 0;
@@ -93,7 +93,7 @@ int cmd_clean(const ArgParseResult *result)
 	}
 
 	if (config_save(config_path, &cfg) != 0) {
-		LOG_ERROR("could not save config");
+		LOG_ERROR(MSG_CFG_SAVE_ERR);
 		config_free(&cfg);
 		free(config_path);
 		return 1;

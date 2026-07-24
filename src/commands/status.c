@@ -97,7 +97,7 @@ int cmd_status(const ArgParseResult *result)
 		return 1;
 
 	if (cfg.count == 0) {
-		fprintf(stderr, "No repositories registered.\n");
+		fprintf(stderr, MSG_NO_REPOS);
 		config_free(&cfg);
 		free(config_path);
 		return 0;
@@ -117,7 +117,7 @@ int cmd_status(const ArgParseResult *result)
 			ProcessResult r = git_exec(e->path, "status", "--porcelain", "--branch", NULL);
 
 			const char *status_str = "error";
-			char status_buf[256] = { 0 };
+			char status_buf[MAX_NAME_LEN] = { 0 };
 
 			if (r.exit_code != 0) {
 				status_str = "error";
@@ -174,17 +174,17 @@ int cmd_status(const ArgParseResult *result)
 
 			/* Color the status */
 			if (color && strcmp(status_str, "clean") == 0) {
-				char colored[256];
+				char colored[MAX_NAME_LEN];
 				snprintf(colored, sizeof(colored), "\x1b[32m%s\x1b[0m", status_str);
 				const char *cells[] = { e->name, colored, branch_str };
 				table_add_row_raw(t, cells, 3);
 			} else if (color && strcmp(status_str, "error") == 0) {
-				char colored[256];
+				char colored[MAX_NAME_LEN];
 				snprintf(colored, sizeof(colored), "\x1b[31m%s\x1b[0m", status_str);
 				const char *cells[] = { e->name, colored, branch_str };
 				table_add_row_raw(t, cells, 3);
 			} else if (color) {
-				char colored[256];
+				char colored[MAX_NAME_LEN];
 				snprintf(colored, sizeof(colored), "\x1b[33m%s\x1b[0m", status_str);
 				const char *cells[] = { e->name, colored, branch_str };
 				table_add_row_raw(t, cells, 3);
@@ -216,7 +216,7 @@ int cmd_status(const ArgParseResult *result)
 					while (*p && *p != '\n')
 						p++;
 
-					char line[512];
+					char line[MAX_PATH_LEN];
 					size_t len = (size_t) (p - start);
 					if (len >= sizeof(line))
 						len = sizeof(line) - 1;

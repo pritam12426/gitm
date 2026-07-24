@@ -32,13 +32,13 @@ int cmd_exec(const ArgParseResult *result)
 
 	char *config_path = config_default_path();
 	if (!config_path) {
-		LOG_ERROR("could not determine config path");
+		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return 1;
 	}
 
 	GitConfig cfg = { 0 };
 	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR("could not load config");
+		LOG_ERROR(MSG_CFG_LOAD_ERR);
 		free(config_path);
 		return 1;
 	}
@@ -52,11 +52,11 @@ int cmd_exec(const ArgParseResult *result)
 	}
 
 	/* Build git command: "git" + remaining positionals */
-	const char *git_argv[64];
+	const char *git_argv[GIT_MAX_ARGS];
 	int         git_argc = 0;
-	git_argv[git_argc++] = "git";
+	git_argv[git_argc++] = GIT_BINARY;
 
-	for (int i = 1; i < result->positional_count && git_argc < 62; i++) {
+	for (int i = 1; i < result->positional_count && git_argc < GIT_MAX_ARGS - 2; i++) {
 		git_argv[git_argc++] = result->positionals[i];
 	}
 	git_argv[git_argc] = NULL;

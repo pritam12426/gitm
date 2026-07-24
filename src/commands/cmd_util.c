@@ -22,12 +22,12 @@ int cmd_load_config(GitConfig *cfg, char **path_out)
 	LOG_TRACE("cmd_load_config");
 	*path_out = config_default_path();
 	if (!*path_out) {
-		LOG_ERROR("could not determine config path");
+		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return -1;
 	}
 
 	if (config_load(*path_out, cfg) != 0) {
-		LOG_ERROR("could not load config");
+		LOG_ERROR(MSG_CFG_LOAD_ERR);
 		free(*path_out);
 		*path_out = NULL;
 		return -1;

@@ -99,7 +99,7 @@ int cmd_last(const ArgParseResult *result)
 		return 1;
 
 	if (cfg.count == 0) {
-		fprintf(stderr, "No repositories registered.\n");
+		fprintf(stderr, MSG_NO_REPOS);
 		config_free(&cfg);
 		free(config_path);
 		return 0;

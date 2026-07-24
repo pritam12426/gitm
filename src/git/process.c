@@ -21,14 +21,12 @@
 #include <unistd.h>
 
 #include "log.h"
-
-/* Initial buffer size for capturing output */
-#define INITIAL_BUF_SIZE 4096
+#include "share.h"
 
 static int buf_append(char **buf, size_t *len, size_t *cap, const char *data, size_t data_len)
 {
 	if (*len + data_len + 1 > *cap) {
-		size_t new_cap = (*cap == 0) ? INITIAL_BUF_SIZE : *cap * 2;
+		size_t new_cap = (*cap == 0) ? PROCESS_BUF_SIZE : *cap * 2;
 		while (new_cap < *len + data_len + 1)
 			new_cap *= 2;
 		char *tmp = realloc(*buf, new_cap);

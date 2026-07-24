@@ -28,7 +28,7 @@ char *config_default_path(void)
 {
 	const char *xdg = getenv("XDG_DATA_HOME");
 	if (xdg && xdg[0] != '\0') {
-		char path[512];
+		char path[MAX_PATH_LEN];
 		snprintf(path, sizeof(path), "%s/gitm/%s", xdg, CONFIG_FILE);
 		LOG_TRACE("config path (XDG): %s", path);
 		return strdup(path);
@@ -40,7 +40,7 @@ char *config_default_path(void)
 		return NULL;
 	}
 
-	char path[512];
+	char path[MAX_PATH_LEN];
 #if defined(__APPLE__)
 	snprintf(path, sizeof(path), "%s/Library/Application Support/gitm/%s", home,
 	         CONFIG_FILE);

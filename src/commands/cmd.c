@@ -39,6 +39,7 @@ extern void cmd_register_remote(ArgParser *parser);
 extern void cmd_register_last(ArgParser *parser);
 extern void cmd_register_branch(ArgParser *parser);
 extern void cmd_register_clean(ArgParser *parser);
+extern void cmd_register_stats(ArgParser *parser);
 
 void cmd_register_all(ArgParser *parser)
 {
@@ -60,5 +61,6 @@ void cmd_register_all(ArgParser *parser)
 	cmd_register_last(parser);
 	cmd_register_branch(parser);
 	cmd_register_clean(parser);
+	cmd_register_stats(parser);
 	LOG_TRACE("all commands registered");
 }

@@ -74,9 +74,18 @@ Table *table_create(int col_count, const char **headers)
 		return NULL;
 
 	t->col_count   = col_count;
-	t->headers     = headers;
 	t->show_header = (headers != NULL);
 	t->use_color   = isatty(fileno(stderr)); /* default: auto-detect */
+
+	if (headers) {
+		t->headers = calloc((size_t) col_count, sizeof(char *));
+		if (!t->headers) {
+			free(t);
+			return NULL;
+		}
+		for (int i = 0; i < col_count; i++)
+			t->headers[i] = headers[i] ? strdup(headers[i]) : strdup("");
+	}
 
 	return t;
 }
@@ -240,5 +249,12 @@ void table_free(Table *table)
 		free(table->rows[r].cells);
 	}
 	free(table->rows);
+
+	if (table->headers) {
+		for (int i = 0; i < table->col_count; i++)
+			free((void *) table->headers[i]);
+		free(table->headers);
+	}
+
 	free(table);
 }

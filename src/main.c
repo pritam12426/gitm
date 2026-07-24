@@ -22,6 +22,7 @@
 #include "cmd.h"
 #include "config.h"
 #include "log.h"
+#include "process.h"
 #include "project_config.h"
 
 /* Global options (stored on root command) */
@@ -89,6 +90,18 @@ int main(int argc, char *argv[])
 	/* Initialize logging early so commands can log during parse.
 	 * Re-init after parsing if user specified different options. */
 	log_init(NULL, LOG_LEVEL_WARN);
+
+	/* Verify git is available before doing anything else */
+	{
+		ProcessResult r = process_exec(NULL,
+		                               (char *const []) { "git", "--version", NULL });
+		if (r.exit_code != 0) {
+			LOG_FATAL("git binary not found or not executable");
+			process_result_free(&r);
+			return 127;
+		}
+		process_result_free(&r);
+	}
 
 	/* Register all subcommands */
 	cmd_register_all(parser);

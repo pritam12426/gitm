@@ -31,13 +31,13 @@ int cmd_info(const ArgParseResult *result)
 
 	char *config_path = config_default_path();
 	if (!config_path) {
-		LOG_ERROR("could not determine config path");
+		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return 1;
 	}
 
 	GitConfig cfg = { 0 };
 	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR("could not load config");
+		LOG_ERROR(MSG_CFG_LOAD_ERR);
 		free(config_path);
 		return 1;
 	}
@@ -52,9 +52,9 @@ int cmd_info(const ArgParseResult *result)
 
 	fprintf(stderr, "Name:      %s\n", entry->name);
 	fprintf(stderr, "Path:      %s\n", entry->path);
-	if (entry->tags)
+	if (entry->tags[0])
 		fprintf(stderr, "Tags:      %s\n", entry->tags);
-	if (entry->groups)
+	if (entry->groups[0])
 		fprintf(stderr, "Groups:    %s\n", entry->groups);
 
 	/* Branch */

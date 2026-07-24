@@ -16,7 +16,7 @@
 
 bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
 {
-	if (!entry || !tag || !entry->tags)
+	if (!entry || !tag || !entry->tags[0])
 		return false;
 
 	const char *p = entry->tags;
@@ -42,7 +42,7 @@ bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
 
 bool config_entry_has_group(const RepoEntry *entry, const char *group)
 {
-	if (!entry || !group || !entry->groups)
+	if (!entry || !group || !entry->groups[0])
 		return false;
 
 	const char *p = entry->groups;

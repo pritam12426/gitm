@@ -49,7 +49,7 @@ static void print_remotes(const char *name, const char *path, bool color)
 			p++;
 
 		size_t len = (size_t) (p - start);
-		char   line[512];
+		char   line[MAX_PATH_LEN];
 		if (len >= sizeof(line))
 			len = sizeof(line) - 1;
 		memcpy(line, start, len);
@@ -83,7 +83,7 @@ int cmd_remote(const ArgParseResult *result)
 		return 1;
 
 	if (cfg.count == 0) {
-		fprintf(stderr, "No repositories registered.\n");
+		fprintf(stderr, MSG_NO_REPOS);
 		config_free(&cfg);
 		free(config_path);
 		return 0;
@@ -113,8 +113,8 @@ int cmd_remote(const ArgParseResult *result)
 					while (*p && *p != '\n')
 						p++;
 
-					size_t len = (size_t) (p - start);
-					char   line[512];
+				size_t len = (size_t) (p - start);
+				char   line[MAX_PATH_LEN];
 					if (len >= sizeof(line))
 						len = sizeof(line) - 1;
 					memcpy(line, start, len);

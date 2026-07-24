@@ -33,7 +33,7 @@ int cmd_list(const ArgParseResult *result)
 		return 1;
 
 	if (cfg.count == 0) {
-		fprintf(stderr, "No repositories registered.\n");
+		fprintf(stderr, MSG_NO_REPOS);
 		fprintf(stderr, "Use 'gitm add <path> [name]' to register one.\n");
 		config_free(&cfg);
 		free(config_path);
@@ -62,8 +62,8 @@ int cmd_list(const ArgParseResult *result)
 			table_add_row(t,
 			              e->name,
 			              e->path,
-			              e->tags ? e->tags : "-",
-			              e->groups ? e->groups : "-");
+			              e->tags[0] ? e->tags : "-",
+			              e->groups[0] ? e->groups : "-");
 		}
 
 		table_print(t, stdout);

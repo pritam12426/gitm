@@ -73,15 +73,21 @@ int config_add(GitConfig *cfg, const char *path, const char *name,
 		return -1;
 
 	/* Resolve to absolute path */
-	char abs_path[512];
+	char abs_path[MAX_PATH_LEN];
 	if (realpath(path, abs_path)) {
-		cfg->entries[cfg->count].path = strdup(abs_path);
+	cfg->entries[cfg->count].path   = strdup(abs_path);
 	} else {
-		cfg->entries[cfg->count].path = strdup(path);
+		cfg->entries[cfg->count].path   = strdup(path);
 	}
 	cfg->entries[cfg->count].name   = strdup(name);
-	cfg->entries[cfg->count].tags   = tags ? strdup(tags) : NULL;
-	cfg->entries[cfg->count].groups = groups ? strdup(groups) : NULL;
+	if (tags)
+		strncpy(cfg->entries[cfg->count].tags, tags, TAG_BUF_SIZE - 1);
+	else
+		cfg->entries[cfg->count].tags[0] = '\0';
+	if (groups)
+		strncpy(cfg->entries[cfg->count].groups, groups, GROUP_BUF_SIZE - 1);
+	else
+		cfg->entries[cfg->count].groups[0] = '\0';
 	cfg->count++;
 
 	LOG_DEBUG("added entry: %s (%s)", name, path);
@@ -98,8 +104,6 @@ int config_remove(GitConfig *cfg, const char *name)
 		if (strcmp(cfg->entries[i].name, name) == 0) {
 			free(cfg->entries[i].path);
 			free(cfg->entries[i].name);
-			free(cfg->entries[i].tags);
-			free(cfg->entries[i].groups);
 
 			for (size_t j = i; j < cfg->count - 1; j++)
 				cfg->entries[j] = cfg->entries[j + 1];

@@ -32,7 +32,7 @@ int cmd_clone(const ArgParseResult *result)
 	LOG_DEBUG("cloning %s", url);
 
 	/* Derive name from URL if not provided */
-	char name_buf[256];
+	char name_buf[MAX_NAME_LEN];
 	if (!name) {
 		const char *base = strrchr(url, '/');
 		if (base && *(base + 1)) {
@@ -49,7 +49,7 @@ int cmd_clone(const ArgParseResult *result)
 	}
 
 	/* Build destination: current dir / name */
-	char        dest[512];
+	char        dest[MAX_PATH_LEN];
 	const char *pwd = getenv("PWD");
 	if (pwd)
 		snprintf(dest, sizeof(dest), "%s/%s", pwd, name);
@@ -60,7 +60,7 @@ int cmd_clone(const ArgParseResult *result)
 
 	ProcessResult r = process_exec(NULL,
 	                               (char *const *) (const char *[]) {
-	                                   "git", "clone", url, dest, NULL });
+	                                   GIT_BINARY, "clone", url, dest, NULL });
 
 	if (r.exit_code != 0) {
 		if (r.stderr_len > 0)
@@ -74,7 +74,7 @@ int cmd_clone(const ArgParseResult *result)
 	/* Register the cloned repo */
 	char *config_path = config_default_path();
 	if (!config_path) {
-		LOG_ERROR("could not determine config path");
+		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return 1;
 	}
 

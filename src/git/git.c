@@ -19,9 +19,7 @@
 #include <string.h>
 
 #include "log.h"
-
-/* Max args we accept */
-#define GIT_MAX_ARGS 32
+#include "share.h"
 
 ProcessResult git_exec(const char *cwd, ...)
 {
@@ -32,7 +30,7 @@ ProcessResult git_exec(const char *cwd, ...)
 	const char *args[GIT_MAX_ARGS];
 	int         argc = 0;
 
-	args[argc++] = "git";
+	args[argc++] = GIT_BINARY;
 
 	const char *arg;
 	while (argc < GIT_MAX_ARGS - 1 && (arg = va_arg(ap, const char *)) != NULL) {
@@ -60,7 +58,7 @@ ProcessResult git_exec_quiet(const char *cwd, ...)
 	const char *args[GIT_MAX_ARGS];
 	int         argc = 0;
 
-	args[argc++] = "git";
+	args[argc++] = GIT_BINARY;
 
 	const char *arg;
 	while (argc < GIT_MAX_ARGS - 1 && (arg = va_arg(ap, const char *)) != NULL) {

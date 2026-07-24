@@ -132,8 +132,14 @@ int config_load(const char *path, GitConfig *cfg)
 
 		cfg->entries[cfg->count].path   = strdup(path_str);
 		cfg->entries[cfg->count].name   = strdup(name_str);
-		cfg->entries[cfg->count].tags   = tags_str ? strdup(tags_str) : NULL;
-		cfg->entries[cfg->count].groups = groups_str ? strdup(groups_str) : NULL;
+		if (tags_str)
+			strncpy(cfg->entries[cfg->count].tags, tags_str, TAG_BUF_SIZE - 1);
+		else
+			cfg->entries[cfg->count].tags[0] = '\0';
+		if (groups_str)
+			strncpy(cfg->entries[cfg->count].groups, groups_str, GROUP_BUF_SIZE - 1);
+		else
+			cfg->entries[cfg->count].groups[0] = '\0';
 		cfg->count++;
 	}
 
@@ -155,10 +161,10 @@ int config_save(const char *path, const GitConfig *cfg)
 	}
 
 	for (size_t i = 0; i < cfg->count; i++) {
-		if (cfg->entries[i].tags && cfg->entries[i].groups)
+		if (cfg->entries[i].tags[0] && cfg->entries[i].groups[0])
 			fprintf(f, "%s:%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name,
 			        cfg->entries[i].tags, cfg->entries[i].groups);
-		else if (cfg->entries[i].tags)
+		else if (cfg->entries[i].tags[0])
 			fprintf(f, "%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name,
 			        cfg->entries[i].tags);
 		else
@@ -179,8 +185,6 @@ void config_free(GitConfig *cfg)
 	for (size_t i = 0; i < cfg->count; i++) {
 		free(cfg->entries[i].path);
 		free(cfg->entries[i].name);
-		free(cfg->entries[i].tags);
-		free(cfg->entries[i].groups);
 	}
 	free(cfg->entries);
 	cfg->entries  = NULL;
