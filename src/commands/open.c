@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * open.c — `gitm open` command
  *
  * Opens a registered repository in $EDITOR or file manager.
@@ -69,5 +75,7 @@ int cmd_open(const ArgParseResult *result)
 void cmd_register_open(ArgParser *parser)
 {
 	ArgCommand *cmd = argparse_add_command(parser, "open", "Open a repository in $EDITOR", cmd_open);
+	const char *open_aliases[] = { "o" };
+	argparse_command_set_aliases(cmd, open_aliases, 1);
 	argparse_add_positional(cmd, "name");
 }

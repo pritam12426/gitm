@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * exec.c — `gitm exec` command
  *
  * Runs a git command on a registered repository.
@@ -74,6 +80,8 @@ void cmd_register_exec(ArgParser *parser)
 	                                       "exec",
 	                                       "Run a git command on a registered repo",
 	                                       cmd_exec);
+	const char *exec_aliases[] = { "x" };
+	argparse_command_set_aliases(cmd, exec_aliases, 1);
 	argparse_add_positional(cmd, "name");
 	argparse_add_positional(cmd, "command...");
 }

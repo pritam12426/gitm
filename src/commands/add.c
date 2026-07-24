@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * add.c — `gitm add` command
  *
  * Registers a Git repository in the config.
@@ -14,10 +20,13 @@
 #include "git.h"
 #include "log.h"
 
+static const char *add_tags   = NULL;
+static const char *add_groups = NULL;
+
 int cmd_add(const ArgParseResult *result)
 {
 	if (result->positional_count < 1) {
-		fprintf(stderr, "Usage: gitm add <path> [name]\n");
+		fprintf(stderr, "Usage: gitm add <path> [name] [--tag TAGS] [--group GROUPS]\n");
 		return 1;
 	}
 
@@ -61,7 +70,7 @@ int cmd_add(const ArgParseResult *result)
 	GitConfig cfg = { 0 };
 	config_load(config_path, &cfg);
 
-	if (config_add(&cfg, abs_path, repo_name) != 0) {
+	if (config_add(&cfg, abs_path, repo_name, add_tags, add_groups) != 0) {
 		config_free(&cfg);
 		free(config_path);
 		return 1;
@@ -74,7 +83,12 @@ int cmd_add(const ArgParseResult *result)
 		return 1;
 	}
 
-	fprintf(stderr, "Added %s (%s)\n", repo_name, abs_path);
+	fprintf(stderr, "Added %s (%s)", repo_name, abs_path);
+	if (add_tags)
+		fprintf(stderr, " tags=%s", add_tags);
+	if (add_groups)
+		fprintf(stderr, " groups=%s", add_groups);
+	fprintf(stderr, "\n");
 
 	config_free(&cfg);
 	free(config_path);
@@ -86,4 +100,8 @@ void cmd_register_add(ArgParser *parser)
 	ArgCommand *cmd = argparse_add_command(parser, "add", "Register a Git repository", cmd_add);
 	argparse_add_positional(cmd, "path");
 	argparse_add_positional(cmd, "[name]");
+	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAGS",
+	                    "Comma-separated tags (e.g., work,c)", &add_tags);
+	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUPS",
+	                    "Comma-separated groups (e.g., projects)", &add_groups);
 }

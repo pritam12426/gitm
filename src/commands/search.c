@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * search.c — `gitm search PATTERN` command
  *
  * Searches repos by name or path using substring matching.
@@ -65,5 +71,7 @@ void cmd_register_search(ArgParser *parser)
 	                                       "search",
 	                                       "Search repos by name or path pattern",
 	                                       cmd_search);
+	const char *search_aliases[] = { "find", "f" };
+	argparse_command_set_aliases(cmd, search_aliases, 2);
 	(void) cmd;
 }

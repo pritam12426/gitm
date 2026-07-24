@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * status.c — `gitm status` command
  *
  * Shows git status for all registered repos with colour.
@@ -12,6 +18,9 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+
+static const char *filter_tag   = NULL;
+static const char *filter_group = NULL;
 
 // ANSI codes
 #define C_RESET  "\x1b[0m"
@@ -100,6 +109,11 @@ int cmd_status(const ArgParseResult *result)
 	}
 
 	for (size_t i = 0; i < cfg.count; i++) {
+		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
+			continue;
+		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
+			continue;
+
 		print_header(cfg.entries[i].name, cfg.entries[i].path, color);
 
 		ProcessResult r = git_exec(cfg.entries[i].path, "status", "--porcelain", "--branch", NULL);
@@ -145,5 +159,11 @@ void cmd_register_status(ArgParser *parser)
 	                                       "status",
 	                                       "Show status of all registered repos",
 	                                       cmd_status);
+	const char *status_aliases[] = { "st", "s" };
+	argparse_command_set_aliases(cmd, status_aliases, 2);
+	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
+	                    "Filter by tag", &filter_tag);
+	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
+	                    "Filter by group", &filter_group);
 	(void) cmd;
 }

@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * clone.c — `gitm clone` command
  *
  * Clones a repository and registers it.
@@ -75,7 +81,7 @@ int cmd_clone(const ArgParseResult *result)
 	GitConfig cfg = { 0 };
 	config_load(config_path, &cfg);
 
-	if (config_add(&cfg, dest, name) != 0) {
+	if (config_add(&cfg, dest, name, NULL, NULL) != 0) {
 		LOG_WARN("cloned successfully but failed to register");
 		config_free(&cfg);
 		free(config_path);

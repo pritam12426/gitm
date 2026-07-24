@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * list.c — `gitm list` command
  *
  * Prints all registered repositories.
@@ -10,6 +16,9 @@
 #include "cmd.h"
 #include "config.h"
 #include "log.h"
+
+static const char *list_filter_tag   = NULL;
+static const char *list_filter_group = NULL;
 
 int cmd_list(const ArgParseResult *result)
 {
@@ -36,9 +45,19 @@ int cmd_list(const ArgParseResult *result)
 		return 0;
 	}
 
+	int shown = 0;
 	for (size_t i = 0; i < cfg.count; i++) {
+		if (list_filter_tag && !config_entry_has_tag(&cfg.entries[i], list_filter_tag))
+			continue;
+		if (list_filter_group && !config_entry_has_group(&cfg.entries[i], list_filter_group))
+			continue;
+
 		fprintf(stdout, "%s\t%s\n", cfg.entries[i].name, cfg.entries[i].path);
+		shown++;
 	}
+
+	if (shown == 0)
+		fprintf(stderr, "No repos match the given filters.\n");
 
 	config_free(&cfg);
 	free(path);
@@ -48,5 +67,11 @@ int cmd_list(const ArgParseResult *result)
 void cmd_register_list(ArgParser *parser)
 {
 	ArgCommand *cmd = argparse_add_command(parser, "list", "List registered repositories", cmd_list);
+	const char *list_aliases[] = { "ls" };
+	argparse_command_set_aliases(cmd, list_aliases, 1);
+	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
+	                    "Filter by tag", &list_filter_tag);
+	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
+	                    "Filter by group", &list_filter_group);
 	(void) cmd;
 }

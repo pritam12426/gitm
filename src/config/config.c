@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * config.c — Repository registry configuration
  *
  * Loads, saves, and validates the list of registered Git repositories.
@@ -126,22 +132,68 @@ int config_load(const char *path, GitConfig *cfg)
 		if (len == 0 || line[0] == '#')
 			continue;
 
-		/* Parse: /path:name */
-		char *colon = strchr(line, ':');
-		if (!colon) {
+		/* Parse: /path:name[:tags[:groups]] */
+		char *first_colon = strchr(line, ':');
+		if (!first_colon) {
 			LOG_WARN("skipping malformed line: %s", line);
 			continue;
 		}
 
-		*colon         = '\0';
-		char *path_str = line;
-		char *name_str = colon + 1;
+		*first_colon    = '\0';
+		char *path_str  = line;
+		char *rest      = first_colon + 1;
+
+		/* Find second colon for name */
+		char *second_colon = strchr(rest, ':');
+		char *name_str;
+		char *tags_str  = NULL;
+		char *groups_str = NULL;
+
+		if (second_colon) {
+			*second_colon = '\0';
+			name_str = rest;
+
+			/* Find third colon for tags */
+			char *after_name = second_colon + 1;
+			char *third_colon = strchr(after_name, ':');
+
+			if (third_colon) {
+				*third_colon = '\0';
+				tags_str = after_name;
+
+				/* Find fourth colon for groups */
+				char *after_tags = third_colon + 1;
+				char *fourth_colon = strchr(after_tags, ':');
+				if (fourth_colon) {
+					*fourth_colon = '\0';
+					groups_str = after_tags;
+				} else {
+					groups_str = after_tags;
+				}
+			} else {
+				tags_str = after_name;
+			}
+		} else {
+			name_str = rest;
+		}
 
 		/* Trim whitespace */
 		while (*path_str == ' ' || *path_str == '\t')
 			path_str++;
 		while (*name_str == ' ' || *name_str == '\t')
 			name_str++;
+		if (tags_str) {
+			while (*tags_str == ' ' || *tags_str == '\t')
+				tags_str++;
+			if (*tags_str == '\0')
+				tags_str = NULL;
+		}
+		if (groups_str) {
+			while (*groups_str == ' ' || *groups_str == '\t')
+				groups_str++;
+			if (*groups_str == '\0')
+				groups_str = NULL;
+		}
 
 		if (path_str[0] == '\0' || name_str[0] == '\0') {
 			LOG_WARN("skipping empty entry: %s", line);
@@ -153,8 +205,10 @@ int config_load(const char *path, GitConfig *cfg)
 			return -1;
 		}
 
-		cfg->entries[cfg->count].path = strdup(path_str);
-		cfg->entries[cfg->count].name = strdup(name_str);
+		cfg->entries[cfg->count].path   = strdup(path_str);
+		cfg->entries[cfg->count].name   = strdup(name_str);
+		cfg->entries[cfg->count].tags   = tags_str ? strdup(tags_str) : NULL;
+		cfg->entries[cfg->count].groups = groups_str ? strdup(groups_str) : NULL;
 		cfg->count++;
 	}
 
@@ -174,7 +228,14 @@ int config_save(const char *path, const GitConfig *cfg)
 	}
 
 	for (size_t i = 0; i < cfg->count; i++) {
-		fprintf(f, "%s:%s\n", cfg->entries[i].path, cfg->entries[i].name);
+		if (cfg->entries[i].tags && cfg->entries[i].groups)
+			fprintf(f, "%s:%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name,
+			        cfg->entries[i].tags, cfg->entries[i].groups);
+		else if (cfg->entries[i].tags)
+			fprintf(f, "%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name,
+			        cfg->entries[i].tags);
+		else
+			fprintf(f, "%s:%s\n", cfg->entries[i].path, cfg->entries[i].name);
 	}
 
 	fclose(f);
@@ -188,6 +249,8 @@ void config_free(GitConfig *cfg)
 	for (size_t i = 0; i < cfg->count; i++) {
 		free(cfg->entries[i].path);
 		free(cfg->entries[i].name);
+		free(cfg->entries[i].tags);
+		free(cfg->entries[i].groups);
 	}
 	free(cfg->entries);
 	cfg->entries  = NULL;
@@ -195,7 +258,8 @@ void config_free(GitConfig *cfg)
 	cfg->capacity = 0;
 }
 
-int config_add(GitConfig *cfg, const char *path, const char *name)
+int config_add(GitConfig *cfg, const char *path, const char *name,
+               const char *tags, const char *groups)
 {
 	if (!cfg || !path || !name)
 		return -1;
@@ -219,7 +283,9 @@ int config_add(GitConfig *cfg, const char *path, const char *name)
 	} else {
 		cfg->entries[cfg->count].path = strdup(path);
 	}
-	cfg->entries[cfg->count].name = strdup(name);
+	cfg->entries[cfg->count].name   = strdup(name);
+	cfg->entries[cfg->count].tags   = tags ? strdup(tags) : NULL;
+	cfg->entries[cfg->count].groups = groups ? strdup(groups) : NULL;
 	cfg->count++;
 
 	return 0;
@@ -234,6 +300,8 @@ int config_remove(GitConfig *cfg, const char *name)
 		if (strcmp(cfg->entries[i].name, name) == 0) {
 			free(cfg->entries[i].path);
 			free(cfg->entries[i].name);
+			free(cfg->entries[i].tags);
+			free(cfg->entries[i].groups);
 
 			/* Shift remaining entries */
 			for (size_t j = i; j < cfg->count - 1; j++) {
@@ -320,4 +388,109 @@ int config_validate(GitConfig *cfg)
 	}
 
 	return errors;
+}
+
+/* ── Tag / group / orphan helpers ──────────────────────────────────────────────
+ */
+
+bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
+{
+	if (!entry || !tag || !entry->tags)
+		return false;
+
+	/* Walk comma-separated list */
+	const char *p = entry->tags;
+	size_t tag_len = strlen(tag);
+
+	while (*p) {
+		/* Skip leading comma */
+		if (*p == ',') {
+			p++;
+			continue;
+		}
+		/* Find end of this token */
+		const char *end = p;
+		while (*end && *end != ',')
+			end++;
+
+		size_t token_len = (size_t) (end - p);
+		if (token_len == tag_len && memcmp(p, tag, tag_len) == 0)
+			return true;
+
+		p = end;
+	}
+	return false;
+}
+
+bool config_entry_has_group(const RepoEntry *entry, const char *group)
+{
+	if (!entry || !group || !entry->groups)
+		return false;
+
+	const char *p = entry->groups;
+	size_t group_len = strlen(group);
+
+	while (*p) {
+		if (*p == ',') {
+			p++;
+			continue;
+		}
+		const char *end = p;
+		while (*end && *end != ',')
+			end++;
+
+		size_t token_len = (size_t) (end - p);
+		if (token_len == group_len && memcmp(p, group, group_len) == 0)
+			return true;
+
+		p = end;
+	}
+	return false;
+}
+
+size_t config_find_orphans(const GitConfig *cfg, size_t *out_indices, size_t max)
+{
+	if (!cfg || !out_indices)
+		return 0;
+
+	size_t found = 0;
+
+	for (size_t i = 0; i < cfg->count; i++) {
+		struct stat st;
+		if (stat(cfg->entries[i].path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+			if (found < max)
+				out_indices[found] = i;
+			found++;
+		}
+	}
+
+	return found;
+}
+
+int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count)
+{
+	if (!cfg || !indices || count == 0)
+		return -1;
+
+	/*
+	 * Process indices in reverse order so earlier indices remain valid
+	 * as we shift entries.
+	 */
+	for (size_t k = count; k > 0; k--) {
+		size_t i = indices[k - 1];
+		if (i >= cfg->count)
+			return -1;
+
+		free(cfg->entries[i].path);
+		free(cfg->entries[i].name);
+		free(cfg->entries[i].tags);
+		free(cfg->entries[i].groups);
+
+		for (size_t j = i; j < cfg->count - 1; j++)
+			cfg->entries[j] = cfg->entries[j + 1];
+
+		cfg->count--;
+	}
+
+	return 0;
 }

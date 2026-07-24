@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * git.c — Git execution wrapper
  *
  * Builds argv arrays and calls process_exec() to run git commands.

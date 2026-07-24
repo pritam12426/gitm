@@ -1,4 +1,10 @@
 /*
+ * Copyright (c) 2026 Pritam
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * recent.c — `gitm recent` command
  *
  * Lists repos sorted by last commit date (most recent first).
@@ -12,6 +18,9 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+
+static const char *filter_tag   = NULL;
+static const char *filter_group = NULL;
 
 typedef struct {
 	const char *name;
@@ -83,9 +92,15 @@ int cmd_recent(const ArgParseResult *result)
 		return 1;
 	}
 
+	size_t repo_count = 0;
 	for (size_t i = 0; i < cfg.count; i++) {
-		repos[i].name = cfg.entries[i].name;
-		repos[i].path = cfg.entries[i].path;
+		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
+			continue;
+		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
+			continue;
+
+		repos[repo_count].name = cfg.entries[i].name;
+		repos[repo_count].path = cfg.entries[i].path;
 
 		// Get last commit date
 		ProcessResult r = git_exec(cfg.entries[i].path,
@@ -98,19 +113,20 @@ int cmd_recent(const ArgParseResult *result)
 			if (len > 0 && date[len - 1] == '\n')
 				date[len - 1] = '\0';
 
-			repos[i].date_str  = date;
-			repos[i].timestamp = parse_date_to_timestamp(date);
+			repos[repo_count].date_str  = date;
+			repos[repo_count].timestamp = parse_date_to_timestamp(date);
 		} else {
-			repos[i].date_str  = strdup("unknown");
-			repos[i].timestamp = 0;
+			repos[repo_count].date_str  = strdup("unknown");
+			repos[repo_count].timestamp = 0;
 		}
 
 		process_result_free(&r);
+		repo_count++;
 	}
 
-	qsort(repos, cfg.count, sizeof(RepoDate), cmp_repo_date);
+	qsort(repos, repo_count, sizeof(RepoDate), cmp_repo_date);
 
-	for (size_t i = 0; i < cfg.count; i++) {
+	for (size_t i = 0; i < repo_count; i++) {
 		fprintf(stdout, "%-20s %-40s %s\n", repos[i].name, repos[i].path, repos[i].date_str);
 		free((char *) repos[i].date_str);
 	}
@@ -127,5 +143,11 @@ void cmd_register_recent(ArgParser *parser)
 	                                       "recent",
 	                                       "List repos sorted by last commit date",
 	                                       cmd_recent);
+	const char *recent_aliases[] = { "r" };
+	argparse_command_set_aliases(cmd, recent_aliases, 1);
+	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
+	                    "Filter by tag", &filter_tag);
+	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
+	                    "Filter by group", &filter_group);
 	(void) cmd;
 }
