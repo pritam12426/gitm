@@ -90,6 +90,7 @@ int cmd_summary(const ArgParseResult *result)
 {
 	(void) result;
 
+	LOG_TRACE("cmd_summary");
 	char *config_path = config_default_path();
 	if (!config_path) {
 		LOG_ERROR("could not determine config path");

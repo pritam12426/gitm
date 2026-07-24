@@ -24,6 +24,7 @@ int cmd_rename(const ArgParseResult *result)
 		return 1;
 	}
 
+	LOG_TRACE("cmd_rename");
 	const char *old_name = result->positionals[0];
 	const char *new_name = result->positionals[1];
 	LOG_DEBUG("renaming %s -> %s", old_name, new_name);

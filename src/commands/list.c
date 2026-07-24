@@ -26,6 +26,7 @@ int cmd_list(const ArgParseResult *result)
 {
 	(void) result;
 
+	LOG_TRACE("cmd_list");
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)

@@ -25,6 +25,7 @@
 
 ProcessResult git_exec(const char *cwd, ...)
 {
+	LOG_TRACE("git_exec(cwd=%s)", cwd ? cwd : "(inherit)");
 	va_list ap;
 	va_start(ap, cwd);
 
@@ -52,6 +53,7 @@ ProcessResult git_exec(const char *cwd, ...)
 
 ProcessResult git_exec_quiet(const char *cwd, ...)
 {
+	LOG_TRACE("git_exec_quiet(cwd=%s)", cwd ? cwd : "(inherit)");
 	va_list ap;
 	va_start(ap, cwd);
 
@@ -87,6 +89,7 @@ bool git_is_repo(const char *path)
 
 char *git_toplevel(const char *path)
 {
+	LOG_TRACE("git_toplevel(%s)", path);
 	ProcessResult r = git_exec(path, "rev-parse", "--show-toplevel", NULL);
 	if (r.exit_code != 0 || r.stdout_len == 0) {
 		process_result_free(&r);
@@ -105,6 +108,7 @@ char *git_toplevel(const char *path)
 
 char *git_current_branch(const char *path)
 {
+	LOG_TRACE("git_current_branch(%s)", path);
 	ProcessResult r = git_exec(path, "rev-parse", "--abbrev-ref", "HEAD", NULL);
 	if (r.exit_code != 0 || r.stdout_len == 0) {
 		process_result_free(&r);

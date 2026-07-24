@@ -30,6 +30,7 @@ int cmd_add(const ArgParseResult *result)
 		return 1;
 	}
 
+	LOG_TRACE("cmd_add");
 	const char *repo_path = result->positionals[0];
 	const char *repo_name = result->positional_count > 1 ? result->positionals[1] : NULL;
 

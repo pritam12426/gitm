@@ -11,6 +11,7 @@
 #include "table.h"
 
 #include <stdarg.h>
+#include "log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,6 +68,7 @@ static void pad_right(FILE *out, const char *str, size_t target_width, bool is_l
 
 Table *table_create(int col_count, const char **headers)
 {
+	LOG_TRACE("table_create(%d cols)", col_count);
 	Table *t = calloc(1, sizeof(Table));
 	if (!t)
 		return NULL;

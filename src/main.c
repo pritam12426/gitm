@@ -99,6 +99,7 @@ int main(int argc, char *argv[])
 
 	/* Re-init logging with user-specified options */
 	log_init(g_log_file, parse_log_level(g_log_level_str));
+	LOG_TRACE("main: dispatching to command");
 
 	if (LOG_LEVEL_IS_ENABLED(LOG_LEVEL_DEBUG)) {
 		LOG_CUSTOM(LOG_LEVEL_DEBUG, false, "Command-line args: [");
@@ -115,6 +116,7 @@ int main(int argc, char *argv[])
 
 	/* Handle --edit-entry before dispatching to commands */
 	if (g_edit_entry) {
+		LOG_TRACE("handling --edit-entry");
 		char *path = config_default_path();
 		if (!path) {
 			LOG_ERROR("could not determine config path");
