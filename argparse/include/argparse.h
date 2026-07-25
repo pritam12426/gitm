@@ -23,8 +23,8 @@
  *   - Coloured help output
  */
 
-#ifndef _ARGPARSE_H_
-#define _ARGPARSE_H_
+#ifndef _ARGPARSE__H_
+#define _ARGPARSE__H_
 
 
 #include <stdbool.h>
@@ -242,4 +242,4 @@ void argparse_complete(const ArgParser *parser, int argc, char **argv);
 #endif
 
 
-#endif  // _ARGPARSE_H_
+#endif  // _ARGPARSE__H_

@@ -10,6 +10,8 @@
  * Prints all registered repositories.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -37,16 +39,14 @@ static int cmd_list(const ArgParseResult *result)
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
 		fprintf(stderr, "Use 'gitm add <path> [name]' to register one.\n");
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
 	size_t *indices = calloc(cfg.count, sizeof(size_t));
 	if (!indices) {
 		LOG_ERROR("allocation failed for %zu repos", cfg.count);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 	size_t  filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group,
@@ -59,8 +59,7 @@ static int cmd_list(const ArgParseResult *result)
 	if (filtered == 0) {
 		fprintf(stderr, "No repos match the given filters.\n");
 		free(indices);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
@@ -89,8 +88,7 @@ static int cmd_list(const ArgParseResult *result)
 	}
 
 	free(indices);
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return 0;
 }
 

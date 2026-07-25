@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "cmd.h"
+#include "cmd_util.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
@@ -31,24 +32,15 @@ static int cmd_open(const ArgParseResult *result)
 	const char *name = result->positionals[0];
 	LOG_DEBUG("opening repo: %s", name);
 
-	char *config_path = config_default_path();
-	if (!config_path) {
-		LOG_ERROR(MSG_CFG_PATH_ERR);
-		return 1;
-	}
-
 	GitConfig cfg = { 0 };
-	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR(MSG_CFG_LOAD_ERR);
-		free(config_path);
+	char      *config_path = NULL;
+	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
-	}
 
 	RepoEntry *entry = config_find(&cfg, name);
 	if (!entry) {
 		fprintf(stderr, "Repository not found: %s\n", name);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 
@@ -57,8 +49,7 @@ static int cmd_open(const ArgParseResult *result)
 		editor = getenv("VISUAL");
 	if (!editor) {
 		LOG_ERROR("no $EDITOR or $VISUAL set");
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 
@@ -70,8 +61,7 @@ static int cmd_open(const ArgParseResult *result)
 	int           rc = r.exit_code;
 	process_result_free(&r);
 
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return rc;
 }
 

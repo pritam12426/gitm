@@ -40,7 +40,11 @@ static Log_level_t parse_log_level(const char *str)
 	if (strcmp(str, "info") == 0)  return LOG_LEVEL_INFO;
 	if (strcmp(str, "debug") == 0) return LOG_LEVEL_DEBUG;
 	if (strcmp(str, "trace") == 0) return LOG_LEVEL_TRACE;
-	return                                        LOG_LEVEL_WARN;
+
+	fprintf(stderr, "%s: invalid log level: %s\n"
+	        "Valid levels: off, fatal, error, warn, info, debug, trace\n",
+	        MAIN_BINARY, str);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -55,6 +59,7 @@ int main(int argc, char *argv[])
 	};
 
 	ArgParser *parser = argparse_new(&config);
+
 	if (!parser) {
 		fprintf(stderr, "%s: failed to initialize parser\n", MAIN_BINARY);
 		return 1;
@@ -93,8 +98,7 @@ int main(int argc, char *argv[])
 
 	/* Verify git is available before doing anything else */
 	{
-		ProcessResult r = process_exec(NULL,
-		                               (char *const []) { "gt", "--version", NULL });
+		ProcessResult r = process_exec(NULL, (char *const []) { GIT_BINARY, "--version", NULL });
 		if (r.exit_code != 0) {
 			LOG_FATAL("git binary not found in your $PATH, or not executable");
 			process_result_free(&r);

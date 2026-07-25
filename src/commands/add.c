@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "cmd.h"
+#include "cmd_util.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
@@ -69,20 +70,21 @@ static int cmd_add(const ArgParseResult *result)
 
 	/* Ensure config dir exists */
 	config_ensure_dir();
+	free(config_path);
 
 	GitConfig cfg = { 0 };
-	config_load(config_path, &cfg);
+	char      *loaded_path = NULL;
+	if (cmd_load_config(&cfg, &loaded_path) != 0)
+		return 1;
 
 	if (config_add(&cfg, abs_path, repo_name, add_tags, add_groups) != 0) {
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, loaded_path);
 		return 1;
 	}
 
-	if (config_save(config_path, &cfg) != 0) {
+	if (config_save(loaded_path, &cfg) != 0) {
 		LOG_ERROR(MSG_CFG_SAVE_ERR);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, loaded_path);
 		return 1;
 	}
 
@@ -95,8 +97,7 @@ static int cmd_add(const ArgParseResult *result)
 
 	LOG_INFO("registered %s at %s", repo_name, abs_path);
 
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, loaded_path);
 	return 0;
 }
 

@@ -17,28 +17,6 @@
 #include "git.h"
 #include "log.h"
 
-static bool has_duplicate_name(const GitConfig *cfg, const char *name, size_t exclude_index)
-{
-	for (size_t i = 0; i < cfg->count; i++) {
-		if (i == exclude_index)
-			continue;
-		if (cfg->entries[i].name && strcmp(cfg->entries[i].name, name) == 0)
-			return true;
-	}
-	return false;
-}
-
-static bool has_duplicate_path(const GitConfig *cfg, const char *path, size_t exclude_index)
-{
-	for (size_t i = 0; i < cfg->count; i++) {
-		if (i == exclude_index)
-			continue;
-		if (cfg->entries[i].path && strcmp(cfg->entries[i].path, path) == 0)
-			return true;
-	}
-	return false;
-}
-
 int config_validate(GitConfig *cfg)
 {
 	if (!cfg)
@@ -49,11 +27,11 @@ int config_validate(GitConfig *cfg)
 
 	/* Check for duplicate names and paths */
 	for (size_t i = 0; i < cfg->count; i++) {
-		if (has_duplicate_name(cfg, cfg->entries[i].name, i)) {
+		if (config_has_duplicate_name(cfg, cfg->entries[i].name, i)) {
 			LOG_ERROR("duplicate name: %s", cfg->entries[i].name);
 			errors++;
 		}
-		if (has_duplicate_path(cfg, cfg->entries[i].path, i)) {
+		if (config_has_duplicate_path(cfg, cfg->entries[i].path, i)) {
 			LOG_ERROR("duplicate path: %s", cfg->entries[i].path);
 			errors++;
 		}

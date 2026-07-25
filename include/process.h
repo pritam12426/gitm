@@ -11,8 +11,8 @@
  * (primarily git) via fork()/execvp() with stdout/stderr capture.
  */
 
-#ifndef _PROCESS_H_
-#define _PROCESS_H_
+#ifndef _PROCESS__H_
+#define _PROCESS__H_
 
 
 #include <stddef.h>
@@ -62,4 +62,4 @@ void process_result_free(ProcessResult *r);
 #endif
 
 
-#endif  // _PROCESS_H_
+#endif  // _PROCESS__H_

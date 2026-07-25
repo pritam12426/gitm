@@ -10,11 +10,14 @@
  * Health check for all registered repositories.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
+#include "ansi_color.h"
 #include "cmd.h"
 #include "cmd_util.h"
 #include "config.h"
@@ -36,8 +39,7 @@ static int cmd_doctor(const ArgParseResult *result)
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
@@ -48,8 +50,7 @@ static int cmd_doctor(const ArgParseResult *result)
 		LOG_ERROR("allocation failed for %zu repos", cfg.count);
 		free(indices);
 		free(statuses);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 	size_t  checked   = 0;
@@ -96,12 +97,12 @@ static int cmd_doctor(const ArgParseResult *result)
 
 			if (color && is_ok) {
 				char colored[128];
-				snprintf(colored, sizeof(colored), "\x1b[32m%s\x1b[0m", status);
+				ansi_colorize(colored, sizeof(colored), status, ANSI_FG_GREEN);
 				const char *cells[] = { name, colored };
 				table_add_row_raw(t, cells, 2);
 			} else if (color && !is_ok) {
 				char colored[128];
-				snprintf(colored, sizeof(colored), "\x1b[31m%s\x1b[0m", status);
+				ansi_colorize(colored, sizeof(colored), status, ANSI_FG_RED);
 				const char *cells[] = { name, colored };
 				table_add_row_raw(t, cells, 2);
 			} else {
@@ -128,8 +129,7 @@ static int cmd_doctor(const ArgParseResult *result)
 		free(statuses[i]);
 	free(statuses);
 	free(indices);
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return errors > 0 ? 1 : 0;
 }
 

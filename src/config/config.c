@@ -119,15 +119,9 @@ int config_load(const char *path, GitConfig *cfg)
 			continue;
 		}
 
-		if (cfg->count >= cfg->capacity) {
-			size_t     new_cap = cfg->capacity == 0 ? 8 : cfg->capacity * 2;
-			RepoEntry *tmp     = realloc(cfg->entries, new_cap * sizeof(RepoEntry));
-			if (!tmp) {
-				fclose(f);
-				return -1;
-			}
-			cfg->entries  = tmp;
-			cfg->capacity = new_cap;
+		if (config_ensure_capacity(cfg) != 0) {
+			fclose(f);
+			return -1;
 		}
 
 		cfg->entries[cfg->count].path   = strdup(path_str);

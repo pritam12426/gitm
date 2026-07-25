@@ -14,6 +14,7 @@
 #include <stdlib.h>
 
 #include "cmd.h"
+#include "cmd_util.h"
 #include "config.h"
 #include "log.h"
 
@@ -29,37 +30,26 @@ static int cmd_rename(const ArgParseResult *result)
 	const char *new_name = result->positionals[1];
 	LOG_DEBUG("renaming %s -> %s", old_name, new_name);
 
-	char *config_path = config_default_path();
-	if (!config_path) {
-		LOG_ERROR(MSG_CFG_PATH_ERR);
-		return 1;
-	}
-
 	GitConfig cfg = { 0 };
-	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR(MSG_CFG_LOAD_ERR);
-		free(config_path);
+	char      *config_path = NULL;
+	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
-	}
 
 	if (config_rename(&cfg, old_name, new_name) != 0) {
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 
 	if (config_save(config_path, &cfg) != 0) {
 		LOG_ERROR(MSG_CFG_SAVE_ERR);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 
 	fprintf(stderr, "Renamed %s -> %s\n", old_name, new_name);
 	LOG_INFO("renamed %s -> %s", old_name, new_name);
 
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return 0;
 }
 

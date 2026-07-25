@@ -43,27 +43,13 @@ static bool        g_use_color  = false;
 static void default_log_handler(FILE *out, Log_level_t level)
 {
 	switch (level) {
-	case LOG_LEVEL_FATAL:
-		fprintf(out, "[FATAL] ");
-		break;
-	case LOG_LEVEL_ERROR:
-		fprintf(out, "[ERROR] ");
-		break;
-	case LOG_LEVEL_WARN:
-		fprintf(out, "[WARN ] ");
-		break;
-	case LOG_LEVEL_INFO:
-		fprintf(out, "[INFO ] ");
-		break;
-	case LOG_LEVEL_DEBUG:
-		fprintf(out, "[DEBUG] ");
-		break;
-	case LOG_LEVEL_TRACE:
-		fprintf(out, "[TRACE] ");
-		break;
-	default:
-		fprintf(out, "[UNKWN] ");
-		break;
+		case LOG_LEVEL_FATAL: fprintf(out, "[FATAL] "); break;
+		case LOG_LEVEL_ERROR: fprintf(out, "[ERROR] "); break;
+		case LOG_LEVEL_WARN:  fprintf(out, "[WARN ] "); break;
+		case LOG_LEVEL_INFO:  fprintf(out, "[INFO ] "); break;
+		case LOG_LEVEL_DEBUG: fprintf(out, "[DEBUG] "); break;
+		case LOG_LEVEL_TRACE: fprintf(out, "[TRACE] "); break;
+		default:              fprintf(out, "[UNKWN] "); break;
 	}
 }
 
@@ -71,31 +57,33 @@ static void default_log_handler(FILE *out, Log_level_t level)
 static void color_log_handler(FILE *out, Log_level_t level)
 {
 	switch (level) {
-	case LOG_LEVEL_FATAL:
-		fprintf(out, "💀 [" COLOR_BOLD_BLUE "FATAL" COLOR_RESET "] ");
-		break;
-	case LOG_LEVEL_ERROR:
-		fprintf(out, "🚨 [" COLOR_BOLD_RED "ERROR" COLOR_RESET "] ");
-		break;
-	case LOG_LEVEL_WARN:
-		fprintf(out, "⚠️  [" COLOR_BOLD_YELLOW "WARN " COLOR_RESET "] ");
-		break;
-	case LOG_LEVEL_INFO:
-		fprintf(out, "ℹ️  [" COLOR_BOLD_GREEN "INFO " COLOR_RESET "] ");
-		break;
-	case LOG_LEVEL_DEBUG:
-		fprintf(out, "🛠️  [" COLOR_BOLD_CYAN "DEBUG" COLOR_RESET "] ");
-		break;
-	case LOG_LEVEL_TRACE:
-		fprintf(out, "🔬 [" COLOR_BOLD_MAGENTA "TRACE" COLOR_RESET "] ");
-		break;
-	default:
-		fprintf(out, "[" COLOR_BOLD_BLUE "UNKWN" COLOR_RESET "] ");
-		break;
+		case LOG_LEVEL_FATAL:
+			fprintf(out, "💀 [" COLOR_BOLD_BLUE "FATAL" COLOR_RESET "] ");
+			break;
+		case LOG_LEVEL_ERROR:
+			fprintf(out, "🚨 [" COLOR_BOLD_RED "ERROR" COLOR_RESET "] ");
+			break;
+		case LOG_LEVEL_WARN:
+			fprintf(out, "⚠️  [" COLOR_BOLD_YELLOW "WARN " COLOR_RESET "] ");
+			break;
+		case LOG_LEVEL_INFO:
+			fprintf(out, "ℹ️  [" COLOR_BOLD_GREEN "INFO " COLOR_RESET "] ");
+			break;
+		case LOG_LEVEL_DEBUG:
+			fprintf(out, "🛠️  [" COLOR_BOLD_CYAN "DEBUG" COLOR_RESET "] ");
+			break;
+		case LOG_LEVEL_TRACE:
+			fprintf(out, "🔬 [" COLOR_BOLD_MAGENTA "TRACE" COLOR_RESET "] ");
+			break;
+		default:
+			fprintf(out, "[" COLOR_BOLD_BLUE "UNKWN" COLOR_RESET "] ");
+			break;
 	}
 }
 
+
 #ifdef LOG_SHOW_TIME_STAMP
+
 static void log_time_stamp_handler(FILE *out, bool use_color)
 {
 	struct timespec ts;
@@ -115,7 +103,9 @@ static void log_time_stamp_handler(FILE *out, bool use_color)
 	if (use_color)
 		fprintf(out, COLOR_RESET);
 }
-#endif
+
+#endif  // LOG_SHOW_TIME_STAMP
+
 
 // Initialise the logger. May be called multiple times.
 void log_init(const char *file_path, Log_level_t level)
@@ -189,8 +179,7 @@ void log_record(Log_level_t level,
 		        "%s[LOG] error: log_init() not called — dropping message%s",
 		        color ? COLOR_BOLD_RED : "",
 		        color ? COLOR_RESET : "");
-		if (new_line)
-			fputc('\n', stderr);
+		if (new_line) fputc('\n', stderr);
 		return;
 	}
 

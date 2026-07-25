@@ -17,8 +17,8 @@
  * Format: /absolute/path:name[:tags[:groups]] (one per line)
  */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _CONFIG__H_
+#define _CONFIG__H_
 
 
 #include <stdbool.h>
@@ -41,7 +41,7 @@ typedef struct {
 	char  groups[GROUP_BUF_SIZE];   /* comma-separated groups, or "" */
 } RepoEntry;
 
-typedef struct {
+typedef struct GitConfig {
 	RepoEntry *entries;
 	size_t     count;
 	size_t     capacity;
@@ -139,4 +139,4 @@ int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count
 #endif
 
 
-#endif  // _CONFIG_H_
+#endif  // _CONFIG__H_

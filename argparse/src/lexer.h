@@ -8,8 +8,8 @@
  * lexer.h — Tokenizer for argv
  */
 
-#ifndef _LEXER_H_
-#define _LEXER_H_
+#ifndef _LEXER__H_
+#define _LEXER__H_
 
 
 #include <stdbool.h>
@@ -40,4 +40,4 @@ void lexer_init(Lexer *lex, int argc, char **argv);
 Token lexer_next(Lexer *lex);
 
 
-#endif  // _LEXER_H_
+#endif  // _LEXER__H_

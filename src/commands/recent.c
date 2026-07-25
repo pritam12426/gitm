@@ -10,6 +10,8 @@
  * Lists repos sorted by last commit date (most recent first).
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,15 +79,13 @@ static int cmd_recent(const ArgParseResult *result)
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
 	RepoDate *repos = calloc(cfg.count, sizeof(RepoDate));
 	if (!repos) {
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 
@@ -146,8 +146,7 @@ static int cmd_recent(const ArgParseResult *result)
 	}
 
 	free(repos);
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return 0;
 }
 

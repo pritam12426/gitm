@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 
 #include "cmd.h"
+#include "cmd_util.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
@@ -91,23 +92,14 @@ static int cmd_summary(const ArgParseResult *result)
 	(void) result;
 
 	LOG_TRACE("cmd_summary");
-	char *config_path = config_default_path();
-	if (!config_path) {
-		LOG_ERROR(MSG_CFG_PATH_ERR);
-		return 1;
-	}
-
 	GitConfig cfg = { 0 };
-	if (config_load(config_path, &cfg) != 0) {
-		LOG_ERROR(MSG_CFG_LOAD_ERR);
-		free(config_path);
+	char      *config_path = NULL;
+	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
-	}
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
@@ -137,8 +129,7 @@ static int cmd_summary(const ArgParseResult *result)
 	fprintf(stdout, "Branches: %d\n", total_branches);
 	fprintf(stdout, "Size:     %s\n", size_buf);
 
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return 0;
 }
 

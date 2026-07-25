@@ -18,8 +18,8 @@
  *   table_free(t);
  */
 
-#ifndef _TABLE_H_
-#define _TABLE_H_
+#ifndef _TABLE__H_
+#define _TABLE__H_
 
 
 #include <stdbool.h>
@@ -91,4 +91,4 @@ void table_free(Table *table);
 #endif
 
 
-#endif  // _TABLE_H_
+#endif  // _TABLE__H_

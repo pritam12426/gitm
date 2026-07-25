@@ -14,14 +14,15 @@ HEADERS   = $(wildcard include/*.h)
 SRC       += $(wildcard src/*.c)
 SRC       += $(wildcard src/commands/*.c)
 SRC       += $(wildcard src/config/*.c)
-SRC       += $(wildcard src/core/*.c)
 SRC       += $(wildcard src/git/*.c)
 SRC       += $(wildcard src/util/*.c)
 
 # Argparse library
 SRC       += $(wildcard argparse/src/*.c)
 
-CFLAGS += -Isrc -Iinclude -Iargparse/include -std=c17 -DCOMPILED_TIME_PREFIX='"$(PREFIX)"'
+CFLAGS += -MMD -MP -std=c17 \
+          -Isrc -Iinclude \
+          -Iargparse/include
 
 CFLAGS +=  -Wshadow -Wconversion \
            -Wall -Wextra -Wpedantic \
@@ -118,5 +119,7 @@ uninstall:  ## Uninstall the gitm binary
 
 strip: $(BIN)  ## Strip the gitm binary
 	$(STRIP) $^
+
+-include $(OUT:.o=.d)
 
 .PHONY: all install uninstall strip clean debug

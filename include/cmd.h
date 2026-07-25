@@ -8,8 +8,8 @@
  * cmd.h — Command declarations
  */
 
-#ifndef _CMD_H_
-#define _CMD_H_
+#ifndef _CMD__H_
+#define _CMD__H_
 
 
 #include <stdbool.h>
@@ -48,4 +48,4 @@ void cmd_register_clone(ArgParser *parser);
 void cmd_register_stats(ArgParser *parser);
 
 
-#endif  // _CMD_H_
+#endif  // _CMD__H_

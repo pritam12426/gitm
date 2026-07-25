@@ -10,10 +10,13 @@
  * Prints a frequency summary of tags and groups across all registered repos.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ansi_color.h"
 #include "cmd.h"
 #include "cmd_util.h"
 #include "config.h"
@@ -117,14 +120,14 @@ static void parse_tokens(FreqMap *m, const char *csv)
 static void print_plain(const char *title, const FreqMap *m, bool color)
 {
 	if (color)
-		fprintf(stderr, "\n\x1b[1m%s\x1b[0m\n", title);
+		fprintf(stderr, "\n%s%s%s%s\n", ANSI_BOLD, title, ANSI_RESET, "");
 	else
 		fprintf(stderr, "\n%s\n", title);
 
 	for (size_t i = 0; i < m->count; i++) {
 		if (color)
-			fprintf(stderr, "  \x1b[33m%-20s\x1b[0m %zu\n",
-			        m->items[i].name, m->items[i].count);
+			fprintf(stderr, "  %s%-20s%s %zu\n",
+			        ANSI_FG_YELLOW, m->items[i].name, ANSI_RESET, m->items[i].count);
 		else
 			fprintf(stderr, "  %-20s %zu\n",
 			        m->items[i].name, m->items[i].count);
@@ -132,8 +135,8 @@ static void print_plain(const char *title, const FreqMap *m, bool color)
 
 	if (m->none_count > 0) {
 		if (color)
-			fprintf(stderr, "  \x1b[33m%-20s\x1b[0m %zu\n",
-			        "(none)", m->none_count);
+			fprintf(stderr, "  %s%-20s%s %zu\n",
+			        ANSI_FG_YELLOW, "(none)", ANSI_RESET, m->none_count);
 		else
 			fprintf(stderr, "  %-20s %zu\n",
 			        "(none)", m->none_count);
@@ -176,8 +179,7 @@ static int cmd_stats(const ArgParseResult *result)
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
@@ -216,8 +218,7 @@ static int cmd_stats(const ArgParseResult *result)
 
 	freq_map_free(&tags);
 	freq_map_free(&groups);
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return 0;
 }
 

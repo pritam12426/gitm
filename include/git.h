@@ -11,8 +11,8 @@
  * Uses process_exec() internally.
  */
 
-#ifndef _GIT_H_
-#define _GIT_H_
+#ifndef _GIT__H_
+#define _GIT__H_
 
 
 #include <stdbool.h>
@@ -73,4 +73,4 @@ char *git_current_branch(const char *path);
 #endif
 
 
-#endif  // _GIT_H_
+#endif  // _GIT__H_

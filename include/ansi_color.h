@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef _ANSI_COLOR_H_
-#define _ANSI_COLOR_H_
+#ifndef _ANSI_COLOR__H_
+#define _ANSI_COLOR__H_
 
 
 
@@ -139,4 +139,4 @@
 
 
 
-#endif  // _ANSI_COLOR_H_
+#endif  // _ANSI_COLOR__H_

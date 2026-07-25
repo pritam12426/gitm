@@ -10,10 +10,13 @@
  * Shows git status for all registered repos with colour.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ansi_color.h"
 #include "cmd.h"
 #include "cmd_util.h"
 #include "config.h"
@@ -24,19 +27,10 @@
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-// ANSI codes
-#define C_RESET  "\x1b[0m"
-#define C_BOLD   "\x1b[1m"
-#define C_RED    "\x1b[31m"
-#define C_GREEN  "\x1b[32m"
-#define C_YELLOW "\x1b[33m"
-#define C_CYAN   "\x1b[36m"
-#define C_DIM    "\x1b[2m"
-
 static void print_header(const char *name, const char *path, bool color)
 {
 	if (color)
-		fprintf(stderr, "\n%s%s%s%s %s(%s)%s\n", C_BOLD, C_CYAN, name, C_RESET, C_DIM, path, C_RESET);
+		fprintf(stderr, "\n%s%s%s%s %s(%s)%s\n", ANSI_BOLD, ANSI_FG_CYAN, name, ANSI_RESET, ANSI_DIM, path, ANSI_RESET);
 	else
 		fprintf(stderr, "\n%s (%s)\n", name, path);
 }
@@ -44,7 +38,7 @@ static void print_header(const char *name, const char *path, bool color)
 static void print_clean(bool color)
 {
 	if (color)
-		fprintf(stderr, "  %sgreen%s\n", C_GREEN, C_RESET);
+		fprintf(stderr, "  %sgreen%s\n", ANSI_FG_GREEN, ANSI_RESET);
 	else
 		fprintf(stderr, "  clean\n");
 }
@@ -52,7 +46,7 @@ static void print_clean(bool color)
 static void print_error(bool color)
 {
 	if (color)
-		fprintf(stderr, "  %serror: could not get status%s\n", C_RED, C_RESET);
+		fprintf(stderr, "  %serror: could not get status%s\n", ANSI_FG_RED, ANSI_RESET);
 	else
 		fprintf(stderr, "  error: could not get status\n");
 }
@@ -71,15 +65,15 @@ static void print_status_line(const char *line, bool color)
 
 	// Determine colour from the more "severe" status
 	if (x == '?' || y == '?')
-		fprintf(stderr, "  %s%s%s\n", C_RED, line, C_RESET);
+		fprintf(stderr, "  %s%s%s\n", ANSI_FG_RED, line, ANSI_RESET);
 	else if (x == 'D' || y == 'D')
-		fprintf(stderr, "  %s%s%s\n", C_RED, line, C_RESET);
+		fprintf(stderr, "  %s%s%s\n", ANSI_FG_RED, line, ANSI_RESET);
 	else if (x == 'A' || y == 'A')
-		fprintf(stderr, "  %s%s%s\n", C_GREEN, line, C_RESET);
+		fprintf(stderr, "  %s%s%s\n", ANSI_FG_GREEN, line, ANSI_RESET);
 	else if (x == 'M' || y == 'M')
-		fprintf(stderr, "  %s%s%s\n", C_YELLOW, line, C_RESET);
+		fprintf(stderr, "  %s%s%s\n", ANSI_FG_YELLOW, line, ANSI_RESET);
 	else if (x == 'R' || y == 'R')
-		fprintf(stderr, "  %s%s%s\n", C_CYAN, line, C_RESET);
+		fprintf(stderr, "  %s%s%s\n", ANSI_FG_CYAN, line, ANSI_RESET);
 	else
 		fprintf(stderr, "  %s\n", line);
 }
@@ -100,16 +94,14 @@ static int cmd_status(const ArgParseResult *result)
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
 	size_t *indices = calloc(cfg.count, sizeof(size_t));
 	if (!indices) {
 		LOG_ERROR("allocation failed for %zu repos", cfg.count);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}
 	size_t  filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
@@ -185,17 +177,17 @@ static int cmd_status(const ArgParseResult *result)
 			/* Color the status */
 			if (color && strcmp(status_str, "clean") == 0) {
 				char colored[MAX_NAME_LEN];
-				snprintf(colored, sizeof(colored), "\x1b[32m%s\x1b[0m", status_str);
+				ansi_colorize(colored, sizeof(colored), status_str, ANSI_FG_GREEN);
 				const char *cells[] = { e->name, colored, branch_str };
 				table_add_row_raw(t, cells, 3);
 			} else if (color && strcmp(status_str, "error") == 0) {
 				char colored[MAX_NAME_LEN];
-				snprintf(colored, sizeof(colored), "\x1b[31m%s\x1b[0m", status_str);
+				ansi_colorize(colored, sizeof(colored), status_str, ANSI_FG_RED);
 				const char *cells[] = { e->name, colored, branch_str };
 				table_add_row_raw(t, cells, 3);
 			} else if (color) {
 				char colored[MAX_NAME_LEN];
-				snprintf(colored, sizeof(colored), "\x1b[33m%s\x1b[0m", status_str);
+				ansi_colorize(colored, sizeof(colored), status_str, ANSI_FG_YELLOW);
 				const char *cells[] = { e->name, colored, branch_str };
 				table_add_row_raw(t, cells, 3);
 			} else {
@@ -245,8 +237,7 @@ static int cmd_status(const ArgParseResult *result)
 	}
 
 	free(indices);
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return 0;
 }
 

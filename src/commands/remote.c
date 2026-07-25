@@ -10,10 +10,13 @@
  * Shows remote settings for all registered repos.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ansi_color.h"
 #include "cmd.h"
 #include "cmd_util.h"
 #include "config.h"
@@ -31,18 +34,12 @@ static void print_remotes(const char *name, const char *path, bool color)
 	    : git_exec(path, "remote", "-v", NULL);
 
 	if (r.exit_code != 0 || r.stdout_len == 0) {
-		if (color)
-			fprintf(stderr, "\n\x1b[1m\x1b[36m%s\x1b[0m\n  \x1b[2m(no remotes)\x1b[0m\n", name);
-		else
-			fprintf(stderr, "\n%s\n  (no remotes)\n", name);
+		ansi_print_repo_empty(name, "(no remotes)", color);
 		process_result_free(&r);
 		return;
 	}
 
-	if (color)
-		fprintf(stderr, "\n\x1b[1m\x1b[36m%s\x1b[0m\n", name);
-	else
-		fprintf(stderr, "\n%s\n", name);
+	ansi_print_repo_header(name, color);
 
 	/* Git output already has colours (FORCE_COLOR=1) — pass through */
 	fputs(r.stdout_buf, stderr);
@@ -66,8 +63,7 @@ static int cmd_remote(const ArgParseResult *result)
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
-		config_free(&cfg);
-		free(config_path);
+		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
 
@@ -154,8 +150,7 @@ static int cmd_remote(const ArgParseResult *result)
 		}
 	}
 
-	config_free(&cfg);
-	free(config_path);
+	cmd_cleanup(&cfg, config_path);
 	return 0;
 }
 

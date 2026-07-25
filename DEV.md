@@ -149,7 +149,7 @@ gitm/
 
 - C17 standard, tabs for indentation (4-width), 100-column limit
 - Format with `make format` (uses `.clang-format`)
-- Header guards: `_NAME_H_` pattern
+- Header guards: `_NAME__H_` pattern
 - MIT license header on every `.c` and `.h` file
 
 ### Adding a Command

@@ -12,11 +12,9 @@
  * remote, list-tag, recent, and doctor.
  */
 
-#ifndef _CMD_UTIL_H_
-#define _CMD_UTIL_H_
+#ifndef _CMD_UTIL__H_
+#define _CMD_UTIL__H_
 
-
-#define _POSIX_C_SOURCE 200809L
 
 #include <stddef.h>
 #include <unistd.h>
@@ -68,4 +66,4 @@ void cmd_register_filter_flags(ArgCommand *cmd,
 #endif
 
 
-#endif  // _CMD_UTIL_H_
+#endif  // _CMD_UTIL__H_

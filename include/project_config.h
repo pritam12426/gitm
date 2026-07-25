@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef _PROJECT_CONFIG_H_
-#define _PROJECT_CONFIG_H_
+#ifndef _PROJECT_CONFIG__H_
+#define _PROJECT_CONFIG__H_
 
 
 #define GITM                  "gitm"
@@ -23,4 +23,4 @@
 #define AUTH_MESSAGE          "Author: Pritam <84720825+pritam12426@users.noreply.github.com>"
 
 
-#endif  // _PROJECT_CONFIG_H_
+#endif  // _PROJECT_CONFIG__H_
