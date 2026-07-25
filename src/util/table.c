@@ -47,23 +47,6 @@ static size_t visible_width(const char *s)
 	return width;
 }
 
-/* Pad string to target width with spaces. Writes to out. */
-static void pad_right(FILE *out, const char *str, size_t target_width, bool is_last)
-{
-	size_t w = visible_width(str);
-	fputs(str, out);
-
-	if (!is_last) {
-		size_t padding = (target_width > w) ? target_width - w : 0;
-		for (size_t i = 0; i < padding + 1; i++)
-			fputc(' ', out);
-		fputc('|', out);
-		fputc(' ', out);
-	} else {
-		fputc('\n', out);
-	}
-}
-
 /* ── Table creation ──────────────────────────────────────────────────────────── */
 
 Table *table_create(int col_count, const char **headers)
@@ -78,13 +61,8 @@ Table *table_create(int col_count, const char **headers)
 	t->use_color   = isatty(fileno(stdout)); /* default: auto-detect */
 
 	if (headers) {
-		t->headers = calloc((size_t) col_count, sizeof(char *));
-		if (!t->headers) {
-			free(t);
-			return NULL;
-		}
-		for (int i = 0; i < col_count; i++)
-			t->headers[i] = headers[i] ? strdup(headers[i]) : strdup("");
+		for (int i = 0; i < col_count && i < 8; i++)
+			t->headers[i] = headers[i];
 	}
 
 	return t;
@@ -105,14 +83,11 @@ int table_add_row(Table *table, ...)
 	}
 
 	TableRow *row = &table->rows[table->row_count];
-	row->cells = calloc((size_t) table->col_count, sizeof(char *));
-	if (!row->cells)
-		return -1;
 	row->count = table->col_count;
 
 	va_list ap;
 	va_start(ap, table);
-	for (int i = 0; i < table->col_count; i++) {
+	for (int i = 0; i < table->col_count && i < 8; i++) {
 		const char *cell = va_arg(ap, const char *);
 		row->cells[i] = cell ? strdup(cell) : strdup("");
 	}
@@ -137,12 +112,9 @@ int table_add_row_raw(Table *table, const char **cells, int count)
 	}
 
 	TableRow *row = &table->rows[table->row_count];
-	row->cells = calloc((size_t) table->col_count, sizeof(char *));
-	if (!row->cells)
-		return -1;
 	row->count = table->col_count;
 
-	for (int i = 0; i < table->col_count; i++)
+	for (int i = 0; i < table->col_count && i < 8; i++)
 		row->cells[i] = cells[i] ? strdup(cells[i]) : strdup("");
 
 	table->row_count++;
@@ -171,14 +143,14 @@ void table_print(const Table *table, FILE *out)
 	LOG_TRACE("table_print: calculating column widths (%d cols, %zu rows)",
 	          table->col_count, table->row_count);
 
-	/* Calculate max width per column */
-	size_t *widths = calloc((size_t) table->col_count, sizeof(size_t));
-	if (!widths)
-		return;
+	/* Calculate max width per column — stack, no heap */
+	size_t widths[8] = { 0 };
 
 	/* Header widths */
-	if (table->show_header && table->headers) {
-		for (int i = 0; i < table->col_count; i++) {
+	if (table->show_header) {
+		for (int i = 0; i < table->col_count && i < 8; i++) {
+			if (!table->headers[i])
+				continue;
 			size_t w = visible_width(table->headers[i]);
 			if (w > widths[i])
 				widths[i] = w;
@@ -195,11 +167,13 @@ void table_print(const Table *table, FILE *out)
 	}
 
 	/* Print header */
-	if (table->show_header && table->headers) {
+	if (table->show_header) {
 		LOG_TRACE("table_print: printing header");
 		for (int i = 0; i < table->col_count; i++) {
 			const char *hdr = table->headers[i];
-			size_t      w   = visible_width(hdr);
+			if (!hdr)
+				hdr = "";
+			size_t w = visible_width(hdr);
 
 			if (table->use_color)
 				fprintf(out, "\x1b[1m%s\x1b[0m", hdr);
@@ -237,11 +211,23 @@ void table_print(const Table *table, FILE *out)
 	for (size_t r = 0; r < table->row_count; r++) {
 		const TableRow *row = &table->rows[r];
 		for (int c = 0; c < row->count && c < table->col_count; c++) {
-			pad_right(out, row->cells[c], widths[c], c == table->col_count - 1);
+			const char *cell = row->cells[c] ? row->cells[c] : "";
+			size_t w = visible_width(cell);
+
+			fputs(cell, out);
+
+			if (c < table->col_count - 1) {
+				size_t padding = (widths[c] > w) ? widths[c] - w : 0;
+				for (size_t p = 0; p < padding + 1; p++)
+					fputc(' ', out);
+				fputc('|', out);
+				fputc(' ', out);
+			} else {
+				fputc('\n', out);
+			}
 		}
 	}
 
-	free(widths);
 	LOG_TRACE("table_print: done");
 }
 
@@ -253,15 +239,10 @@ void table_free(Table *table)
 	for (size_t r = 0; r < table->row_count; r++) {
 		for (int c = 0; c < table->rows[r].count; c++)
 			free(table->rows[r].cells[c]);
-		free(table->rows[r].cells);
 	}
 	free(table->rows);
 
-	if (table->headers) {
-		for (int i = 0; i < table->col_count; i++)
-			free((void *) table->headers[i]);
-		free(table->headers);
-	}
+	/* headers are inline const char* — nothing to free */
 
 	free(table);
 }

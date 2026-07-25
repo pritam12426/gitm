@@ -43,18 +43,11 @@ static int cmd_doctor(const ArgParseResult *result)
 		return 0;
 	}
 
-	/* Collect results */
-	size_t *indices   = calloc(cfg.count, sizeof(size_t));
-	char  **statuses  = calloc(cfg.count, sizeof(char *));
-	if (!indices || !statuses) {
-		LOG_ERROR("allocation failed for %zu repos", cfg.count);
-		free(indices);
-		free(statuses);
-		cmd_cleanup(&cfg, config_path);
-		return 1;
-	}
-	size_t  checked   = 0;
-	int     errors    = 0;
+	/* Stack arrays — no heap */
+	size_t      indices[MAX_REPOS];
+	const char *statuses[MAX_REPOS];
+	size_t      checked = 0;
+	int         errors  = 0;
 
 	LOG_DEBUG("running health check on %zu repos", cfg.count);
 
@@ -68,16 +61,16 @@ static int cmd_doctor(const ArgParseResult *result)
 
 		struct stat st;
 		if (stat(cfg.entries[i].path, &st) != 0) {
-			statuses[checked] = strdup("MISSING");
+			statuses[checked] = "MISSING";
 			errors++;
 		} else if (!S_ISDIR(st.st_mode)) {
-			statuses[checked] = strdup("NOT A DIRECTORY");
+			statuses[checked] = "NOT A DIRECTORY";
 			errors++;
 		} else if (!git_is_repo(cfg.entries[i].path)) {
-			statuses[checked] = strdup("NOT A GIT REPO");
+			statuses[checked] = "NOT A GIT REPO";
 			errors++;
 		} else {
-			statuses[checked] = strdup("ok");
+			statuses[checked] = "ok";
 		}
 
 		indices[checked] = i;
@@ -95,14 +88,10 @@ static int cmd_doctor(const ArgParseResult *result)
 			const char *status = statuses[i];
 			bool is_ok = (strcmp(status, "ok") == 0);
 
-			if (color && is_ok) {
+			if (color) {
 				char colored[128];
-				ansi_colorize(colored, sizeof(colored), status, ANSI_FG_GREEN);
-				const char *cells[] = { name, colored };
-				table_add_row_raw(t, cells, 2);
-			} else if (color && !is_ok) {
-				char colored[128];
-				ansi_colorize(colored, sizeof(colored), status, ANSI_FG_RED);
+				ansi_colorize(colored, sizeof(colored), status,
+				              is_ok ? ANSI_FG_GREEN : ANSI_FG_RED);
 				const char *cells[] = { name, colored };
 				table_add_row_raw(t, cells, 2);
 			} else {
@@ -124,11 +113,6 @@ static int cmd_doctor(const ArgParseResult *result)
 	else
 		LOG_INFO("all %zu repos passed health check", checked);
 
-	/* Cleanup */
-	for (size_t i = 0; i < checked; i++)
-		free(statuses[i]);
-	free(statuses);
-	free(indices);
 	cmd_cleanup(&cfg, config_path);
 	return errors > 0 ? 1 : 0;
 }

@@ -119,6 +119,11 @@ int config_load(const char *path, GitConfig *cfg)
 			continue;
 		}
 
+		if (cfg->count >= MAX_REPOS) {
+			LOG_WARN("repo limit reached (%d), skipping: %s", MAX_REPOS, name_str);
+			continue;
+		}
+
 		if (config_ensure_capacity(cfg) != 0) {
 			fclose(f);
 			return -1;

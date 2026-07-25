@@ -43,12 +43,7 @@ static int cmd_list(const ArgParseResult *result)
 		return 0;
 	}
 
-	size_t *indices = calloc(cfg.count, sizeof(size_t));
-	if (!indices) {
-		LOG_ERROR("allocation failed for %zu repos", cfg.count);
-		cmd_cleanup(&cfg, config_path);
-		return 1;
-	}
+	size_t indices[MAX_REPOS];
 	size_t  filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group,
 	                                     indices, cfg.count);
 
@@ -58,7 +53,6 @@ static int cmd_list(const ArgParseResult *result)
 
 	if (filtered == 0) {
 		fprintf(stderr, "No repos match the given filters.\n");
-		free(indices);
 		cmd_cleanup(&cfg, config_path);
 		return 0;
 	}
@@ -87,7 +81,6 @@ static int cmd_list(const ArgParseResult *result)
 		}
 	}
 
-	free(indices);
 	cmd_cleanup(&cfg, config_path);
 	return 0;
 }

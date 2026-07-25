@@ -22,6 +22,9 @@ typedef struct GitConfig GitConfig;
 #define MAX_TAGS   10
 #define MAX_GROUPS 10
 
+/* Repository limit (enables stack allocation across commands) */
+#define MAX_REPOS  50
+
 /* Buffer sizes */
 #define MAX_PATH_LEN   512
 #define MAX_NAME_LEN   256

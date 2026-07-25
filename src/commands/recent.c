@@ -29,7 +29,7 @@ static const char *filter_group = NULL;
 typedef struct {
 	const char *name;
 	const char *path;
-	char       *date_str;
+	char        date_str[32]; /* inline — no heap */
 	long        timestamp;
 } RepoDate;
 
@@ -83,13 +83,10 @@ static int cmd_recent(const ArgParseResult *result)
 		return 0;
 	}
 
-	RepoDate *repos = calloc(cfg.count, sizeof(RepoDate));
-	if (!repos) {
-		cmd_cleanup(&cfg, config_path);
-		return 1;
-	}
-
+	/* Stack array — no heap */
+	RepoDate repos[MAX_REPOS];
 	size_t repo_count = 0;
+
 	for (size_t i = 0; i < cfg.count; i++) {
 		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
 			continue;
@@ -105,16 +102,18 @@ static int cmd_recent(const ArgParseResult *result)
 		                           "log", "-1", "--format=%ci", "HEAD", NULL);
 
 		if (r.exit_code == 0 && r.stdout_len > 0) {
-			// Strip newline
-			char *date = strdup(r.stdout_buf);
-			size_t len = strlen(date);
-			if (len > 0 && date[len - 1] == '\n')
-				date[len - 1] = '\0';
+			// Copy into inline buffer — strip newline
+			size_t len = r.stdout_len;
+			if (len > 0 && r.stdout_buf[len - 1] == '\n')
+				len--;
+			if (len >= sizeof(repos[0].date_str))
+				len = sizeof(repos[0].date_str) - 1;
+			memcpy(repos[repo_count].date_str, r.stdout_buf, len);
+			repos[repo_count].date_str[len] = '\0';
 
-			repos[repo_count].date_str  = date;
-			repos[repo_count].timestamp = parse_date_to_timestamp(date);
+			repos[repo_count].timestamp = parse_date_to_timestamp(repos[repo_count].date_str);
 		} else {
-			repos[repo_count].date_str  = strdup("unknown");
+			strcpy(repos[repo_count].date_str, "unknown");
 			repos[repo_count].timestamp = 0;
 		}
 
@@ -131,21 +130,16 @@ static int cmd_recent(const ArgParseResult *result)
 		Table *t = table_create(3, headers);
 		table_set_color(t, CMD_COLOR());
 
-		for (size_t i = 0; i < repo_count; i++) {
+		for (size_t i = 0; i < repo_count; i++)
 			table_add_row(t, repos[i].name, repos[i].path, repos[i].date_str);
-			free((char *) repos[i].date_str);
-		}
 
 		table_print(t, stdout);
 		table_free(t);
 	} else {
-		for (size_t i = 0; i < repo_count; i++) {
+		for (size_t i = 0; i < repo_count; i++)
 			fprintf(stdout, "%-20s %-40s %s\n", repos[i].name, repos[i].path, repos[i].date_str);
-			free((char *) repos[i].date_str);
-		}
 	}
 
-	free(repos);
 	cmd_cleanup(&cfg, config_path);
 	return 0;
 }

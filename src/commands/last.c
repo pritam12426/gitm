@@ -97,8 +97,12 @@ static int cmd_last(const ArgParseResult *result)
 				const char *cells[] = { cfg.entries[i].name, "-", "-", "-", "(no commits)" };
 				table_add_row_raw(t, cells, 5);
 			} else {
-				char *line = strdup(r.stdout_buf);
-				size_t len = strlen(line);
+				char line[PROCESS_BUF_SIZE];
+				size_t len = r.stdout_len;
+				if (len >= sizeof(line))
+					len = sizeof(line) - 1;
+				memcpy(line, r.stdout_buf, len);
+				line[len] = '\0';
 				if (len > 0 && line[len - 1] == '\n')
 					line[len - 1] = '\0';
 
@@ -116,8 +120,6 @@ static int cmd_last(const ArgParseResult *result)
 					msg ? msg : "-"
 				};
 				table_add_row_raw(t, cells, 5);
-
-				free(line);
 			}
 
 			process_result_free(&r);

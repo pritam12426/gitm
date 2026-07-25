@@ -33,8 +33,8 @@ extern "C" {
 
 
 typedef struct {
-	char **cells;      /* array of cell strings (may contain ANSI codes) */
-	int    count;      /* number of cells in this row */
+	char *cells[8];          /* owning cell strings (strdup'd) — inline ptr array */
+	int   count;             /* number of cells in this row */
 } TableRow;
 
 typedef struct {
@@ -42,8 +42,8 @@ typedef struct {
 	size_t    row_count;
 	size_t    row_capacity;
 
-	const char **headers;
-	int          col_count;
+	const char *headers[8]; /* column headers — inline, no heap */
+	int         col_count;
 
 	bool show_header;
 	bool use_color;
