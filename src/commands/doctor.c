@@ -44,6 +44,14 @@ static int cmd_doctor(const ArgParseResult *result)
 	/* Collect results */
 	size_t *indices   = calloc(cfg.count, sizeof(size_t));
 	char  **statuses  = calloc(cfg.count, sizeof(char *));
+	if (!indices || !statuses) {
+		LOG_ERROR("allocation failed for %zu repos", cfg.count);
+		free(indices);
+		free(statuses);
+		config_free(&cfg);
+		free(config_path);
+		return 1;
+	}
 	size_t  checked   = 0;
 	int     errors    = 0;
 

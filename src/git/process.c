@@ -97,8 +97,10 @@ ProcessResult process_exec(const char *cwd, char *const argv[])
 	ssize_t n;
 
 	while ((n = read(stdout_pipe[0], tmp, sizeof(tmp))) > 0) {
-		if (buf_append(&std_out, &out_len, &out_cap, tmp, (size_t) n) != 0)
+		if (buf_append(&std_out, &out_len, &out_cap, tmp, (size_t) n) != 0) {
+			LOG_ERROR("stdout capture: allocation failed, output truncated");
 			break;
+		}
 	}
 	close(stdout_pipe[0]);
 
@@ -107,8 +109,10 @@ ProcessResult process_exec(const char *cwd, char *const argv[])
 	size_t err_len = 0, err_cap = 0;
 
 	while ((n = read(stderr_pipe[0], tmp, sizeof(tmp))) > 0) {
-		if (buf_append(&std_err, &err_len, &err_cap, tmp, (size_t) n) != 0)
+		if (buf_append(&std_err, &err_len, &err_cap, tmp, (size_t) n) != 0) {
+			LOG_ERROR("stderr capture: allocation failed, output truncated");
 			break;
+		}
 	}
 	close(stderr_pipe[0]);
 
@@ -185,8 +189,10 @@ ProcessResult process_exec_colored(const char *cwd, char *const argv[])
 	ssize_t n;
 
 	while ((n = read(stdout_pipe[0], tmp, sizeof(tmp))) > 0) {
-		if (buf_append(&std_out, &out_len, &out_cap, tmp, (size_t) n) != 0)
+		if (buf_append(&std_out, &out_len, &out_cap, tmp, (size_t) n) != 0) {
+			LOG_ERROR("stdout capture (color): allocation failed, output truncated");
 			break;
+		}
 	}
 	close(stdout_pipe[0]);
 
@@ -195,8 +201,10 @@ ProcessResult process_exec_colored(const char *cwd, char *const argv[])
 	size_t err_len = 0, err_cap = 0;
 
 	while ((n = read(stderr_pipe[0], tmp, sizeof(tmp))) > 0) {
-		if (buf_append(&std_err, &err_len, &err_cap, tmp, (size_t) n) != 0)
+		if (buf_append(&std_err, &err_len, &err_cap, tmp, (size_t) n) != 0) {
+			LOG_ERROR("stderr capture (color): allocation failed, output truncated");
 			break;
+		}
 	}
 	close(stderr_pipe[0]);
 
