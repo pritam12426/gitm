@@ -23,10 +23,36 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
 #include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
+
+typedef struct {
+	const char *status;
+	bool        is_ok;
+} DoctorResult;
+
+static void doctor_collect(const RepoEntry *entry, void *out)
+{
+	DoctorResult *r = out;
+
+	struct stat st;
+	if (stat(entry->path, &st) != 0) {
+		r->status = "MISSING";
+		r->is_ok  = false;
+	} else if (!S_ISDIR(st.st_mode)) {
+		r->status = "NOT A DIRECTORY";
+		r->is_ok  = false;
+	} else if (!git_is_repo(entry->path)) {
+		r->status = "NOT A GIT REPO";
+		r->is_ok  = false;
+	} else {
+		r->status = "ok";
+		r->is_ok  = true;
+	}
+}
 
 static int cmd_doctor(const ArgParseResult *result)
 {
@@ -43,38 +69,22 @@ static int cmd_doctor(const ArgParseResult *result)
 		return 0;
 	}
 
-	/* Stack arrays — no heap */
-	size_t      indices[MAX_REPOS];
-	const char *statuses[MAX_REPOS];
-	size_t      checked = 0;
-	int         errors  = 0;
+	size_t indices[MAX_REPOS];
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
+	                                     indices, cfg.count);
 
-	LOG_DEBUG("running health check on %zu repos", cfg.count);
+	LOG_DEBUG("running health check on %zu repos", filtered);
 
-	for (size_t i = 0; i < cfg.count; i++) {
-		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-			continue;
-		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-			continue;
+	/* Phase 1: parallel collection */
+	DoctorResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered,
+	                 doctor_collect, sizeof(DoctorResult), results);
 
-		LOG_TRACE("checking %s", cfg.entries[i].name);
-
-		struct stat st;
-		if (stat(cfg.entries[i].path, &st) != 0) {
-			statuses[checked] = "MISSING";
+	/* Phase 2: display sequentially */
+	int errors = 0;
+	for (size_t i = 0; i < filtered; i++) {
+		if (!results[i].is_ok)
 			errors++;
-		} else if (!S_ISDIR(st.st_mode)) {
-			statuses[checked] = "NOT A DIRECTORY";
-			errors++;
-		} else if (!git_is_repo(cfg.entries[i].path)) {
-			statuses[checked] = "NOT A GIT REPO";
-			errors++;
-		} else {
-			statuses[checked] = "ok";
-		}
-
-		indices[checked] = i;
-		checked++;
 	}
 
 	if (g_table_mode) {
@@ -83,15 +93,14 @@ static int cmd_doctor(const ArgParseResult *result)
 		bool color = CMD_COLOR();
 		table_set_color(t, color);
 
-		for (size_t i = 0; i < checked; i++) {
-			const char *name = cfg.entries[indices[i]].name;
-			const char *status = statuses[i];
-			bool is_ok = (strcmp(status, "ok") == 0);
+		for (size_t i = 0; i < filtered; i++) {
+			const char *name   = cfg.entries[indices[i]].name;
+			const char *status = results[i].status;
 
 			if (color) {
 				char colored[128];
 				ansi_colorize(colored, sizeof(colored), status,
-				              is_ok ? ANSI_FG_GREEN : ANSI_FG_RED);
+				              results[i].is_ok ? ANSI_FG_GREEN : ANSI_FG_RED);
 				const char *cells[] = { name, colored };
 				table_add_row_raw(t, cells, 2);
 			} else {
@@ -102,16 +111,18 @@ static int cmd_doctor(const ArgParseResult *result)
 		table_print(t, stdout);
 		table_free(t);
 	} else {
-		for (size_t i = 0; i < checked; i++) {
-			fprintf(stderr, "%s ... %s\n", cfg.entries[indices[i]].name, statuses[i]);
+		for (size_t i = 0; i < filtered; i++) {
+			fprintf(stderr, "%s ... %s\n",
+			        cfg.entries[indices[i]].name, results[i].status);
 		}
-		fprintf(stderr, "\n%d/%zu repositories OK\n", (int) (checked - (size_t) errors), checked);
+		fprintf(stderr, "\n%d/%zu repositories OK\n",
+		        (int) (filtered - (size_t) errors), filtered);
 	}
 
 	if (errors > 0)
-		LOG_WARN("%d/%zu repos failed health check", errors, checked);
+		LOG_WARN("%d/%zu repos failed health check", errors, filtered);
 	else
-		LOG_INFO("all %zu repos passed health check", checked);
+		LOG_INFO("all %zu repos passed health check", filtered);
 
 	cmd_cleanup(&cfg, config_path);
 	return errors > 0 ? 1 : 0;

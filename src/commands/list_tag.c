@@ -22,28 +22,86 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
+#include "share.h"
 #include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-static void print_tags(const char *name, const char *path, bool color)
-{
-	ProcessResult r = color
-	    ? git_exec_color(path, "tag", "-n1", "--sort=-version:refname", NULL)
-	    : git_exec(path, "tag", "-n1", "--sort=-version:refname", NULL);
+typedef struct {
+	char  *stdout_buf;
+	size_t stdout_len;
+	int    exit_code;
+} TagResult;
 
-	if (r.exit_code != 0 || r.stdout_len == 0) {
-		process_result_free(&r);
+static void tag_collect(const RepoEntry *entry, void *out)
+{
+	TagResult *r = out;
+
+	ProcessResult pr;
+	if (g_table_mode) {
+		pr = git_exec(entry->path, "tag", "-n1", "--sort=-version:refname", NULL);
+	} else {
+		bool color = CMD_COLOR();
+		pr = color
+		    ? git_exec_color(entry->path, "tag", "-n1", "--sort=-version:refname", NULL)
+		    : git_exec(entry->path, "tag", "-n1", "--sort=-version:refname", NULL);
+	}
+
+	r->exit_code = pr.exit_code;
+	r->stdout_buf = pr.stdout_buf;
+	r->stdout_len = pr.stdout_len;
+	pr.stdout_buf = NULL;
+	process_result_free(&pr);
+}
+
+static void tag_display_plain(const TagResult *r, const char *name, bool color)
+{
+	if (r->exit_code != 0 || r->stdout_len == 0)
+		return;
+
+	ansi_print_repo_header(name, color);
+	fputs(r->stdout_buf, stderr);
+}
+
+static void tag_display_table(Table *t, const TagResult *r, const char *repo_name)
+{
+	if (r->exit_code != 0 || r->stdout_len == 0) {
+		const char *cells[] = { repo_name, "-", "-" };
+		table_add_row_raw(t, cells, 3);
 		return;
 	}
 
-	ansi_print_repo_header(name, color);
+	const char *p = r->stdout_buf;
+	bool first = true;
+	while (*p) {
+		const char *start = p;
+		while (*p && *p != '\n')
+			p++;
 
-	/* Git output already has colours (FORCE_COLOR=1) — pass through */
-	fputs(r.stdout_buf, stderr);
+		size_t len = (size_t) (p - start);
+		char   line[MAX_PATH_LEN];
+		if (len >= sizeof(line))
+			len = sizeof(line) - 1;
+		memcpy(line, start, len);
+		line[len] = '\0';
 
-	process_result_free(&r);
+		char *space = strchr(line, ' ');
+		const char *repo_disp = first ? repo_name : "";
+		if (space) {
+			*space = '\0';
+			const char *cells[] = { repo_disp, line, space + 1 };
+			table_add_row_raw(t, cells, 3);
+		} else {
+			const char *cells[] = { repo_disp, line, "-" };
+			table_add_row_raw(t, cells, 3);
+		}
+
+		first = false;
+		if (*p == '\n')
+			p++;
+	}
 }
 
 static int cmd_list_tag(const ArgParseResult *result)
@@ -66,71 +124,37 @@ static int cmd_list_tag(const ArgParseResult *result)
 		return 0;
 	}
 
+	size_t indices[MAX_REPOS];
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);
+
+	if (filtered == 0) {
+		cmd_cleanup(&cfg, config_path);
+		return 0;
+	}
+
+	TagResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered, tag_collect, sizeof(TagResult), results);
+
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Tag", "Message" };
 		Table *t = table_create(3, headers);
 		table_set_color(t, color);
 
-		for (size_t i = 0; i < cfg.count; i++) {
-			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-				continue;
-			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-				continue;
-
-			ProcessResult r = git_exec(cfg.entries[i].path, "tag", "-n1", "--sort=-version:refname", NULL);
-
-			if (r.exit_code != 0 || r.stdout_len == 0) {
-				const char *cells[] = { cfg.entries[i].name, "-", "-" };
-				table_add_row_raw(t, cells, 3);
-			} else {
-				const char *p = r.stdout_buf;
-				bool first = true;
-				while (*p) {
-					const char *start = p;
-					while (*p && *p != '\n')
-						p++;
-
-				size_t len = (size_t) (p - start);
-				char   line[MAX_PATH_LEN];
-					if (len >= sizeof(line))
-						len = sizeof(line) - 1;
-					memcpy(line, start, len);
-					line[len] = '\0';
-
-					char *space = strchr(line, ' ');
-					const char *repo_name = first ? cfg.entries[i].name : "";
-					if (space) {
-						*space = '\0';
-						const char *cells[] = { repo_name, line, space + 1 };
-						table_add_row_raw(t, cells, 3);
-					} else {
-						const char *cells[] = { repo_name, line, "-" };
-						table_add_row_raw(t, cells, 3);
-					}
-
-					first = false;
-					if (*p == '\n')
-						p++;
-				}
-			}
-
-			process_result_free(&r);
-		}
+		for (size_t i = 0; i < filtered; i++)
+			tag_display_table(t, &results[i], cfg.entries[indices[i]].name);
 
 		table_print(t, stdout);
 		table_free(t);
 	} else {
-		for (size_t i = 0; i < cfg.count; i++) {
-			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-				continue;
-			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-				continue;
-
-			LOG_TRACE("listing tags for %s", cfg.entries[i].name);
-			print_tags(cfg.entries[i].name, cfg.entries[i].path, color);
+		for (size_t i = 0; i < filtered; i++) {
+			LOG_TRACE("listing tags for %s", cfg.entries[indices[i]].name);
+			tag_display_plain(&results[i], cfg.entries[indices[i]].name, color);
 		}
 	}
+
+	for (size_t i = 0; i < filtered; i++)
+		free(results[i].stdout_buf);
 
 	cmd_cleanup(&cfg, config_path);
 	return 0;

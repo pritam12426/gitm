@@ -10,19 +10,26 @@
  * Shows total repos, total branches, and total size.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "cmd.h"
 #include "cmd_util.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
+
+typedef struct {
+	int   branch_count;
+	long  dir_size;
+} SummaryResult;
 
 static long get_dir_size(const char *path)
 {
@@ -30,7 +37,6 @@ static long get_dir_size(const char *path)
 	long          total = 0;
 
 	if (r.exit_code == 0 && r.stdout_len > 0) {
-		// Parse "N objects" and "N MiB" etc. — just get the size line
 		const char *p = r.stdout_buf;
 		while (*p) {
 			long   val = 0;
@@ -45,7 +51,6 @@ static long get_dir_size(const char *path)
 				else
 					total += val;
 			}
-			// Skip to next line
 			while (*p && *p != '\n')
 				p++;
 			if (*p == '\n')
@@ -87,6 +92,13 @@ static void format_size(char *buf, size_t buflen, long bytes)
 		snprintf(buf, buflen, "%ld B", bytes);
 }
 
+static void summary_collect(const RepoEntry *entry, void *out)
+{
+	SummaryResult *r = out;
+	r->branch_count = count_branches(entry->path);
+	r->dir_size     = get_dir_size(entry->path);
+}
+
 static int cmd_summary(const ArgParseResult *result)
 {
 	(void) result;
@@ -103,29 +115,32 @@ static int cmd_summary(const ArgParseResult *result)
 		return 0;
 	}
 
+	size_t indices[MAX_REPOS];
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
+	                                     indices, cfg.count);
+
+	LOG_DEBUG("computing summary for %zu repos", filtered);
+
+	/* Phase 1: parallel collection */
+	SummaryResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered,
+	                 summary_collect, sizeof(SummaryResult), results);
+
+	/* Phase 2: aggregate sequentially */
 	int   total_branches = 0;
 	long  total_size     = 0;
-	size_t filtered_count = 0;
 
-	LOG_DEBUG("computing summary for repos");
-
-	for (size_t i = 0; i < cfg.count; i++) {
-		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-			continue;
-		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-			continue;
-
-		total_branches += count_branches(cfg.entries[i].path);
-		total_size     += get_dir_size(cfg.entries[i].path);
-		filtered_count++;
+	for (size_t i = 0; i < filtered; i++) {
+		total_branches += results[i].branch_count;
+		total_size     += results[i].dir_size;
 	}
 
 	char size_buf[32];
 	format_size(size_buf, sizeof(size_buf), total_size);
 
-	LOG_INFO("summary: %zu repos, %d branches, %s", filtered_count, total_branches, size_buf);
+	LOG_INFO("summary: %zu repos, %d branches, %s", filtered, total_branches, size_buf);
 
-	fprintf(stdout, "Repos:    %zu\n", filtered_count);
+	fprintf(stdout, "Repos:    %zu\n", filtered);
 	fprintf(stdout, "Branches: %d\n", total_branches);
 	fprintf(stdout, "Size:     %s\n", size_buf);
 
@@ -141,9 +156,6 @@ void cmd_register_summary(ArgParser *parser)
 	                                       cmd_summary);
 	const char *summary_aliases[] = { "sum" };
 	argparse_command_set_aliases(cmd, summary_aliases, 1);
-	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
-	                    "Filter by tag", &filter_tag);
-	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
-	                    "Filter by group", &filter_group);
+	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);
 	(void) cmd;
 }

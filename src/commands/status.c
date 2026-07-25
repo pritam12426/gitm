@@ -22,10 +22,100 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
 #include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
+
+typedef struct {
+	char  *stdout_buf;
+	size_t stdout_len;
+	char   branch[MAX_NAME_LEN];
+	char   status_buf[MAX_NAME_LEN];
+	int    exit_code;
+} StatusResult;
+
+static void status_collect(const RepoEntry *entry, void *out)
+{
+	StatusResult *r = out;
+	memset(r, 0, sizeof(*r));
+
+	ProcessResult pr = git_exec(entry->path, "status", "--porcelain", "--branch", NULL);
+	r->exit_code  = pr.exit_code;
+
+	/* Steal stdout — prevents double-free */
+	r->stdout_buf = pr.stdout_buf;
+	r->stdout_len = pr.stdout_len;
+	pr.stdout_buf = NULL;
+	process_result_free(&pr);
+
+	if (r->exit_code != 0 || r->stdout_len == 0)
+		return;
+
+	/* Parse branch from first line: "## branch-name...[ahead N]" */
+	const char *p = r->stdout_buf;
+	if (p[0] == '#' && p[1] == '#') {
+		p += 2;
+		while (*p == ' ') p++;
+		const char *end = p;
+		while (*end && *end != '\n' && *end != '.' && *end != '[')
+			end++;
+		size_t len = (size_t) (end - p);
+		if (len >= sizeof(r->branch))
+			len = sizeof(r->branch) - 1;
+		memcpy(r->branch, p, len);
+		r->branch[len] = '\0';
+	}
+	if (r->branch[0] == '\0')
+		snprintf(r->branch, sizeof(r->branch), "-");
+
+	/* Parse status from porcelain lines (skip first branch line) */
+	p = r->stdout_buf;
+	while (*p && *p != '\n')
+		p++;
+	if (*p == '\n')
+		p++;
+
+	int modified = 0, added = 0, deleted = 0, untracked = 0, other = 0;
+	while (*p) {
+		char x = *p;
+		char y = (p[1] && p[1] != '\n') ? p[1] : ' ';
+		if (x == '?' || y == '?')
+			untracked++;
+		else if (x == 'M' || y == 'M')
+			modified++;
+		else if (x == 'A' || y == 'A')
+			added++;
+		else if (x == 'D' || y == 'D')
+			deleted++;
+		else
+			other++;
+		while (*p && *p != '\n')
+			p++;
+		if (*p == '\n')
+			p++;
+	}
+
+	char *sp = r->status_buf;
+	size_t remaining = sizeof(r->status_buf);
+	int n = 0;
+	if (modified > 0)  n += snprintf(sp + n, remaining - (size_t) n, "%dm ", modified);
+	if (added > 0)     n += snprintf(sp + n, remaining - (size_t) n, "%da ", added);
+	if (deleted > 0)   n += snprintf(sp + n, remaining - (size_t) n, "%dd ", deleted);
+	if (untracked > 0) n += snprintf(sp + n, remaining - (size_t) n, "%du ", untracked);
+	if (other > 0)     n += snprintf(sp + n, remaining - (size_t) n, "%do ", other);
+	if (n > 0)
+		r->status_buf[n - 1] = '\0';
+	else
+		snprintf(r->status_buf, sizeof(r->status_buf), "clean");
+}
+
+static void status_result_free(StatusResult *r)
+{
+	free(r->stdout_buf);
+	r->stdout_buf = NULL;
+}
 
 static void print_header(const char *name, const char *path, bool color)
 {
@@ -51,7 +141,6 @@ static void print_error(bool color)
 		fprintf(stderr, "  error: could not get status\n");
 }
 
-// Colour the status line based on the XY code
 static void print_status_line(const char *line, bool color)
 {
 	if (!color) {
@@ -59,11 +148,9 @@ static void print_status_line(const char *line, bool color)
 		return;
 	}
 
-	// Parse XY prefix (first two chars)
 	char x = line[0];
 	char y = line[1];
 
-	// Determine colour from the more "severe" status
 	if (x == '?' || y == '?')
 		fprintf(stderr, "  %s%s%s\n", ANSI_FG_RED, line, ANSI_RESET);
 	else if (x == 'D' || y == 'D')
@@ -99,11 +186,17 @@ static int cmd_status(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t  filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
 	                                     indices, cfg.count);
 
 	LOG_DEBUG("filtered to %zu repos", filtered);
 
+	/* Phase 1: parallel collection (1 git call per repo instead of 2) */
+	StatusResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered,
+	                 status_collect, sizeof(StatusResult), results);
+
+	/* Phase 2: display sequentially */
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Status", "Branch" };
@@ -111,103 +204,47 @@ static int cmd_status(const ArgParseResult *result)
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++) {
-			RepoEntry *e = &cfg.entries[indices[i]];
-			LOG_TRACE("checking status for %s (%s)", e->name, e->path);
-			ProcessResult r = git_exec(e->path, "status", "--porcelain", "--branch", NULL);
+			RepoEntry    *e = &cfg.entries[indices[i]];
+			StatusResult *r = &results[i];
 
-			const char *status_str = "error";
-			char status_buf[MAX_NAME_LEN] = { 0 };
+			const char *status_str = r->exit_code != 0 ? "error" : r->status_buf;
 
-			if (r.exit_code != 0) {
-				status_str = "error";
-			} else if (r.stdout_len == 0) {
-				status_str = "clean";
-			} else {
-			/* Count changes from porcelain output */
-			int modified = 0, added = 0, deleted = 0, untracked = 0, other = 0;
-			const char *p = r.stdout_buf;
-			/* Skip the branch line (first line) */
-			while (*p && *p != '\n')
-				p++;
-			if (*p == '\n')
-				p++;
-			while (*p) {
-					char x = *p;
-					char y = (p[1] && p[1] != '\n') ? p[1] : ' ';
-					if (x == '?' || y == '?')
-						untracked++;
-					else if (x == 'M' || y == 'M')
-						modified++;
-					else if (x == 'A' || y == 'A')
-						added++;
-					else if (x == 'D' || y == 'D')
-						deleted++;
-					else
-						other++;
-					while (*p && *p != '\n')
-						p++;
-					if (*p == '\n')
-						p++;
-				}
-
-				char *sp = status_buf;
-				size_t remaining = sizeof(status_buf);
-				int n = 0;
-				if (modified > 0)  n += snprintf(sp + n, remaining - (size_t)n, "%dm ", modified);
-				if (added > 0)     n += snprintf(sp + n, remaining - (size_t)n, "%da ", added);
-				if (deleted > 0)   n += snprintf(sp + n, remaining - (size_t)n, "%dd ", deleted);
-				if (untracked > 0) n += snprintf(sp + n, remaining - (size_t)n, "%du ", untracked);
-				if (other > 0)     n += snprintf(sp + n, remaining - (size_t)n, "%do ", other);
-				if (n > 0)
-					status_buf[n - 1] = '\0'; /* remove trailing space */
-				else
-					snprintf(status_buf, sizeof(status_buf), "clean");
-				status_str = status_buf;
-			}
-
-			/* Get branch */
-			char *branch = git_current_branch(e->path);
-			const char *branch_str = branch ? branch : "-";
-
-			/* Color the status */
-			if (color && strcmp(status_str, "clean") == 0) {
+			if (color) {
+				const char *code = ANSI_FG_YELLOW;
+				if (strcmp(status_str, "clean") == 0)
+					code = ANSI_FG_GREEN;
+				else if (strcmp(status_str, "error") == 0)
+					code = ANSI_FG_RED;
 				char colored[MAX_NAME_LEN];
-				ansi_colorize(colored, sizeof(colored), status_str, ANSI_FG_GREEN);
-				const char *cells[] = { e->name, colored, branch_str };
-				table_add_row_raw(t, cells, 3);
-			} else if (color && strcmp(status_str, "error") == 0) {
-				char colored[MAX_NAME_LEN];
-				ansi_colorize(colored, sizeof(colored), status_str, ANSI_FG_RED);
-				const char *cells[] = { e->name, colored, branch_str };
-				table_add_row_raw(t, cells, 3);
-			} else if (color) {
-				char colored[MAX_NAME_LEN];
-				ansi_colorize(colored, sizeof(colored), status_str, ANSI_FG_YELLOW);
-				const char *cells[] = { e->name, colored, branch_str };
+				ansi_colorize(colored, sizeof(colored), status_str, code);
+				const char *cells[] = { e->name, colored, r->branch };
 				table_add_row_raw(t, cells, 3);
 			} else {
-				table_add_row(t, e->name, status_str, branch_str);
+				table_add_row(t, e->name, status_str, r->branch);
 			}
-
-			free(branch);
-			process_result_free(&r);
 		}
 
 		table_print(t, stdout);
 		table_free(t);
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
-			RepoEntry *e = &cfg.entries[indices[i]];
+			RepoEntry    *e = &cfg.entries[indices[i]];
+			StatusResult *r = &results[i];
+
 			print_header(e->name, e->path, color);
 
-			ProcessResult r = git_exec(e->path, "status", "--porcelain", "--branch", NULL);
-
-			if (r.exit_code != 0) {
+			if (r->exit_code != 0) {
 				print_error(color);
-			} else if (r.stdout_len == 0) {
+			} else if (r->stdout_len == 0) {
 				print_clean(color);
 			} else {
-				const char *p = r.stdout_buf;
+				const char *p = r->stdout_buf;
+				/* Skip branch line */
+				while (*p && *p != '\n')
+					p++;
+				if (*p == '\n')
+					p++;
+
 				while (*p) {
 					const char *start = p;
 					while (*p && *p != '\n')
@@ -226,10 +263,12 @@ static int cmd_status(const ArgParseResult *result)
 						p++;
 				}
 			}
-
-			process_result_free(&r);
 		}
 	}
+
+	/* Phase 3: cleanup */
+	for (size_t i = 0; i < filtered; i++)
+		status_result_free(&results[i]);
 
 	cmd_cleanup(&cfg, config_path);
 	return 0;

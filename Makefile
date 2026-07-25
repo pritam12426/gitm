@@ -29,7 +29,7 @@ CFLAGS +=  -Wshadow -Wconversion \
            -Wno-missing-field-initializers \
            -Wstrict-prototypes -Wmissing-prototypes
 
-LDLIBS +=
+LDLIBS += -lpthread
 
 # Build options (set via command line, e.g. `make O_DEBUG=1`)
 O_DEBUG := 0                     ## Enable debug build (ASan, UBSan, -g3)

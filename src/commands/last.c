@@ -22,27 +22,49 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
 #include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-static void print_last(const char *name, const char *path, bool color)
+typedef struct {
+	char  *stdout_buf;
+	size_t stdout_len;
+	int    exit_code;
+} LastResult;
+
+static void last_collect(const RepoEntry *entry, void *out)
 {
-	const char *fmt = color
-	    ? "%C(yellow)%h%Creset %C(cyan)%an%Creset %Cgreen%ar%Creset %s"
-	    : "%h %an %ar %s";
+	LastResult *r = out;
+	ProcessResult pr;
 
-	char pretty_arg[512];
-	snprintf(pretty_arg, sizeof(pretty_arg), "--pretty=tformat:%s", fmt);
+	if (g_table_mode) {
+		pr = git_exec(entry->path, "log", "-1",
+		              "--format=%h|%an|%ar|%s", "HEAD", NULL);
+	} else {
+		bool color = CMD_COLOR();
+		const char *fmt = color
+		    ? "%C(yellow)%h%Creset %C(cyan)%an%Creset %Cgreen%ar%Creset %s"
+		    : "%h %an %ar %s";
+		char pretty_arg[512];
+		snprintf(pretty_arg, sizeof(pretty_arg), "--pretty=tformat:%s", fmt);
+		pr = color
+		    ? git_exec_color(entry->path, "log", "-1", pretty_arg, "HEAD", NULL)
+		    : git_exec(entry->path, "log", "-1", pretty_arg, "HEAD", NULL);
+	}
 
-	ProcessResult r = color
-	    ? git_exec_color(path, "log", "-1", pretty_arg, "HEAD", NULL)
-	    : git_exec(path, "log", "-1", pretty_arg, "HEAD", NULL);
+	r->exit_code = pr.exit_code;
+	r->stdout_buf = pr.stdout_buf;
+	r->stdout_len = pr.stdout_len;
+	pr.stdout_buf = NULL;
+	process_result_free(&pr);
+}
 
-	if (r.exit_code != 0 || r.stdout_len == 0) {
+static void last_display_plain(const LastResult *r, const char *name, bool color)
+{
+	if (r->exit_code != 0 || r->stdout_len == 0) {
 		ansi_print_repo_empty(name, "(no commits)", color);
-		process_result_free(&r);
 		return;
 	}
 
@@ -51,10 +73,39 @@ static void print_last(const char *name, const char *path, bool color)
 	else
 		fprintf(stderr, "\n%s\n  ", name);
 
-	/* Git output already has colours — pass through */
-	fputs(r.stdout_buf, stderr);
+	fputs(r->stdout_buf, stderr);
+}
 
-	process_result_free(&r);
+static void last_display_table(Table *t, const LastResult *r, const char *repo_name)
+{
+	if (r->exit_code == 0 && r->stdout_len > 0) {
+		char line[PROCESS_BUF_SIZE];
+		size_t len = r->stdout_len;
+		if (len >= sizeof(line))
+			len = sizeof(line) - 1;
+		memcpy(line, r->stdout_buf, len);
+		line[len] = '\0';
+		if (len > 0 && line[len - 1] == '\n')
+			line[len - 1] = '\0';
+
+		char *save = NULL;
+		char *hash   = strtok_r(line, "|", &save);
+		char *author = strtok_r(NULL, "|", &save);
+		char *date   = strtok_r(NULL, "|", &save);
+		char *msg    = strtok_r(NULL, "|", &save);
+
+		const char *cells[] = {
+			repo_name,
+			hash ? hash : "-",
+			author ? author : "-",
+			date ? date : "-",
+			msg ? msg : "-"
+		};
+		table_add_row_raw(t, cells, 5);
+	} else {
+		const char *cells[] = { repo_name, "-", "-", "-", "(no commits)" };
+		table_add_row_raw(t, cells, 5);
+	}
 }
 
 static int cmd_last(const ArgParseResult *result)
@@ -76,68 +127,37 @@ static int cmd_last(const ArgParseResult *result)
 		return 0;
 	}
 
+	size_t indices[MAX_REPOS];
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);
+
+	if (filtered == 0) {
+		cmd_cleanup(&cfg, config_path);
+		return 0;
+	}
+
+	LastResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered, last_collect, sizeof(LastResult), results);
+
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Hash", "Author", "Date", "Message" };
 		Table *t = table_create(5, headers);
 		table_set_color(t, color);
 
-		for (size_t i = 0; i < cfg.count; i++) {
-			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-				continue;
-			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-				continue;
-
-			ProcessResult r = git_exec(cfg.entries[i].path,
-			                           "log", "-1",
-			                           "--format=%h|%an|%ar|%s",
-			                           "HEAD", NULL);
-
-			if (r.exit_code != 0 || r.stdout_len == 0) {
-				const char *cells[] = { cfg.entries[i].name, "-", "-", "-", "(no commits)" };
-				table_add_row_raw(t, cells, 5);
-			} else {
-				char line[PROCESS_BUF_SIZE];
-				size_t len = r.stdout_len;
-				if (len >= sizeof(line))
-					len = sizeof(line) - 1;
-				memcpy(line, r.stdout_buf, len);
-				line[len] = '\0';
-				if (len > 0 && line[len - 1] == '\n')
-					line[len - 1] = '\0';
-
-				/* Split by | */
-				char *hash   = strtok(line, "|");
-				char *author = strtok(NULL, "|");
-				char *date   = strtok(NULL, "|");
-				char *msg    = strtok(NULL, "|");
-
-				const char *cells[] = {
-					cfg.entries[i].name,
-					hash ? hash : "-",
-					author ? author : "-",
-					date ? date : "-",
-					msg ? msg : "-"
-				};
-				table_add_row_raw(t, cells, 5);
-			}
-
-			process_result_free(&r);
-		}
+		for (size_t i = 0; i < filtered; i++)
+			last_display_table(t, &results[i], cfg.entries[indices[i]].name);
 
 		table_print(t, stdout);
 		table_free(t);
 	} else {
-		for (size_t i = 0; i < cfg.count; i++) {
-			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-				continue;
-			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-				continue;
-
-			LOG_TRACE("showing last log for %s", cfg.entries[i].name);
-			print_last(cfg.entries[i].name, cfg.entries[i].path, color);
+		for (size_t i = 0; i < filtered; i++) {
+			LOG_TRACE("showing last log for %s", cfg.entries[indices[i]].name);
+			last_display_plain(&results[i], cfg.entries[indices[i]].name, color);
 		}
 	}
+
+	for (size_t i = 0; i < filtered; i++)
+		free(results[i].stdout_buf);
 
 	LOG_DEBUG("last: done");
 	cmd_cleanup(&cfg, config_path);

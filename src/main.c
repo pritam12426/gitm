@@ -178,8 +178,11 @@ int main(int argc, char *argv[])
 		return editor_rc;
 	}
 
-	/* If no command matched and no error, show help */
-	if (rc == 0 && parser->matched_command == NULL) {
+	/* If no command matched and no error, show help.
+	 * dispatch_cmd is NULL when argparse already handled output
+	 * (--help, --version, --shell-completion), so skip to avoid
+	 * printing help twice. */
+	if (rc == 0 && parser->matched_command == NULL && parser->dispatch_cmd != NULL) {
 		argparse_help(parser, NULL);
 	}
 

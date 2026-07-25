@@ -22,29 +22,93 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
 #include "table.h"
 
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-static void print_branches(const char *name, const char *path, bool color)
-{
-	ProcessResult r = color
-	    ? git_exec_color(path, "branch", "--list", NULL)
-	    : git_exec(path, "branch", "--list", NULL);
+typedef struct {
+	char  *stdout_buf;
+	size_t stdout_len;
+	int    exit_code;
+} BranchResult;
 
-	if (r.exit_code != 0 || r.stdout_len == 0) {
+static void branch_collect(const RepoEntry *entry, void *out)
+{
+	BranchResult *r = out;
+
+	ProcessResult pr;
+	if (g_table_mode) {
+		pr = git_exec(entry->path, "branch", "--list", NULL);
+	} else {
+		bool color = CMD_COLOR();
+		pr = color
+		    ? git_exec_color(entry->path, "branch", "--list", NULL)
+		    : git_exec(entry->path, "branch", "--list", NULL);
+	}
+
+	r->exit_code = pr.exit_code;
+	r->stdout_buf = pr.stdout_buf;
+	r->stdout_len = pr.stdout_len;
+	pr.stdout_buf = NULL;
+	process_result_free(&pr);
+}
+
+static void branch_display_plain(const BranchResult *r, const char *name, bool color)
+{
+	if (r->exit_code != 0 || r->stdout_len == 0) {
 		ansi_print_repo_empty(name, "(no branches)", color);
-		process_result_free(&r);
 		return;
 	}
 
 	ansi_print_repo_header(name, color);
+	fputs(r->stdout_buf, stderr);
+}
 
-	/* Git output already has colours (FORCE_COLOR=1) — pass through */
-	fputs(r.stdout_buf, stderr);
+static void branch_display_table(Table *t, const BranchResult *r, const char *repo_name, bool color)
+{
+	if (r->exit_code != 0 || r->stdout_len == 0) {
+		const char *cells[] = { repo_name, "-" };
+		table_add_row_raw(t, cells, 2);
+		return;
+	}
 
-	process_result_free(&r);
+	const char *p = r->stdout_buf;
+	bool first = true;
+	while (*p) {
+		while (*p == ' ')
+			p++;
+
+		const char *start = p;
+		while (*p && *p != '\n')
+			p++;
+
+		size_t len = (size_t) (p - start);
+		char   line[256];
+		if (len >= sizeof(line))
+			len = sizeof(line) - 1;
+		memcpy(line, start, len);
+		line[len] = '\0';
+
+		const char *repo_disp = first ? repo_name : "";
+		bool is_current = (line[0] == '*');
+
+		if (color && is_current) {
+			char colored[256];
+			snprintf(colored, sizeof(colored), "%s%s* %s%s", ANSI_BOLD, ANSI_FG_GREEN, line + 2, ANSI_RESET);
+			const char *cells[] = { repo_disp, colored };
+			table_add_row_raw(t, cells, 2);
+		} else {
+			const char *display = is_current ? line + 2 : line;
+			const char *cells[] = { repo_disp, display };
+			table_add_row_raw(t, cells, 2);
+		}
+
+		first = false;
+		if (*p == '\n')
+			p++;
+	}
 }
 
 static int cmd_branch(const ArgParseResult *result)
@@ -67,77 +131,37 @@ static int cmd_branch(const ArgParseResult *result)
 		return 0;
 	}
 
+	size_t indices[MAX_REPOS];
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);
+
+	if (filtered == 0) {
+		cmd_cleanup(&cfg, config_path);
+		return 0;
+	}
+
+	BranchResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered, branch_collect, sizeof(BranchResult), results);
+
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Branch" };
 		Table *t = table_create(2, headers);
 		table_set_color(t, color);
 
-		for (size_t i = 0; i < cfg.count; i++) {
-			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-				continue;
-			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-				continue;
-
-			ProcessResult r = git_exec(cfg.entries[i].path, "branch", "--list", NULL);
-
-			if (r.exit_code != 0 || r.stdout_len == 0) {
-				const char *cells[] = { cfg.entries[i].name, "-" };
-				table_add_row_raw(t, cells, 2);
-			} else {
-				const char *p = r.stdout_buf;
-				bool first = true;
-				while (*p) {
-					while (*p == ' ')
-						p++;
-
-					const char *start = p;
-					while (*p && *p != '\n')
-						p++;
-
-					size_t len = (size_t) (p - start);
-					char   line[256];
-					if (len >= sizeof(line))
-						len = sizeof(line) - 1;
-					memcpy(line, start, len);
-					line[len] = '\0';
-
-					const char *repo_name = first ? cfg.entries[i].name : "";
-					bool is_current = (line[0] == '*');
-
-					if (color && is_current) {
-						char colored[256];
-						snprintf(colored, sizeof(colored), "%s%s* %s%s", ANSI_BOLD, ANSI_FG_GREEN, line + 2, ANSI_RESET);
-						const char *cells[] = { repo_name, colored };
-						table_add_row_raw(t, cells, 2);
-					} else {
-						const char *display = is_current ? line + 2 : line;
-						const char *cells[] = { repo_name, display };
-						table_add_row_raw(t, cells, 2);
-					}
-
-					first = false;
-					if (*p == '\n')
-						p++;
-				}
-			}
-
-			process_result_free(&r);
-		}
+		for (size_t i = 0; i < filtered; i++)
+			branch_display_table(t, &results[i], cfg.entries[indices[i]].name, color);
 
 		table_print(t, stdout);
 		table_free(t);
 	} else {
-		for (size_t i = 0; i < cfg.count; i++) {
-			if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-				continue;
-			if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-				continue;
-
-			LOG_TRACE("showing branches for %s", cfg.entries[i].name);
-			print_branches(cfg.entries[i].name, cfg.entries[i].path, color);
+		for (size_t i = 0; i < filtered; i++) {
+			LOG_TRACE("showing branches for %s", cfg.entries[indices[i]].name);
+			branch_display_plain(&results[i], cfg.entries[indices[i]].name, color);
 		}
 	}
+
+	for (size_t i = 0; i < filtered; i++)
+		free(results[i].stdout_buf);
 
 	cmd_cleanup(&cfg, config_path);
 	return 0;

@@ -21,6 +21,7 @@
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
 #include "table.h"
 
 static const char *filter_tag   = NULL;
@@ -29,19 +30,17 @@ static const char *filter_group = NULL;
 typedef struct {
 	const char *name;
 	const char *path;
-	char        date_str[32]; /* inline — no heap */
+	char        date_str[32];
 	long        timestamp;
-} RepoDate;
+} RecentResult;
 
 static long parse_date_to_timestamp(const char *date_str)
 {
-	// Parse "YYYY-MM-DD HH:MM:SS +/-HHMM" from git log --format=%ci
 	int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0;
 
 	if (sscanf(date_str, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &min, &sec) != 6)
 		return 0;
 
-	// Simple days-to-seconds conversion
 	long days = (long) (year - 1970) * 365 + (long) ((year - 1968) / 4);
 	static const int days_in_month[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
 	for (int m = 1; m < month; m++)
@@ -53,15 +52,43 @@ static long parse_date_to_timestamp(const char *date_str)
 	return days * 86400 + hour * 3600 + min * 60 + sec;
 }
 
-static int cmp_repo_date(const void *a, const void *b)
+static void recent_collect(const RepoEntry *entry, void *out)
 {
-	const RepoDate *ra = (const RepoDate *) a;
-	const RepoDate *rb = (const RepoDate *) b;
-	// Most recent first
-	if (rb->timestamp > ra->timestamp)
-		return 1;
-	if (rb->timestamp < ra->timestamp)
-		return -1;
+	RecentResult *r = out;
+	r->name = entry->name;
+	r->path = entry->path;
+
+	ProcessResult pr = git_exec(entry->path, "log", "-1", "--format=%ci", "HEAD", NULL);
+
+	if (pr.exit_code == 0 && pr.stdout_len > 0) {
+		size_t len = pr.stdout_len;
+		if (len > 0 && pr.stdout_buf[len - 1] == '\n')
+			len--;
+		if (len >= sizeof(r->date_str))
+			len = sizeof(r->date_str) - 1;
+		memcpy(r->date_str, pr.stdout_buf, len);
+		r->date_str[len] = '\0';
+		r->timestamp = parse_date_to_timestamp(r->date_str);
+	} else {
+		strcpy(r->date_str, "unknown");
+		r->timestamp = 0;
+	}
+
+	process_result_free(&pr);
+}
+
+/* Sort key for decorating results before qsort */
+typedef struct {
+	size_t result_index;
+	long   timestamp;
+} SortKey;
+
+static int cmp_sort_key(const void *a, const void *b)
+{
+	const SortKey *ka = a;
+	const SortKey *kb = b;
+	if (kb->timestamp > ka->timestamp) return  1;
+	if (kb->timestamp < ka->timestamp) return -1;
 	return 0;
 }
 
@@ -83,61 +110,43 @@ static int cmd_recent(const ArgParseResult *result)
 		return 0;
 	}
 
-	/* Stack array — no heap */
-	RepoDate repos[MAX_REPOS];
-	size_t repo_count = 0;
+	size_t indices[MAX_REPOS];
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
+	                                     indices, cfg.count);
 
-	for (size_t i = 0; i < cfg.count; i++) {
-		if (filter_tag && !config_entry_has_tag(&cfg.entries[i], filter_tag))
-			continue;
-		if (filter_group && !config_entry_has_group(&cfg.entries[i], filter_group))
-			continue;
+	/* Phase 1: parallel collection */
+	RecentResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered,
+	                 recent_collect, sizeof(RecentResult), results);
 
-		LOG_TRACE("fetching date for %s", cfg.entries[i].name);
-		repos[repo_count].name = cfg.entries[i].name;
-		repos[repo_count].path = cfg.entries[i].path;
-
-		// Get last commit date
-		ProcessResult r = git_exec(cfg.entries[i].path,
-		                           "log", "-1", "--format=%ci", "HEAD", NULL);
-
-		if (r.exit_code == 0 && r.stdout_len > 0) {
-			// Copy into inline buffer — strip newline
-			size_t len = r.stdout_len;
-			if (len > 0 && r.stdout_buf[len - 1] == '\n')
-				len--;
-			if (len >= sizeof(repos[0].date_str))
-				len = sizeof(repos[0].date_str) - 1;
-			memcpy(repos[repo_count].date_str, r.stdout_buf, len);
-			repos[repo_count].date_str[len] = '\0';
-
-			repos[repo_count].timestamp = parse_date_to_timestamp(repos[repo_count].date_str);
-		} else {
-			strcpy(repos[repo_count].date_str, "unknown");
-			repos[repo_count].timestamp = 0;
-		}
-
-		process_result_free(&r);
-		repo_count++;
+	/* Phase 2: sort by timestamp (most recent first) */
+	SortKey keys[MAX_REPOS];
+	for (size_t i = 0; i < filtered; i++) {
+		keys[i].result_index = i;
+		keys[i].timestamp    = results[i].timestamp;
 	}
+	qsort(keys, filtered, sizeof(SortKey), cmp_sort_key);
+	LOG_DEBUG("sorted %zu repos by commit date", filtered);
 
-	qsort(repos, repo_count, sizeof(RepoDate), cmp_repo_date);
-	LOG_DEBUG("sorted %zu repos by commit date", repo_count);
-
+	/* Phase 3: display in sorted order */
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Path", "Last Commit" };
 		Table *t = table_create(3, headers);
 		table_set_color(t, CMD_COLOR());
 
-		for (size_t i = 0; i < repo_count; i++)
-			table_add_row(t, repos[i].name, repos[i].path, repos[i].date_str);
+		for (size_t i = 0; i < filtered; i++) {
+			RecentResult *r = &results[keys[i].result_index];
+			table_add_row(t, r->name, r->path, r->date_str);
+		}
 
 		table_print(t, stdout);
 		table_free(t);
 	} else {
-		for (size_t i = 0; i < repo_count; i++)
-			fprintf(stdout, "%-20s %-40s %s\n", repos[i].name, repos[i].path, repos[i].date_str);
+		for (size_t i = 0; i < filtered; i++) {
+			RecentResult *r = &results[keys[i].result_index];
+			fprintf(stdout, "%-20s %-40s %s\n", r->name, r->path, r->date_str);
+		}
 	}
 
 	cmd_cleanup(&cfg, config_path);
