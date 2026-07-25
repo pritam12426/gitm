@@ -54,12 +54,15 @@ static int cmd_branch(const ArgParseResult *result)
 {
 	(void) result;
 
+	LOG_TRACE("cmd_branch");
 	bool color = CMD_COLOR();
 
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
+
+	LOG_DEBUG("loaded %zu repos from config", cfg.count);
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
@@ -69,6 +72,7 @@ static int cmd_branch(const ArgParseResult *result)
 	}
 
 	if (g_table_mode) {
+		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Branch" };
 		Table *t = table_create(2, headers);
 		table_set_color(t, color);

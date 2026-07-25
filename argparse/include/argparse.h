@@ -140,6 +140,10 @@ typedef struct ArgParser {
 	ArgCommand *matched_subcommand; /* deepest matched subcommand */
 	int         argc;
 	char      **argv;
+
+	/* Stored for dispatch — caller uses argparse_dispatch() after parse */
+	ArgCommand    *dispatch_cmd;
+	ArgParseResult *dispatch_result;
 } ArgParser;
 
 /* ── Parse result ───────────────────────────────────────────────────────────── */
@@ -219,6 +223,10 @@ void argparse_add_positional(ArgCommand *command, const char *name);
 
 /* Parse argv. Returns 0 on success, -1 on error, -2 for help, -3 for version. */
 int argparse_parse(ArgParser *parser, int argc, char **argv);
+
+/* Dispatch the matched command's callback. Call after argparse_parse().
+ * Returns the callback's return value, or 0 if no callback was matched. */
+int argparse_dispatch(ArgParser *parser);
 
 /* Print usage line for a command (or global usage if cmd is NULL) */
 void argparse_usage(const ArgParser *parser, const ArgCommand *cmd);

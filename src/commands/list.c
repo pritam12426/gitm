@@ -32,6 +32,8 @@ static int cmd_list(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
+	LOG_DEBUG("loaded %zu repos from config", cfg.count);
+
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
 		fprintf(stderr, "Use 'gitm add <path> [name]' to register one.\n");
@@ -44,6 +46,10 @@ static int cmd_list(const ArgParseResult *result)
 	size_t  filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group,
 	                                     indices, cfg.count);
 
+	LOG_DEBUG("filtered to %zu repos (tag=%s, group=%s)", filtered,
+	          list_filter_tag ? list_filter_tag : "-",
+	          list_filter_group ? list_filter_group : "-");
+
 	if (filtered == 0) {
 		fprintf(stderr, "No repos match the given filters.\n");
 		free(indices);
@@ -53,6 +59,7 @@ static int cmd_list(const ArgParseResult *result)
 	}
 
 	if (g_table_mode) {
+		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Path", "Tags", "Groups" };
 		Table *t = table_create(4, headers);
 		table_set_color(t, CMD_COLOR());

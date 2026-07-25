@@ -45,6 +45,8 @@ int main(int argc, char *argv[])
     argparse_add_option(list, "verbose", 'v', ARG_TYPE_NONE, NULL, "Verbose output", NULL);
 
     int rc = argparse_parse(parser, argc, argv);
+    if (rc == 0)
+        rc = argparse_dispatch(parser);
     argparse_free(parser);
     return rc;
 }
@@ -172,8 +174,12 @@ Supported shells: `bash`, `zsh`, `fish`.
 ```c
 static int cmd_example(const ArgParseResult *result)
 {
-    // After parsing, check the option's was_set field
-    // (You need to keep a pointer to the option)
+    // After parsing, check the matched command's option was_set field
+    ArgCommand *cmd = result->command;
+    for (int i = 0; i < cmd->option_count; i++) {
+        if (cmd->options[i].was_set)
+            printf("--%s was provided\n", cmd->options[i].long_name);
+    }
     return 0;
 }
 ```
@@ -192,11 +198,19 @@ These are default bindings, not reserved words — register your own `-v` or `-h
 
 ## Return Values
 
+`argparse_parse()` returns:
+
 | `argparse_parse()` | Meaning                                                 |
 | ------------------ | ------------------------------------------------------- |
 | `0`                | Success (help/version/completion may have been printed) |
 | `-1`               | Error (message already printed to stderr)               |
-| Callback return    | Your callback's return value is passed through          |
+
+`argparse_dispatch()` returns:
+
+| `argparse_dispatch()` | Meaning                                    |
+| --------------------- | ------------------------------------------ |
+| Callback return       | Your callback's return value is passed through |
+| `0`                   | No callback was matched (no command given) |
 
 ## Help Output
 

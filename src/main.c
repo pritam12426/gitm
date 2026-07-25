@@ -32,7 +32,7 @@ static const char *g_log_file      = NULL;
 
 static Log_level_t parse_log_level(const char *str)
 {
-	if (!str)                      return LOG_LEVEL_WARN;
+	if (!str)                              return LOG_LEVEL_WARN;
 	if (strcmp(str, "off") == 0)   return LOG_LEVEL_OFF;
 	if (strcmp(str, "fatal") == 0) return LOG_LEVEL_FATAL;
 	if (strcmp(str, "error") == 0) return LOG_LEVEL_ERROR;
@@ -40,7 +40,7 @@ static Log_level_t parse_log_level(const char *str)
 	if (strcmp(str, "info") == 0)  return LOG_LEVEL_INFO;
 	if (strcmp(str, "debug") == 0) return LOG_LEVEL_DEBUG;
 	if (strcmp(str, "trace") == 0) return LOG_LEVEL_TRACE;
-	return                                LOG_LEVEL_WARN;
+	return                                        LOG_LEVEL_WARN;
 }
 
 int main(int argc, char *argv[])
@@ -94,9 +94,9 @@ int main(int argc, char *argv[])
 	/* Verify git is available before doing anything else */
 	{
 		ProcessResult r = process_exec(NULL,
-		                               (char *const []) { "git", "--version", NULL });
+		                               (char *const []) { "gt", "--version", NULL });
 		if (r.exit_code != 0) {
-			LOG_FATAL("git binary not found or not executable");
+			LOG_FATAL("git binary not found in your $PATH, or not executable");
 			process_result_free(&r);
 			return 127;
 		}
@@ -107,12 +107,11 @@ int main(int argc, char *argv[])
 	cmd_register_all(parser);
 	LOG_DEBUG("logging initialized at INFO level");
 
-	/* Parse */
+	/* Parse only — no dispatch yet */
 	int rc = argparse_parse(parser, argc, argv);
 
 	/* Re-init logging with user-specified options */
 	log_init(g_log_file, parse_log_level(g_log_level_str));
-	LOG_TRACE("main: dispatching to command");
 
 	if (LOG_LEVEL_IS_ENABLED(LOG_LEVEL_DEBUG)) {
 		LOG_CUSTOM(LOG_LEVEL_DEBUG, false, "Command-line args: [");
@@ -180,6 +179,9 @@ int main(int argc, char *argv[])
 		argparse_help(parser, NULL);
 	}
 
+	/* Dispatch command callback (logging is already at correct level) */
+	int dispatch_rc = argparse_dispatch(parser);
+
 	argparse_free(parser);
-	return rc;
+	return dispatch_rc != 0 ? dispatch_rc : rc;
 }

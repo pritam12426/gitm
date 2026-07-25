@@ -13,11 +13,14 @@
 #include <string.h>
 
 #include "config.h"
+#include "log.h"
 
 bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
 {
 	if (!entry || !tag || !entry->tags[0])
 		return false;
+
+	LOG_TRACE("config_entry_has_tag(%s, %s)", entry->name, tag);
 
 	const char *p = entry->tags;
 	size_t tag_len = strlen(tag);
@@ -44,6 +47,8 @@ bool config_entry_has_group(const RepoEntry *entry, const char *group)
 {
 	if (!entry || !group || !entry->groups[0])
 		return false;
+
+	LOG_TRACE("config_entry_has_group(%s, %s)", entry->name, group);
 
 	const char *p = entry->groups;
 	size_t group_len = strlen(group);

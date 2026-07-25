@@ -50,12 +50,15 @@ static int cmd_list_tag(const ArgParseResult *result)
 {
 	(void) result;
 
+	LOG_TRACE("cmd_list_tag");
 	bool color = CMD_COLOR();
 
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
+
+	LOG_DEBUG("loaded %zu repos from config", cfg.count);
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
@@ -65,6 +68,7 @@ static int cmd_list_tag(const ArgParseResult *result)
 	}
 
 	if (g_table_mode) {
+		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Tag", "Message" };
 		Table *t = table_create(3, headers);
 		table_set_color(t, color);

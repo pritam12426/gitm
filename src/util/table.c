@@ -168,6 +168,9 @@ void table_print(const Table *table, FILE *out)
 	if (!table || table->col_count == 0)
 		return;
 
+	LOG_TRACE("table_print: calculating column widths (%d cols, %zu rows)",
+	          table->col_count, table->row_count);
+
 	/* Calculate max width per column */
 	size_t *widths = calloc((size_t) table->col_count, sizeof(size_t));
 	if (!widths)
@@ -193,6 +196,7 @@ void table_print(const Table *table, FILE *out)
 
 	/* Print header */
 	if (table->show_header && table->headers) {
+		LOG_TRACE("table_print: printing header");
 		for (int i = 0; i < table->col_count; i++) {
 			const char *hdr = table->headers[i];
 			size_t      w   = visible_width(hdr);
@@ -214,6 +218,7 @@ void table_print(const Table *table, FILE *out)
 		}
 
 		/* Print separator line */
+		LOG_TRACE("table_print: printing separator line");
 		for (int i = 0; i < table->col_count; i++) {
 			for (size_t j = 0; j < widths[i]; j++)
 				fputc('-', out);
@@ -228,6 +233,7 @@ void table_print(const Table *table, FILE *out)
 	}
 
 	/* Print rows */
+	LOG_TRACE("table_print: printing %zu data rows", table->row_count);
 	for (size_t r = 0; r < table->row_count; r++) {
 		const TableRow *row = &table->rows[r];
 		for (int c = 0; c < row->count && c < table->col_count; c++) {
@@ -236,6 +242,7 @@ void table_print(const Table *table, FILE *out)
 	}
 
 	free(widths);
+	LOG_TRACE("table_print: done");
 }
 
 void table_free(Table *table)

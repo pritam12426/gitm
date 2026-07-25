@@ -68,6 +68,8 @@ static int cmd_last(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
+	LOG_DEBUG("loaded %zu repos from config", cfg.count);
+
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
 		config_free(&cfg);
@@ -76,6 +78,7 @@ static int cmd_last(const ArgParseResult *result)
 	}
 
 	if (g_table_mode) {
+		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Hash", "Author", "Date", "Message" };
 		Table *t = table_create(5, headers);
 		table_set_color(t, color);
@@ -135,6 +138,7 @@ static int cmd_last(const ArgParseResult *result)
 		}
 	}
 
+	LOG_DEBUG("last: done");
 	config_free(&cfg);
 	free(config_path);
 	return 0;

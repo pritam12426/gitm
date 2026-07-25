@@ -31,14 +31,17 @@ Copy the `argparse/` directory into your project:
 your_project/
   argparse/
     include/
-      argparse.h        ← the only header you include
+      argparse.h              ← the only header you include
     src/
-      argparse.c
+      argparse.c              ← core parse engine
+      build.c                 ← constructors and command/option builders
+      completion.c            ← shell completion generation and runtime completion
+      argparse_internal.h     ← shared internal declarations
       lexer.c
-      lexer.h           ← internal, don't include
+      lexer.h                 ← internal, don't include
       help.c
       error.c
-      error.h           ← internal, don't include
+      error.h                 ← internal, don't include
 ```
 
 ### Build integration
@@ -55,6 +58,8 @@ CFLAGS += -Iargparse/include
 ```cmake
 add_library(argparse STATIC
     argparse/src/argparse.c
+    argparse/src/build.c
+    argparse/src/completion.c
     argparse/src/lexer.c
     argparse/src/help.c
     argparse/src/error.c
@@ -150,11 +155,13 @@ After adding commands, parse and dispatch:
 
 ```c
 int rc = argparse_parse(parser, argc, argv);
+if (rc == 0)
+    rc = argparse_dispatch(parser);
 argparse_free(parser);
 return rc;
 ```
 
-The parser automatically matches the command name from `argv`, calls the right callback, and handles errors. You don't need any manual dispatch code.
+`argparse_parse()` handles option parsing, command matching, and error messages. `argparse_dispatch()` then calls the matched command's callback. Separating the two lets you inspect the parse result before dispatching (e.g. to set up logging or context).
 
 ---
 
@@ -496,7 +503,10 @@ This also means `--` is the way to pass a value that happens to look like a flag
 - `0` on success (help/version/completion may have been printed)
 - `-1` on error (message already printed to stderr)
 
-Your callback's return value is passed through as the program's exit code.
+`argparse_dispatch()` returns:
+
+- Your callback's return value
+- `0` if no command was matched (no callback to call)
 
 ---
 
@@ -572,6 +582,12 @@ Call `argparse_help()` directly in your callback to show help programmatically:
 
 ```c
 argparse_help(result->parser, result->command);
+```
+
+Call `argparse_usage()` to print just the usage line (one line, no options/subcommands):
+
+```c
+argparse_usage(result->parser, result->command);
 ```
 
 ---
@@ -697,6 +713,8 @@ int main(int argc, char *argv[])
 
     /* Parse and run */
     int rc = argparse_parse(parser, argc, argv);
+    if (rc == 0)
+        rc = argparse_dispatch(parser);
     argparse_free(parser);
     return rc;
 }
@@ -732,34 +750,38 @@ These can be changed by editing the `#define`s at the top of `argparse.h`:
 
 ## Error Handling
 
-The parser prints coloured error messages to stderr with suggestions:
+The parser prints coloured error messages to stderr with suggestions, in the same style as Python's `argparse`:
 
 ```
-myapp: unknown option: --log-leve
-Did you mean: log-level
+myapp: error: unknown option: --log-leve
+  myapp list --log-leve
+              ^^^^^^^^
+Did you mean: --log-level
 Try 'myapp --help' for usage information.
 ```
 
 ```
-myapp: option '-o' requires a value
+myapp: error: option '-o' requires a value
+  myapp build -o
+              ^
 Try 'myapp --help' for usage information.
 ```
 
 ```
-myapp: required option '--output' is missing
+myapp: error: required option '--output' is missing
+  myapp build --verbose
+  ^^^^^^^^^^^^^^^^^^^^^
 Try 'myapp --help' for usage information.
 ```
 
 ```
-myapp: unsupported shell: powershell (use bash, zsh, or fish)
+myapp: error: unsupported shell: powershell (use bash, zsh, or fish)
 ```
 
 ```
-remote: unknown command: adde
+remote: error: unknown command: adde
 Did you mean: add
 Try 'remote --help' for usage information.
 ```
 
-That last one applies at any depth: mistype a command name or a subcommand name and you get the same Levenshtein-based "Did you mean?" suggestion, with the error attributed to whichever level in the tree was expecting that name.
-
-You don't need to write any error handling code — the parser takes care of it.
+Error messages include the usage line with a caret pointer showing where the bad argument appeared. Colour is auto-detected based on whether stderr is a terminal — output to files/pipes is plain text. You don't need to write any error handling code — the parser takes care of it.

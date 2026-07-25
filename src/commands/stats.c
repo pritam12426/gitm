@@ -195,7 +195,10 @@ static int cmd_stats(const ArgParseResult *result)
 	freq_map_sort(&tags);
 	freq_map_sort(&groups);
 
+	LOG_DEBUG("tag map: %zu entries, group map: %zu entries", tags.count, groups.count);
+
 	if (g_table_mode) {
+		LOG_DEBUG("table mode enabled");
 		Table *t_tags = build_table("Tag", &tags, color);
 		table_print(t_tags, stdout);
 		table_free(t_tags);

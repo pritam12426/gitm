@@ -558,17 +558,34 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 
 	result.command = current;
 
-	if (current->callback) {
-		ArgParseResult *heap_result = malloc(sizeof(*heap_result));
-		if (!heap_result)
-			return -1;
-		memcpy(heap_result, &result, sizeof(result));
-
-		int cb_rc = current->callback(heap_result);
-		free(heap_result);
-		return cb_rc;
-	}
+	/* Store for dispatch — caller calls argparse_dispatch() after re-init */
+	parser->dispatch_cmd = current;
+	parser->dispatch_result = malloc(sizeof(*parser->dispatch_result));
+	if (!parser->dispatch_result)
+		return -1;
+	memcpy(parser->dispatch_result, &result, sizeof(result));
 
 	/* No callback — return 0, let caller decide what to do */
 	return 0;
+}
+
+/* ── Dispatch ──────────────────────────────────────────────────────────────── */
+
+int argparse_dispatch(ArgParser *parser)
+{
+	if (!parser || !parser->dispatch_result)
+		return 0;
+
+	ArgParseResult *result = parser->dispatch_result;
+	ArgCommand     *cmd    = parser->dispatch_cmd;
+
+	int cb_rc = 0;
+	if (cmd && cmd->callback)
+		cb_rc = cmd->callback(result);
+
+	free(result);
+	parser->dispatch_result = NULL;
+	parser->dispatch_cmd    = NULL;
+
+	return cb_rc;
 }

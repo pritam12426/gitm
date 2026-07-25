@@ -96,6 +96,8 @@ static int cmd_status(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
+	LOG_DEBUG("loaded %zu repos from config", cfg.count);
+
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
 		config_free(&cfg);
@@ -107,13 +109,17 @@ static int cmd_status(const ArgParseResult *result)
 	size_t  filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
 	                                     indices, cfg.count);
 
+	LOG_DEBUG("filtered to %zu repos", filtered);
+
 	if (g_table_mode) {
+		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Status", "Branch" };
 		Table *t = table_create(3, headers);
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++) {
 			RepoEntry *e = &cfg.entries[indices[i]];
+			LOG_TRACE("checking status for %s (%s)", e->name, e->path);
 			ProcessResult r = git_exec(e->path, "status", "--porcelain", "--branch", NULL);
 
 			const char *status_str = "error";

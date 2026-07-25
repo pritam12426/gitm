@@ -67,10 +67,13 @@ static int cmd_recent(const ArgParseResult *result)
 {
 	(void) result;
 
+	LOG_TRACE("cmd_recent");
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
+
+	LOG_DEBUG("loaded %zu repos from config", cfg.count);
 
 	if (cfg.count == 0) {
 		fprintf(stderr, MSG_NO_REPOS);
@@ -120,8 +123,10 @@ static int cmd_recent(const ArgParseResult *result)
 	}
 
 	qsort(repos, repo_count, sizeof(RepoDate), cmp_repo_date);
+	LOG_DEBUG("sorted %zu repos by commit date", repo_count);
 
 	if (g_table_mode) {
+		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Path", "Last Commit" };
 		Table *t = table_create(3, headers);
 		table_set_color(t, CMD_COLOR());
