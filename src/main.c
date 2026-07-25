@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* If no command matched and no error, show help */
-	if (rc == 0 && parser->matched_command == &parser->root) {
+	if (rc == 0 && parser->matched_command == NULL) {
 		argparse_help(parser, NULL);
 	}
 

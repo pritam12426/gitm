@@ -48,4 +48,4 @@ void cmd_register_clone(ArgParser *parser);
 void cmd_register_stats(ArgParser *parser);
 
 
-#endif /* _CMD_H_ */
+#endif  // _CMD_H_

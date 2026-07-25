@@ -91,4 +91,4 @@ void table_free(Table *table);
 #endif
 
 
-#endif /* _TABLE_H_ */
+#endif  // _TABLE_H_

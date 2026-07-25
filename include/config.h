@@ -139,4 +139,4 @@ int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count
 #endif
 
 
-#endif /* _CONFIG_H_ */
+#endif  // _CONFIG_H_

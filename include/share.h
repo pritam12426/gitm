@@ -38,4 +38,4 @@
 #define MSG_CFG_SAVE_ERR   "could not save config"
 
 
-#endif /* _SHARE_H_ */
+#endif  // _SHARE_H_

@@ -73,4 +73,4 @@ char *git_current_branch(const char *path);
 #endif
 
 
-#endif /* _GIT_H_ */
+#endif  // _GIT_H_

@@ -62,4 +62,4 @@ void process_result_free(ProcessResult *r);
 #endif
 
 
-#endif /* _PROCESS_H_ */
+#endif  // _PROCESS_H_

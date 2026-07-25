@@ -124,17 +124,15 @@ static int cmd_status(const ArgParseResult *result)
 			} else if (r.stdout_len == 0) {
 				status_str = "clean";
 			} else {
-				/* Count changes from porcelain output */
-				int modified = 0, added = 0, deleted = 0, untracked = 0, other = 0;
-				const char *p = r.stdout_buf;
-				while (*p && *p != '\n') {
-					/* Skip the branch line (first line) */
-					while (*p && *p != '\n')
-						p++;
-					if (*p == '\n')
-						p++;
-				}
-				while (*p) {
+			/* Count changes from porcelain output */
+			int modified = 0, added = 0, deleted = 0, untracked = 0, other = 0;
+			const char *p = r.stdout_buf;
+			/* Skip the branch line (first line) */
+			while (*p && *p != '\n')
+				p++;
+			if (*p == '\n')
+				p++;
+			while (*p) {
 					char x = *p;
 					char y = (p[1] && p[1] != '\n') ? p[1] : ' ';
 					if (x == '?' || y == '?')
