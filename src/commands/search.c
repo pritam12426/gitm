@@ -19,7 +19,7 @@
 #include "config.h"
 #include "log.h"
 
-int cmd_search(const ArgParseResult *result)
+static int cmd_search(const ArgParseResult *result)
 {
 	if (result->positional_count < 1) {
 		fprintf(stderr, "Usage: gitm search PATTERN\n");

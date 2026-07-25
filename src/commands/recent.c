@@ -63,7 +63,7 @@ static int cmp_repo_date(const void *a, const void *b)
 	return 0;
 }
 
-int cmd_recent(const ArgParseResult *result)
+static int cmd_recent(const ArgParseResult *result)
 {
 	(void) result;
 

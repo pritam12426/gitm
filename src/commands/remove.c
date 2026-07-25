@@ -17,7 +17,7 @@
 #include "config.h"
 #include "log.h"
 
-int cmd_remove(const ArgParseResult *result)
+static int cmd_remove(const ArgParseResult *result)
 {
 	if (result->positional_count < 1) {
 		fprintf(stderr, "Usage: gitm remove <name>\n");

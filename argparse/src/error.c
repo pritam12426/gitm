@@ -9,13 +9,35 @@
  *
  * Provides helpful error output when parsing fails.
  * Uses simple string similarity for "did you mean?" suggestions.
+ * Colour scheme: bold program name, bold red "error:" prefix,
+ * red error description.
  */
+
+#define _POSIX_C_SOURCE 200809L /* for fileno() under strict -std=c17 */
 
 #include "error.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+
+/* ── Internal ANSI codes ──────────────────────────────────────────────────── */
+
+static int g_use_color = -1;
+
+static void detect_color(void)
+{
+	if (g_use_color >= 0)
+		return;
+	g_use_color = isatty(fileno(stderr)) ? 1 : 0;
+}
+
+#define C_RESET      (g_use_color ? "\x1b[0m" : "")
+#define C_BOLD       (g_use_color ? "\x1b[1m" : "")
+#define C_RED        (g_use_color ? "\x1b[31m" : "")
+#define C_BOLD_RED   (g_use_color ? "\x1b[1;31m" : "")
+#define C_DIM        (g_use_color ? "\x1b[2m" : "")
 
 /* Simple Levenshtein distance */
 static int levenshtein(const char *a, const char *b)
@@ -51,7 +73,11 @@ void arg_error_unknown_option(const char        *program,
                               const char *const *known,
                               int                known_count)
 {
-	fprintf(stderr, "%s: unknown option: %s\n", program, option);
+	detect_color();
+	fprintf(stderr, "%s%s%s: %serror:%s unknown option: %s%s%s\n",
+	        C_BOLD, program, C_RESET,
+	        C_BOLD_RED, C_RESET,
+	        C_RED, option, C_RESET);
 
 	/* Find closest match */
 	int best_dist  = 999;
@@ -66,22 +92,26 @@ void arg_error_unknown_option(const char        *program,
 	}
 
 	if (best_index >= 0 && best_dist <= 3) {
-		fprintf(stderr, "Did you mean: %s\n", known[best_index]);
+		fprintf(stderr, "%sDid you mean:%s %s%s%s\n",
+		        C_DIM, C_RESET, C_RED, known[best_index], C_RESET);
 	}
-
-	fprintf(stderr, "Try '%s --help' for usage information.\n", program);
 }
 
 void arg_error_missing_value(const char *program, const char *option)
 {
-	fprintf(stderr, "%s: option '%s' requires a value\n", program, option);
-	fprintf(stderr, "Try '%s --help' for usage information.\n", program);
+	detect_color();
+	fprintf(stderr, "%s%s%s: %serror:%s option '%s' requires a value\n",
+	        C_BOLD, program, C_RESET,
+	        C_BOLD_RED, C_RESET, option);
 }
 
 void arg_error_missing_argument(const char *program, const char *arg_name)
 {
-	fprintf(stderr, "%s: missing required argument: %s\n", program, arg_name);
-	fprintf(stderr, "Try '%s --help' for usage information.\n", program);
+	detect_color();
+	fprintf(stderr, "%s%s%s: %serror:%s %smissing required argument: %s%s%s\n",
+	        C_BOLD, program, C_RESET,
+	        C_BOLD_RED, C_RESET,
+	        C_RED, arg_name, C_RED, C_RESET);
 }
 
 void arg_error_unknown_command(const char        *program,
@@ -89,7 +119,11 @@ void arg_error_unknown_command(const char        *program,
                                const char *const *known,
                                int                known_count)
 {
-	fprintf(stderr, "%s: unknown command: %s\n", program, command);
+	detect_color();
+	fprintf(stderr, "%s%s%s: %serror:%s unknown command: %s%s%s\n",
+	        C_BOLD, program, C_RESET,
+	        C_BOLD_RED, C_RESET,
+	        C_RED, command, C_RESET);
 
 	int best_dist  = 999;
 	int best_index = -1;
@@ -103,8 +137,7 @@ void arg_error_unknown_command(const char        *program,
 	}
 
 	if (best_index >= 0 && best_dist <= 3) {
-		fprintf(stderr, "Did you mean: %s\n", known[best_index]);
+		fprintf(stderr, "%sDid you mean:%s %s%s%s\n",
+		        C_DIM, C_RESET, C_RED, known[best_index], C_RESET);
 	}
-
-	fprintf(stderr, "Try '%s --help' for usage information.\n", program);
 }

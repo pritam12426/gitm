@@ -84,7 +84,7 @@ static void print_status_line(const char *line, bool color)
 		fprintf(stderr, "  %s\n", line);
 }
 
-int cmd_status(const ArgParseResult *result)
+static int cmd_status(const ArgParseResult *result)
 {
 	(void) result;
 

@@ -22,24 +22,6 @@ void cmd_register_table_flag(ArgCommand *cmd)
 }
 
 /* Registration functions (defined in each command file) */
-extern void cmd_register_list(ArgParser *parser);
-extern void cmd_register_add(ArgParser *parser);
-extern void cmd_register_remove(ArgParser *parser);
-extern void cmd_register_rename(ArgParser *parser);
-extern void cmd_register_status(ArgParser *parser);
-extern void cmd_register_info(ArgParser *parser);
-extern void cmd_register_exec(ArgParser *parser);
-extern void cmd_register_open(ArgParser *parser);
-extern void cmd_register_doctor(ArgParser *parser);
-extern void cmd_register_recent(ArgParser *parser);
-extern void cmd_register_summary(ArgParser *parser);
-extern void cmd_register_search(ArgParser *parser);
-extern void cmd_register_list_tag(ArgParser *parser);
-extern void cmd_register_remote(ArgParser *parser);
-extern void cmd_register_last(ArgParser *parser);
-extern void cmd_register_branch(ArgParser *parser);
-extern void cmd_register_clean(ArgParser *parser);
-extern void cmd_register_stats(ArgParser *parser);
 
 void cmd_register_all(ArgParser *parser)
 {

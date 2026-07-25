@@ -23,7 +23,7 @@
 static const char *add_tags   = NULL;
 static const char *add_groups = NULL;
 
-int cmd_add(const ArgParseResult *result)
+static int cmd_add(const ArgParseResult *result)
 {
 	if (result->positional_count < 1) {
 		fprintf(stderr, "Usage: gitm add <path> [name] [--tag TAGS] [--group GROUPS]\n");

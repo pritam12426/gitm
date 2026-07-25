@@ -76,7 +76,7 @@ static void print_branches(const char *name, const char *path, bool color)
 	process_result_free(&r);
 }
 
-int cmd_branch(const ArgParseResult *result)
+static int cmd_branch(const ArgParseResult *result)
 {
 	(void) result;
 

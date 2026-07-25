@@ -348,7 +348,7 @@ static void apply_defaults(ArgCommand *cmd)
 
 /* ── Exclusive group validation ────────────────────────────────────────────── */
 
-static int validate_exclusive(ArgCommand *cmd, const char *program)
+static int validate_exclusive(ArgParser *parser, ArgCommand *cmd)
 {
 	int groups[ARGPARSE_MAX_EXCLUSIVE_GROUPS] = { 0 };
 
@@ -357,8 +357,9 @@ static int validate_exclusive(ArgCommand *cmd, const char *program)
 		if (opt->exclusive_group > 0 && opt->was_set) {
 			int gid = opt->exclusive_group;
 			if (groups[gid]) {
-				fprintf(stderr, "%s: options in group %d are mutually exclusive\n",
-				        program, gid);
+				argparse_usage(parser, cmd == &parser->root ? NULL : cmd);
+				fprintf(stderr, "%s%s: %serror:%s options in group %d are mutually exclusive\n",
+				        "\x1b[1m", parser->prog_name, "\x1b[1;31m", "\x1b[0m", gid);
 				return -1;
 			}
 			groups[gid] = 1;
@@ -369,17 +370,20 @@ static int validate_exclusive(ArgCommand *cmd, const char *program)
 
 /* ── Required options validation ───────────────────────────────────────────── */
 
-static int validate_required(ArgCommand *cmd, const char *program)
+static int validate_required(ArgParser *parser, ArgCommand *cmd)
 {
 	for (int i = 0; i < cmd->option_count; i++) {
 		ArgOption *opt = &cmd->options[i];
 		if (opt->required && !opt->was_set) {
+			argparse_usage(parser, cmd == &parser->root ? NULL : cmd);
 			if (opt->long_name)
-				fprintf(stderr, "%s: required option '--%s' is missing\n",
-				        program, opt->long_name);
+				fprintf(stderr, "%s%s: %serror:%s required option '--%s' is missing\n",
+				        "\x1b[1m", parser->prog_name, "\x1b[1;31m", "\x1b[0m",
+				        opt->long_name);
 			else
-				fprintf(stderr, "%s: required option '-%c' is missing\n",
-				        program, opt->short_name);
+				fprintf(stderr, "%s%s: %serror:%s required option '-%c' is missing\n",
+				        "\x1b[1m", parser->prog_name, "\x1b[1;31m", "\x1b[0m",
+				        opt->short_name);
 			return -1;
 		}
 	}
@@ -672,6 +676,7 @@ static int parse_tokens(ArgParser      *parser,
 					Token vtok = lexer_next(lex);
 					if (vtok.type == TOKEN_END || vtok.type == TOKEN_LONG_OPTION
 					    || vtok.type == TOKEN_SHORT_OPTION) {
+						argparse_usage(parser, current == &parser->root ? NULL : current);
 						arg_error_missing_value(program, "--shell-completion");
 						return -1;
 					}
@@ -686,6 +691,7 @@ static int parse_tokens(ArgParser      *parser,
 				int         known_count = 0;
 				for (int i = 0; i < current->option_count; i++)
 					known[known_count++] = current->options[i].long_name;
+				argparse_usage(parser, current == &parser->root ? NULL : current);
 				arg_error_unknown_option(program, tok.value, known, known_count);
 				return -1;
 			}
@@ -707,6 +713,7 @@ static int parse_tokens(ArgParser      *parser,
 					Token vtok = lexer_next(lex);
 					if (vtok.type == TOKEN_END || vtok.type == TOKEN_LONG_OPTION
 					    || vtok.type == TOKEN_SHORT_OPTION) {
+						argparse_usage(parser, current == &parser->root ? NULL : current);
 						arg_error_missing_value(program, tok.value);
 						return -1;
 					}
@@ -751,6 +758,7 @@ static int parse_tokens(ArgParser      *parser,
 						Token vtok = lexer_next(lex);
 						if (vtok.type == TOKEN_END || vtok.type == TOKEN_LONG_OPTION
 						    || vtok.type == TOKEN_SHORT_OPTION) {
+							argparse_usage(parser, current == &parser->root ? NULL : current);
 							arg_error_missing_value(program, "-S");
 							return -1;
 						}
@@ -768,6 +776,7 @@ static int parse_tokens(ArgParser      *parser,
 						known[known_count++] = current->options[j].long_name
 						                        ? current->options[j].long_name
 						                        : "?";
+					argparse_usage(parser, current == &parser->root ? NULL : current);
 					arg_error_unknown_option(program, short_str, known, known_count);
 					return -1;
 				}
@@ -799,6 +808,7 @@ static int parse_tokens(ArgParser      *parser,
 						if (vtok.type == TOKEN_END || vtok.type == TOKEN_LONG_OPTION
 						    || vtok.type == TOKEN_SHORT_OPTION) {
 							char short_str2[3] = { '-', c, '\0' };
+							argparse_usage(parser, current == &parser->root ? NULL : current);
 							arg_error_missing_value(program, short_str2);
 							return -1;
 						}
@@ -850,6 +860,7 @@ static int parse_tokens(ArgParser      *parser,
 					for (int i = 0; i < current->subcommand_count; i++)
 						known[known_count++] = current->subcommands[i]->name;
 				}
+				argparse_usage(parser, current == &parser->root ? NULL : current);
 				arg_error_unknown_command(program, tok.value, known, known_count);
 				return -1;
 			}
@@ -905,9 +916,9 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 	 * options were silently skipped whenever any command ran.) */
 	for (int i = 0; i < chain_len; i++) {
 		apply_defaults(chain[i]);
-		if (validate_exclusive(chain[i], parser->prog_name) != 0)
+		if (validate_exclusive(parser, chain[i]) != 0)
 			return -1;
-		if (validate_required(chain[i], parser->prog_name) != 0)
+		if (validate_required(parser, chain[i]) != 0)
 			return -1;
 	}
 

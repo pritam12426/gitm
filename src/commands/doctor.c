@@ -25,7 +25,7 @@
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-int cmd_doctor(const ArgParseResult *result)
+static int cmd_doctor(const ArgParseResult *result)
 {
 	(void) result;
 

@@ -220,6 +220,9 @@ void argparse_add_positional(ArgCommand *command, const char *name);
 /* Parse argv. Returns 0 on success, -1 on error, -2 for help, -3 for version. */
 int argparse_parse(ArgParser *parser, int argc, char **argv);
 
+/* Print usage line for a command (or global usage if cmd is NULL) */
+void argparse_usage(const ArgParser *parser, const ArgCommand *cmd);
+
 /* Print help for a command (or global help if cmd is NULL) */
 void argparse_help(const ArgParser *parser, const ArgCommand *cmd);
 

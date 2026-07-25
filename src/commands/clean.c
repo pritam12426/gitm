@@ -19,7 +19,7 @@
 
 static bool g_dry_run = false;
 
-int cmd_clean(const ArgParseResult *result)
+static int cmd_clean(const ArgParseResult *result)
 {
 	(void) result;
 

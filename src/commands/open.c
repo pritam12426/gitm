@@ -20,7 +20,7 @@
 #include "git.h"
 #include "log.h"
 
-int cmd_open(const ArgParseResult *result)
+static int cmd_open(const ArgParseResult *result)
 {
 	if (result->positional_count < 1) {
 		fprintf(stderr, "Usage: gitm open <name>\n");

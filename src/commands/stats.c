@@ -163,7 +163,7 @@ static Table *build_table(const char *col_header, const FreqMap *m, bool color)
 	return t;
 }
 
-int cmd_stats(const ArgParseResult *result)
+static int cmd_stats(const ArgParseResult *result)
 {
 	(void) result;
 

@@ -19,7 +19,8 @@
 		"program": "$ZED_WORKTREE_ROOT/gitm",
 		"args": [
 			"--log-level",
-			"debug"
+			"trace",
+			"list"
 		],
 		"request": "launch",
 		"adapter": "CodeLLDB"

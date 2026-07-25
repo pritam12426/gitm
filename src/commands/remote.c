@@ -71,7 +71,7 @@ static void print_remotes(const char *name, const char *path, bool color)
 	process_result_free(&r);
 }
 
-int cmd_remote(const ArgParseResult *result)
+static int cmd_remote(const ArgParseResult *result)
 {
 	(void) result;
 

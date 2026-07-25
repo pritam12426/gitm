@@ -17,7 +17,7 @@
 #include "config.h"
 #include "log.h"
 
-int cmd_rename(const ArgParseResult *result)
+static int cmd_rename(const ArgParseResult *result)
 {
 	if (result->positional_count < 2) {
 		fprintf(stderr, "Usage: gitm rename <old-name> <new-name>\n");

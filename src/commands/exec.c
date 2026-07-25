@@ -19,7 +19,7 @@
 #include "git.h"
 #include "log.h"
 
-int cmd_exec(const ArgParseResult *result)
+static int cmd_exec(const ArgParseResult *result)
 {
 	if (result->positional_count < 2) {
 		fprintf(stderr, "Usage: gitm exec <name> <git-command> [args...]\n");

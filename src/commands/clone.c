@@ -19,7 +19,7 @@
 #include "git.h"
 #include "log.h"
 
-int cmd_clone(const ArgParseResult *result)
+static int cmd_clone(const ArgParseResult *result)
 {
 	if (result->positional_count < 1) {
 		fprintf(stderr, "Usage: gitm clone <url> [name]\n");

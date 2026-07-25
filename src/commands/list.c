@@ -22,7 +22,7 @@
 static const char *list_filter_tag   = NULL;
 static const char *list_filter_group = NULL;
 
-int cmd_list(const ArgParseResult *result)
+static int cmd_list(const ArgParseResult *result)
 {
 	(void) result;
 

@@ -271,6 +271,40 @@ static void print_commands_flat(const ArgCommand *cmd, int depth)
 
 /* ── Public API ────────────────────────────────────────────────────────────── */
 
+void argparse_usage(const ArgParser *parser, const ArgCommand *cmd)
+{
+	detect_color();
+
+	if (cmd == NULL || cmd == &parser->root) {
+		fprintf(stderr, "%susage:%s %s%s%s [OPTIONS] COMMAND [ARGS]%s\n",
+		        C_BOLD, C_RESET, C_BOLD, parser->prog_name, C_RESET, C_RESET);
+		return;
+	}
+
+	/* Build full usage name by walking the parent chain */
+	const ArgCommand *chain[ARGPARSE_MAX_CHAIN_DEPTH];
+	int                chain_len = 0;
+	for (const ArgCommand *p = cmd->parent; p && p->name && p->name[0] != '\0'; p = p->parent) {
+		if (chain_len < ARGPARSE_MAX_CHAIN_DEPTH)
+			chain[chain_len++] = p;
+	}
+
+	fprintf(stderr, "%susage:%s %s%s", C_BOLD, C_RESET, C_BOLD, parser->prog_name);
+	for (int i = chain_len - 1; i >= 0; i--)
+		fprintf(stderr, " %s", chain[i]->name);
+	fprintf(stderr, " %s%s", cmd->name, C_RESET);
+
+	for (int i = 0; i < cmd->positional_count; i++)
+		fprintf(stderr, " %s%s%s", C_DIM, cmd->positionals[i], C_RESET);
+
+	if (cmd->option_count > 0)
+		fprintf(stderr, " %s[OPTIONS]%s", C_DIM, C_RESET);
+	if (cmd->subcommand_count > 0)
+		fprintf(stderr, " %s[SUBCOMMAND]%s", C_DIM, C_RESET);
+
+	fprintf(stderr, "\n");
+}
+
 void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 {
 	detect_color();

@@ -86,7 +86,7 @@ static void format_size(char *buf, size_t buflen, long bytes)
 		snprintf(buf, buflen, "%ld B", bytes);
 }
 
-int cmd_summary(const ArgParseResult *result)
+static int cmd_summary(const ArgParseResult *result)
 {
 	(void) result;
 

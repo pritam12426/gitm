@@ -75,7 +75,7 @@ static void print_tags(const char *name, const char *path, bool color)
 	process_result_free(&r);
 }
 
-int cmd_list_tag(const ArgParseResult *result)
+static int cmd_list_tag(const ArgParseResult *result)
 {
 	(void) result;
 

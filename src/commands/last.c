@@ -87,7 +87,7 @@ static void print_last(const char *name, const char *path, bool color)
 	process_result_free(&r);
 }
 
-int cmd_last(const ArgParseResult *result)
+static int cmd_last(const ArgParseResult *result)
 {
 	(void) result;
 
