@@ -78,19 +78,20 @@ static int cmd_doctor(const ArgParseResult *result)
 	if (g_table_mode) {
 		const char *headers[] = { "Name", "Status" };
 		Table *t = table_create(2, headers);
-		table_set_color(t, log_use_color());
+		bool color = CMD_COLOR();
+		table_set_color(t, color);
 
 		for (size_t i = 0; i < checked; i++) {
 			const char *name = cfg.entries[indices[i]].name;
 			const char *status = statuses[i];
 			bool is_ok = (strcmp(status, "ok") == 0);
 
-			if (log_use_color() && is_ok) {
+			if (color && is_ok) {
 				char colored[128];
 				snprintf(colored, sizeof(colored), "\x1b[32m%s\x1b[0m", status);
 				const char *cells[] = { name, colored };
 				table_add_row_raw(t, cells, 2);
-			} else if (log_use_color() && !is_ok) {
+			} else if (color && !is_ok) {
 				char colored[128];
 				snprintf(colored, sizeof(colored), "\x1b[31m%s\x1b[0m", status);
 				const char *cells[] = { name, colored };

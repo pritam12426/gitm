@@ -26,11 +26,16 @@ static const char *filter_group = NULL;
 
 static void print_last(const char *name, const char *path, bool color)
 {
-	// Format: hash author date subject
-	ProcessResult r = git_exec(path,
-	                           "log", "-1",
-	                           "--format=%h %an %ar %s",
-	                           "HEAD", NULL);
+	const char *fmt = color
+	    ? "%C(yellow)%h%Creset %C(cyan)%an%Creset %Cgreen%ar%Creset %s"
+	    : "%h %an %ar %s";
+
+	char pretty_arg[512];
+	snprintf(pretty_arg, sizeof(pretty_arg), "--pretty=tformat:%s", fmt);
+
+	ProcessResult r = color
+	    ? git_exec_color(path, "log", "-1", pretty_arg, "HEAD", NULL)
+	    : git_exec(path, "log", "-1", pretty_arg, "HEAD", NULL);
 
 	if (r.exit_code != 0 || r.stdout_len == 0) {
 		if (color)
@@ -41,49 +46,14 @@ static void print_last(const char *name, const char *path, bool color)
 		return;
 	}
 
-	// Strip newline
-	char *line = strdup(r.stdout_buf);
-	size_t len = strlen(line);
-	if (len > 0 && line[len - 1] == '\n')
-		line[len - 1] = '\0';
-
-	// Parse: hash author date subject
-	char *p = line;
-
-	// Hash (first word)
-	char *hash = p;
-	while (*p && *p != ' ')
-		p++;
-	if (*p) *p++ = '\0';
-
-	// Author (until we hit a date pattern like "2 hours ago")
-	char *author = p;
-	while (*p && !((*p >= '0' && *p <= '9') && *(p + 1) == ' ' &&
-	               (*(p + 2) == 'm' || *(p + 2) == 'h' || *(p + 2) == 'd' ||
-	                *(p + 2) == 'w' || *(p + 2) == 'y' || *(p + 2) == 's')))
-		p++;
-
-	// Find the date part
-	char *date = p;
-	while (*p && *p != ' ')
-		p++;
-	if (*p) *p++ = '\0';
-	// Skip "ago"
-	while (*p && *p != ' ')
-		p++;
-	if (*p) *p++ = '\0';
-
-	char *subject = p;
-
 	if (color)
-		fprintf(stderr, "\n\x1b[1m\x1b[36m%s\x1b[0m\n"
-		                "  \x1b[33m%s\x1b[0m %s \x1b[2m%s\x1b[0m %s\n",
-		        name, hash, author, date, subject);
+		fprintf(stderr, "\n\x1b[1m\x1b[36m%s\x1b[0m\n  ", name);
 	else
-		fprintf(stderr, "\n%s\n  %s %s %s %s\n",
-		        name, hash, author, date, subject);
+		fprintf(stderr, "\n%s\n  ", name);
 
-	free(line);
+	/* Git output already has colours — pass through */
+	fputs(r.stdout_buf, stderr);
+
 	process_result_free(&r);
 }
 
@@ -91,7 +61,7 @@ static int cmd_last(const ArgParseResult *result)
 {
 	(void) result;
 
-	bool color = log_use_color();
+	bool color = CMD_COLOR();
 
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;

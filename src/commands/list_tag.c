@@ -26,7 +26,9 @@ static const char *filter_group = NULL;
 
 static void print_tags(const char *name, const char *path, bool color)
 {
-	ProcessResult r = git_exec(path, "tag", "-n1", "--sort=-version:refname", NULL);
+	ProcessResult r = color
+	    ? git_exec_color(path, "tag", "-n1", "--sort=-version:refname", NULL)
+	    : git_exec(path, "tag", "-n1", "--sort=-version:refname", NULL);
 
 	if (r.exit_code != 0 || r.stdout_len == 0) {
 		process_result_free(&r);
@@ -38,39 +40,8 @@ static void print_tags(const char *name, const char *path, bool color)
 	else
 		fprintf(stderr, "\n%s\n", name);
 
-	const char *p = r.stdout_buf;
-	while (*p) {
-		const char *start = p;
-		while (*p && *p != '\n')
-			p++;
-
-		size_t len = (size_t) (p - start);
-		char   line[MAX_PATH_LEN];
-		if (len >= sizeof(line))
-			len = sizeof(line) - 1;
-		memcpy(line, start, len);
-		line[len] = '\0';
-
-		// Split tag and message
-		char *space = strchr(line, ' ');
-		if (space) {
-			*space = '\0';
-			const char *tag     = line;
-			const char *message = space + 1;
-			if (color)
-				fprintf(stderr, "  \x1b[33m%-20s\x1b[0m %s\n", tag, message);
-			else
-				fprintf(stderr, "  %-20s %s\n", tag, message);
-		} else {
-			if (color)
-				fprintf(stderr, "  \x1b[33m%s\x1b[0m\n", line);
-			else
-				fprintf(stderr, "  %s\n", line);
-		}
-
-		if (*p == '\n')
-			p++;
-	}
+	/* Git output already has colours (FORCE_COLOR=1) — pass through */
+	fputs(r.stdout_buf, stderr);
 
 	process_result_free(&r);
 }
@@ -79,7 +50,7 @@ static int cmd_list_tag(const ArgParseResult *result)
 {
 	(void) result;
 
-	bool color = log_use_color();
+	bool color = CMD_COLOR();
 
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;

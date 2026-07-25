@@ -26,7 +26,9 @@ static const char *filter_group = NULL;
 
 static void print_remotes(const char *name, const char *path, bool color)
 {
-	ProcessResult r = git_exec(path, "remote", "-v", NULL);
+	ProcessResult r = color
+	    ? git_exec_color(path, "remote", "-v", NULL)
+	    : git_exec(path, "remote", "-v", NULL);
 
 	if (r.exit_code != 0 || r.stdout_len == 0) {
 		if (color)
@@ -42,31 +44,8 @@ static void print_remotes(const char *name, const char *path, bool color)
 	else
 		fprintf(stderr, "\n%s\n", name);
 
-	const char *p = r.stdout_buf;
-	while (*p) {
-		const char *start = p;
-		while (*p && *p != '\n')
-			p++;
-
-		size_t len = (size_t) (p - start);
-		char   line[MAX_PATH_LEN];
-		if (len >= sizeof(line))
-			len = sizeof(line) - 1;
-		memcpy(line, start, len);
-		line[len] = '\0';
-
-		// Color the remote name (first word)
-		char *space = strchr(line, ' ');
-		if (space && color) {
-			*space = '\0';
-			fprintf(stderr, "  \x1b[33m%-10s\x1b[0m %s\n", line, space + 1);
-		} else {
-			fprintf(stderr, "  %s\n", line);
-		}
-
-		if (*p == '\n')
-			p++;
-	}
+	/* Git output already has colours (FORCE_COLOR=1) — pass through */
+	fputs(r.stdout_buf, stderr);
 
 	process_result_free(&r);
 }
@@ -75,7 +54,7 @@ static int cmd_remote(const ArgParseResult *result)
 {
 	(void) result;
 
-	bool color = log_use_color();
+	bool color = CMD_COLOR();
 
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;

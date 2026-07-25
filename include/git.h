@@ -36,6 +36,15 @@ extern "C" {
 ProcessResult git_exec(const char *cwd, ...);
 
 /*
+ * Run a git command with FORCE_COLOR=1.
+ *
+ * Same as git_exec() but forces ANSI colour output from git.
+ * Use for commands whose output is displayed directly to the user.
+ * Caller must free the result with process_result_free().
+ */
+ProcessResult git_exec_color(const char *cwd, ...);
+
+/*
  * Convenience: run a git command and return true if exit code is 0.
  * Output is still in result — caller must free.
  */

@@ -124,7 +124,7 @@ static int cmd_recent(const ArgParseResult *result)
 	if (g_table_mode) {
 		const char *headers[] = { "Name", "Path", "Last Commit" };
 		Table *t = table_create(3, headers);
-		table_set_color(t, log_use_color());
+		table_set_color(t, CMD_COLOR());
 
 		for (size_t i = 0; i < repo_count; i++) {
 			table_add_row(t, repos[i].name, repos[i].path, repos[i].date_str);

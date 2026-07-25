@@ -26,7 +26,9 @@ static const char *filter_group = NULL;
 
 static void print_branches(const char *name, const char *path, bool color)
 {
-	ProcessResult r = git_exec(path, "branch", "--list", NULL);
+	ProcessResult r = color
+	    ? git_exec_color(path, "branch", "--list", NULL)
+	    : git_exec(path, "branch", "--list", NULL);
 
 	if (r.exit_code != 0 || r.stdout_len == 0) {
 		if (color)
@@ -42,36 +44,8 @@ static void print_branches(const char *name, const char *path, bool color)
 	else
 		fprintf(stderr, "\n%s\n", name);
 
-	const char *p = r.stdout_buf;
-	while (*p) {
-		// Skip leading spaces
-		while (*p == ' ')
-			p++;
-
-		const char *start = p;
-		while (*p && *p != '\n')
-			p++;
-
-		size_t len = (size_t) (p - start);
-		char   line[256];
-		if (len >= sizeof(line))
-			len = sizeof(line) - 1;
-		memcpy(line, start, len);
-		line[len] = '\0';
-
-		// Detect current branch (* prefix)
-		if (line[0] == '*' && line[1] == ' ') {
-			if (color)
-				fprintf(stderr, "  \x1b[1m\x1b[32m* %s\x1b[0m\n", line + 2);
-			else
-				fprintf(stderr, "  * %s\n", line + 2);
-		} else {
-			fprintf(stderr, "    %s\n", line);
-		}
-
-		if (*p == '\n')
-			p++;
-	}
+	/* Git output already has colours (FORCE_COLOR=1) — pass through */
+	fputs(r.stdout_buf, stderr);
 
 	process_result_free(&r);
 }
@@ -80,7 +54,7 @@ static int cmd_branch(const ArgParseResult *result)
 {
 	(void) result;
 
-	bool color = log_use_color();
+	bool color = CMD_COLOR();
 
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;

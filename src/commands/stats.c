@@ -167,7 +167,7 @@ static int cmd_stats(const ArgParseResult *result)
 {
 	(void) result;
 
-	bool   color = log_use_color();
+	bool   color = CMD_COLOR();
 	char  *config_path = NULL;
 	GitConfig cfg = { 0 };
 

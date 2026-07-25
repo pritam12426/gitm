@@ -55,7 +55,7 @@ static int cmd_list(const ArgParseResult *result)
 	if (g_table_mode) {
 		const char *headers[] = { "Name", "Path", "Tags", "Groups" };
 		Table *t = table_create(4, headers);
-		table_set_color(t, log_use_color());
+		table_set_color(t, CMD_COLOR());
 
 		for (size_t i = 0; i < filtered; i++) {
 			RepoEntry *e = &cfg.entries[indices[i]];

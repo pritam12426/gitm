@@ -89,7 +89,7 @@ static int cmd_status(const ArgParseResult *result)
 	(void) result;
 
 	LOG_TRACE("cmd_status");
-	bool color = log_use_color();
+	bool color = CMD_COLOR();
 
 	GitConfig cfg = { 0 };
 	char      *config_path = NULL;

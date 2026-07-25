@@ -15,11 +15,19 @@
 #ifndef _CMD_UTIL_H_
 #define _CMD_UTIL_H_
 
+#define _POSIX_C_SOURCE 200809L
 
 #include <stddef.h>
+#include <unistd.h>
 
 #include "argparse.h"
+#include "cmd.h"
 #include "config.h"
+#include "log.h"
+
+/* Determine colour based on the current output destination.
+ * In table mode output goes to stdout, otherwise to stderr. */
+#define CMD_COLOR() (g_table_mode ? isatty(fileno(stdout)) : log_use_color())
 
 
 #ifdef __cplusplus

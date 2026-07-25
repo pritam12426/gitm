@@ -43,6 +43,15 @@ typedef struct {
 ProcessResult process_exec(const char *cwd, char *const argv[]);
 
 /*
+ * Execute a command with FORCE_COLOR=1 in the child environment.
+ *
+ * Same as process_exec() but sets FORCE_COLOR=1 and CLICOLOR_FORCE=1
+ * so the child process outputs ANSI colours even when stdout is not a TTY.
+ * Respects NO_COLOR: if already set in the parent env, colours are not forced.
+ */
+ProcessResult process_exec_colored(const char *cwd, char *const argv[]);
+
+/*
  * Free the buffers in a ProcessResult.
  */
 void process_result_free(ProcessResult *r);

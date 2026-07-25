@@ -75,7 +75,7 @@ Table *table_create(int col_count, const char **headers)
 
 	t->col_count   = col_count;
 	t->show_header = (headers != NULL);
-	t->use_color   = isatty(fileno(stderr)); /* default: auto-detect */
+	t->use_color   = isatty(fileno(stdout)); /* default: auto-detect */
 
 	if (headers) {
 		t->headers = calloc((size_t) col_count, sizeof(char *));

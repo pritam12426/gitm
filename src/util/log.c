@@ -182,11 +182,13 @@ void log_record(Log_level_t level,
 		return;
 
 	if (g_log_stream == NULL) {
-#ifdef LOG_SHOW_TIME_STAMP
-		fprintf(stderr, "%s[%s:%d:%s]%s ", COLOR_DIM, file, line, func, COLOR_RESET);
-#endif
+		int color = isatty(fileno(stderr));
+		if (color)
+			fprintf(stderr, "%s[%s:%d:%s]%s ", COLOR_DIM, file, line, func, COLOR_RESET);
 		fprintf(stderr,
-		        COLOR_BOLD_RED "[LOG] error: log_init() not called — dropping message" COLOR_RESET);
+		        "%s[LOG] error: log_init() not called — dropping message%s",
+		        color ? COLOR_BOLD_RED : "",
+		        color ? COLOR_RESET : "");
 		if (new_line)
 			fputc('\n', stderr);
 		return;

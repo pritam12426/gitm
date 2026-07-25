@@ -49,6 +49,35 @@ ProcessResult git_exec(const char *cwd, ...)
 	return process_exec(cwd, mutable_argv);
 }
 
+ProcessResult git_exec_color(const char *cwd, ...)
+{
+	LOG_TRACE("git_exec_color(cwd=%s)", cwd ? cwd : "(inherit)");
+	va_list ap;
+	va_start(ap, cwd);
+
+	const char *args[GIT_MAX_ARGS];
+	int         argc = 0;
+
+	args[argc++] = GIT_BINARY;
+	args[argc++] = "-c";
+	args[argc++] = "color.ui=always";
+
+	const char *arg;
+	while (argc < GIT_MAX_ARGS - 1 && (arg = va_arg(ap, const char *)) != NULL) {
+		args[argc++] = arg;
+	}
+	va_end(ap);
+
+	args[argc] = NULL;
+
+	char *mutable_argv[GIT_MAX_ARGS];
+	for (int i = 0; i <= argc; i++) {
+		mutable_argv[i] = (char *) args[i];
+	}
+
+	return process_exec_colored(cwd, mutable_argv);
+}
+
 ProcessResult git_exec_quiet(const char *cwd, ...)
 {
 	LOG_TRACE("git_exec_quiet(cwd=%s)", cwd ? cwd : "(inherit)");

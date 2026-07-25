@@ -34,14 +34,32 @@
  * options are only visible once we've actually entered it.
  */
 
+#define _POSIX_C_SOURCE 200809L /* for fileno() under strict -std=c17 */
+
 #include "argparse.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "error.h"
 #include "lexer.h"
+
+/* ── Colour support for validation messages ───────────────────────────────── */
+
+static int g_val_use_color = -1; /* -1 = not detected yet */
+
+static void detect_val_color(void)
+{
+	if (g_val_use_color >= 0)
+		return;
+	g_val_use_color = isatty(fileno(stderr)) ? 1 : 0;
+}
+
+#define V_C_RESET    (g_val_use_color ? "\x1b[0m" : "")
+#define V_C_BOLD     (g_val_use_color ? "\x1b[1m" : "")
+#define V_C_BOLD_RED (g_val_use_color ? "\x1b[1;31m" : "")
 
 /* ── Constructor / destructor ──────────────────────────────────────────────── */
 
@@ -358,8 +376,9 @@ static int validate_exclusive(ArgParser *parser, ArgCommand *cmd)
 			int gid = opt->exclusive_group;
 			if (groups[gid]) {
 				argparse_usage(parser, cmd == &parser->root ? NULL : cmd);
+				detect_val_color();
 				fprintf(stderr, "%s%s: %serror:%s options in group %d are mutually exclusive\n",
-				        "\x1b[1m", parser->prog_name, "\x1b[1;31m", "\x1b[0m", gid);
+				        V_C_BOLD, parser->prog_name, V_C_BOLD_RED, V_C_RESET, gid);
 				return -1;
 			}
 			groups[gid] = 1;
@@ -376,13 +395,14 @@ static int validate_required(ArgParser *parser, ArgCommand *cmd)
 		ArgOption *opt = &cmd->options[i];
 		if (opt->required && !opt->was_set) {
 			argparse_usage(parser, cmd == &parser->root ? NULL : cmd);
+			detect_val_color();
 			if (opt->long_name)
 				fprintf(stderr, "%s%s: %serror:%s required option '--%s' is missing\n",
-				        "\x1b[1m", parser->prog_name, "\x1b[1;31m", "\x1b[0m",
+				        V_C_BOLD, parser->prog_name, V_C_BOLD_RED, V_C_RESET,
 				        opt->long_name);
 			else
 				fprintf(stderr, "%s%s: %serror:%s required option '-%c' is missing\n",
-				        "\x1b[1m", parser->prog_name, "\x1b[1;31m", "\x1b[0m",
+				        V_C_BOLD, parser->prog_name, V_C_BOLD_RED, V_C_RESET,
 				        opt->short_name);
 			return -1;
 		}
