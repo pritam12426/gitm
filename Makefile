@@ -6,8 +6,9 @@ MANPREFIX ?= $(PREFIX)/share/man
 STRIP ?= strip
 INSTALL ?= install
 
-BUILD = build
-BIN   = gitm
+BUILD    = build
+BIN      = gitm
+MANPAGE  = gitm.1
 
 HEADERS   = $(wildcard include/*.h)
 
@@ -107,15 +108,18 @@ debug: $(BIN)  ## Build the debug binary run `make debug -B O_DEBUG=1`
 format:  ## Format every (.c & .h) files of entire code base with `clang-format`
 	clang-format -i $(SRC) $(HEADERS)
 
-install: all  ## Install the gitm binary
+install: all  ## Install the gitm binary and man page
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(PREFIX)/bin
 	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(MANPREFIX)/man1
+	$(INSTALL) -m 0644 $(MANPAGE) $(DESTDIR)$(MANPREFIX)/man1/$(MANPAGE)
 
 clean:  ## Clean up gitm artifacts
 	$(RM) -f $(OUT) $(BIN)
 
-uninstall:  ## Uninstall the gitm binary
+uninstall:  ## Uninstall the gitm binary and man page
 	$(RM) $(DESTDIR)$(PREFIX)/bin/$(BIN)
+	$(RM) $(DESTDIR)$(MANPREFIX)/man1/$(MANPAGE)
 
 strip: $(BIN)  ## Strip the gitm binary
 	$(STRIP) $^

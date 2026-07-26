@@ -1,0 +1,413 @@
+.\" Copyright (c) 2026 Pritam
+.\"
+.\" SPDX-License-Identifier: MIT
+.\"
+.Dd July 26, 2026
+.Dt GITM 1
+.Os
+.Sh NAME
+.Nm gitm
+.Nd multi-repo Git registry manager
+.Sh SYNOPSIS
+.Nm
+.Op Fl hrv
+.Op Fl L Ar level
+.Op Fl F Ar file
+.Ar command
+.Op Ar args
+.Sh DESCRIPTION
+.Nm
+is a fast command-line utility for inspecting and managing multiple Git
+repositories using the Git CLI.
+It maintains a registry of local repositories and provides commands to list,
+filter, search, and operate on them in parallel.
+.Pp
+Repositories are identified by a unique name and can be annotated with tags
+and groups for filtering.
+.Nm
+requires no third-party dependencies beyond a C17 compiler and pthreads.
+.Sh GLOBAL OPTIONS
+.Bl -tag -width Ds
+.It Fl h , -help
+Show help message and exit.
+.It Fl v , -version
+Show version and exit.
+.It Fl L , Fl -log-level Ns = Ns Ar level
+Set log verbosity.
+Valid values:
+.Dq off ,
+.Dq fatal ,
+.Dq error ,
+.Dq warn ,
+.Dq info ,
+.Dq debug ,
+.Dq trace .
+.It Fl F , Fl -log-file Ns = Ns Ar file
+Write log output to
+.Ar file
+instead of stderr.
+.It Fl E , Fl -edit-entry
+Open
+.Pa registered_repos.txt
+in
+.Ev $EDITOR .
+.It Fl S , Fl -shell-completion Ns = Ns Ar shell
+Output shell completion script.
+Supported shells:
+.Dq bash ,
+.Dq zsh ,
+.Dq fish .
+.El
+.Sh COMMANDS
+.Ss list (ls)
+.Bd -literal -offset indent
+gitm list [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+List registered repositories.
+Each entry shows its name, path, tags, and groups.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss add
+.Bd -literal -offset indent
+gitm add Ar path Op Ar name Op Fl t Ar tags Op Fl g Ar groups
+.Ed
+.Pp
+Register a Git repository.
+.Ar path
+must be an absolute path to a Git working tree.
+If
+.Ar name
+is omitted, it is derived from the last path component.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tags
+Comma-separated tags (e.g.
+.Dq work,c ) .
+.It Fl g , Fl -group Ns = Ns Ar groups
+Comma-separated groups (e.g.
+.Dq projects ) .
+.El
+.Ss remove (rm)
+.Bd -literal -offset indent
+gitm remove Ar name
+.Ed
+.Pp
+Unregister a repository by name.
+The on-disk repository is not deleted.
+.Ss rename
+.Bd -literal -offset indent
+gitm rename Ar old-name Ar new-name
+.Ed
+.Pp
+Rename a registered repository alias.
+.Ss clone
+.Bd -literal -offset indent
+gitm clone Ar url Op Ar name
+.Ed
+.Pp
+Clone a repository from
+.Ar url
+into the current directory and register it.
+If
+.Ar name
+is omitted, it is derived from the URL.
+.Ss status (st, s)
+.Bd -literal -offset indent
+gitm status [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Show the status of all registered repositories, including current branch,
+working tree cleanliness, and commit counts.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss info (i)
+.Bd -literal -offset indent
+gitm info Ar name
+.Ed
+.Pp
+Show detailed repository metadata including path, tags, groups, branch,
+remote URL, and last commit information.
+.Ss exec (x)
+.Bd -literal -offset indent
+gitm exec Ar name Ar command ...
+.Ed
+.Pp
+Run an arbitrary Git command on a registered repository.
+For example:
+.Bd -literal -offset indent
+gitm exec myrepo log --oneline -5
+.Ed
+.Ss open (o)
+.Bd -literal -offset indent
+gitm open Ar name
+.Ed
+.Pp
+Open a repository in
+.Ev $EDITOR .
+If
+.Ev $EDITOR
+is not set, falls back to
+.Ev $VISUAL .
+.Ss doctor (doc, d)
+.Bd -literal -offset indent
+gitm doctor [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Health check all registered repositories.
+Verifies each repository exists on disk and is a valid Git working tree.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss recent (r)
+.Bd -literal -offset indent
+gitm recent [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+List repositories sorted by last commit date (most recent first).
+In non-table mode, shows relative timestamps (e.g.
+.Dq 3 hours ago ) .
+In table mode, includes both relative and absolute commit dates.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss summary (sum)
+.Bd -literal -offset indent
+gitm summary [-t Ar tag ] [-g Ar group ]
+.Ed
+.Pp
+Show aggregate statistics: total repositories, total branches, and combined
+disk usage.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.El
+.Ss search (find, f)
+.Bd -literal -offset indent
+gitm search Op Ar pattern
+.Ed
+.Pp
+Search registered repositories by name or path.
+If no pattern is given, lists all repositories.
+.Ss list-tag (tags, lt)
+.Bd -literal -offset indent
+gitm list-tag [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Show tags across all registered repositories with their messages.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss remote (rem)
+.Bd -literal -offset indent
+gitm remote [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Show remote URL settings for each registered repository.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss last (log, l)
+.Bd -literal -offset indent
+gitm last [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Show the last commit log entry for each registered repository.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss branch (br, b)
+.Bd -literal -offset indent
+gitm branch [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Show local branches for each registered repository.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss clean (prune)
+.Bd -literal -offset indent
+gitm clean [-n]
+.Ed
+.Pp
+Remove repositories from the registry that no longer exist on disk.
+By default, orphans are removed; use
+.Fl n
+to preview without making changes.
+.Bl -tag -width Ds
+.It Fl n , Fl -dry-run
+Show orphans without removing them.
+.El
+.Ss stale (old)
+.Bd -literal -offset indent
+gitm stale [-d Ar days ] [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Show repositories with no commits in the last
+.Ar days
+days (default: 30).
+.Bl -tag -width Ds
+.It Fl d , Fl -days Ns = Ns Ar N
+Staleness threshold in days.
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss stash (st)
+.Bd -literal -offset indent
+gitm stash [-t Ar tag ] [-g Ar group ] [-T]
+.Ed
+.Pp
+Run
+.Ic git stash
+across repositories with dirty working trees.
+.Bl -tag -width Ds
+.It Fl t , Fl -tag Ns = Ns Ar tag
+Filter by tag.
+.It Fl g , Fl -group Ns = Ns Ar group
+Filter by group.
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Ss stats (ts)
+.Bd -literal -offset indent
+gitm stats [-T]
+.Ed
+.Pp
+Show tag and group frequency summary across all registered repositories.
+.Bl -tag -width Ds
+.It Fl T , Fl -table
+Show output in tabular format.
+.El
+.Sh CONFIGURATION
+.Nm
+stores its registry in a plain-text file.
+Each line has the format:
+.Bd -literal -offset indent
+/path/to/repo:name[:tags[:groups]]
+.Ed
+.Pp
+Tags and groups are comma-separated.
+A maximum of 50 repositories is supported.
+.Pp
+The config file is located at (in order of priority):
+.Bl -enum -width "1."
+.It
+.Ev $XDG_DATA_HOME Ns / Ns Pa gitm/registered_repos.txt
+.It
+on macOS:
+.Ev $HOME Ns / Ns Pa Library/Application Support/gitm/registered_repos.txt
+.It
+on Linux:
+.Ev $HOME Ns / Ns Pa .local/share/gitm/registered_repos.txt
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width Ds
+.It Ev GITM_THREADS
+Maximum number of threads for parallel operations.
+Defaults to the number of CPU cores, capped at 8.
+.It Ev EDITOR
+Editor used by
+.Ic gitm open
+and
+.Ic gitm --edit-entry .
+.It Ev VISUAL
+Fallback editor if
+.Ev EDITOR
+is not set.
+.It Ev XDG_DATA_HOME
+Base directory for the config file (defaults to
+.Pa ~/.local/share ) .
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa $XDG_DATA_HOME Ns / Ns Pa gitm/registered_repos.txt
+Repository registry (see
+.Sx CONFIGURATION ) .
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Register a repository:
+.Bd -literal -offset indent
+gitm add ~/src/myproject myproj -t work,c
+.Ed
+.Pp
+List all registered repos in a table:
+.Bd -literal -offset indent
+gitm list -T
+.Ed
+.Pp
+Show repos not committed to in 60+ days:
+.Bd -literal -offset indent
+gitm stale -d 60
+.Ed
+.Pp
+Run a git command across a repo:
+.Bd -literal -offset indent
+gitm exec myproj log --oneline -3
+.Ed
+.Pp
+Clean up orphaned entries:
+.Bd -literal -offset indent
+gitm clean -n   # preview
+gitm clean      # remove
+.Ed
+.Pp
+Clone and register in one step:
+.Bd -literal -offset indent
+gitm clone https://github.com/user/repo
+.Ed
+.Sh SEE ALSO
+.Xr git 1
+.Sh AUTHORS
+.An Pritam Aq Mt 84720825+pritam12426@users.noreply.github.com
+.Sh BUGS
+Report bugs at:
+.Lk https://github.com/pritam12426/gitm/issues
