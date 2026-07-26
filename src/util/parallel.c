@@ -63,6 +63,10 @@ int parallel_collect(const GitConfig *cfg,
 	if (count == 0)
 		return 0;
 
+	/* Clamp to MAX_REPOS to prevent stack overflow in tasks[] array */
+	if (count > MAX_REPOS)
+		count = MAX_REPOS;
+
 	size_t n_threads = parallel_thread_count();
 	if (n_threads > count)
 		n_threads = count;

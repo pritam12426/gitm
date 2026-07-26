@@ -61,17 +61,16 @@ int config_validate(GitConfig *cfg)
 
 size_t config_find_orphans(const GitConfig *cfg, size_t *out_indices, size_t max)
 {
-	if (!cfg || !out_indices)
+	if (!cfg || !out_indices || max == 0)
 		return 0;
 
 	LOG_TRACE("config_find_orphans(%zu entries)", cfg->count);
 	size_t found = 0;
 
-	for (size_t i = 0; i < cfg->count; i++) {
+	for (size_t i = 0; i < cfg->count && found < max; i++) {
 		struct stat st;
 		if (stat(cfg->entries[i].path, &st) != 0 || !S_ISDIR(st.st_mode)) {
-			if (found < max)
-				out_indices[found] = i;
+			out_indices[found] = i;
 			found++;
 		}
 	}
@@ -83,6 +82,14 @@ int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count
 {
 	if (!cfg || !indices || count == 0)
 		return -1;
+
+	/* Validate indices are in bounds and sorted */
+	for (size_t k = 0; k < count; k++) {
+		if (indices[k] >= cfg->count)
+			return -1;
+		if (k > 0 && indices[k] <= indices[k - 1])
+			return -1;
+	}
 
 	LOG_TRACE("config_remove_at_indices(%zu indices)", count);
 	/*

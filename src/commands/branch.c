@@ -113,7 +113,11 @@ static int cmd_branch(const ArgParseResult *result)
 	}
 
 	CmdGitResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered, branch_collect, sizeof(CmdGitResult), results);
+	if (parallel_collect(&cfg, indices, filtered, branch_collect, sizeof(CmdGitResult), results) != 0) {
+		LOG_ERROR("parallel collection failed");
+		cmd_cleanup(&cfg, config_path);
+		return 1;
+	}
 
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");

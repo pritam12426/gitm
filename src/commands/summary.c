@@ -12,6 +12,7 @@
 
 #define _POSIX_C_SOURCE 200809L
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,14 +43,29 @@ static long get_dir_size(const char *path)
 			long   val = 0;
 			char   unit[8] = { 0 };
 			if (sscanf(p, "%ld %7s", &val, unit) == 2) {
-				if (strstr(unit, "MiB") || strstr(unit, "MB"))
-					total += val * 1024 * 1024;
-				else if (strstr(unit, "GiB") || strstr(unit, "GB"))
-					total += val * 1024 * 1024 * 1024;
-				else if (strstr(unit, "KiB") || strstr(unit, "KB"))
-					total += val * 1024;
+				long converted = 0;
+				if (strstr(unit, "GiB") || strstr(unit, "GB")) {
+					if (val > LONG_MAX / (1024L * 1024 * 1024))
+						converted = LONG_MAX;
+					else
+						converted = val * 1024L * 1024 * 1024;
+				} else if (strstr(unit, "MiB") || strstr(unit, "MB")) {
+					if (val > LONG_MAX / (1024L * 1024))
+						converted = LONG_MAX;
+					else
+						converted = val * 1024L * 1024;
+				} else if (strstr(unit, "KiB") || strstr(unit, "KB")) {
+					if (val > LONG_MAX / 1024L)
+						converted = LONG_MAX;
+					else
+						converted = val * 1024L;
+				} else {
+					converted = val;
+				}
+				if (total > LONG_MAX - converted)
+					total = LONG_MAX;
 				else
-					total += val;
+					total += converted;
 			}
 			while (*p && *p != '\n')
 				p++;
@@ -74,6 +90,9 @@ static int count_branches(const char *path)
 				count++;
 			p++;
 		}
+		/* Count last line if it doesn't end with newline */
+		if (r.stdout_len > 0 && r.stdout_buf[r.stdout_len - 1] != '\n')
+			count++;
 	}
 
 	process_result_free(&r);

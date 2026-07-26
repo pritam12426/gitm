@@ -8,6 +8,7 @@
  * crud.c — Config add/remove/find/rename operations
  */
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,25 @@ int config_add(GitConfig *cfg, const char *path, const char *name,
 {
 	if (!cfg || !path || !name)
 		return -1;
+
+	if (cfg->count >= MAX_REPOS) {
+		LOG_ERROR("repo limit reached (%d), cannot add: %s", MAX_REPOS, name);
+		return -1;
+	}
+
+	/* Validate name: must not contain ':' (config file delimiter) */
+	for (const char *p = name; *p; p++) {
+		if (*p == ':') {
+			LOG_ERROR("name contains invalid character ':': %s", name);
+			return -1;
+		}
+	}
+
+	/* Validate path: must be absolute */
+	if (path[0] != '/') {
+		LOG_ERROR("path must be absolute: %s", path);
+		return -1;
+	}
 
 	LOG_TRACE("config_add(%s, %s)", name, path);
 	if (config_has_duplicate_path(cfg, path, cfg->count)) {
@@ -36,21 +56,30 @@ int config_add(GitConfig *cfg, const char *path, const char *name,
 		return -1;
 
 	/* Resolve to absolute path */
-	char abs_path[MAX_PATH_LEN];
+	char abs_path[PATH_MAX];
 	if (realpath(path, abs_path)) {
-	cfg->entries[cfg->count].path   = strdup(abs_path);
+		cfg->entries[cfg->count].path = strdup(abs_path);
 	} else {
-		cfg->entries[cfg->count].path   = strdup(path);
+		cfg->entries[cfg->count].path = strdup(path);
 	}
-	cfg->entries[cfg->count].name   = strdup(name);
+	cfg->entries[cfg->count].name = strdup(name);
+
+	/* OOM check: clean up on failure */
+	if (!cfg->entries[cfg->count].path || !cfg->entries[cfg->count].name) {
+		free(cfg->entries[cfg->count].path);
+		free(cfg->entries[cfg->count].name);
+		return -1;
+	}
+
+	/* Zero-init tags/groups before strncpy */
+	cfg->entries[cfg->count].tags[0]   = '\0';
+	cfg->entries[cfg->count].groups[0] = '\0';
 	if (tags)
 		strncpy(cfg->entries[cfg->count].tags, tags, TAG_BUF_SIZE - 1);
-	else
-		cfg->entries[cfg->count].tags[0] = '\0';
+	cfg->entries[cfg->count].tags[TAG_BUF_SIZE - 1] = '\0';
 	if (groups)
 		strncpy(cfg->entries[cfg->count].groups, groups, GROUP_BUF_SIZE - 1);
-	else
-		cfg->entries[cfg->count].groups[0] = '\0';
+	cfg->entries[cfg->count].groups[GROUP_BUF_SIZE - 1] = '\0';
 	cfg->count++;
 
 	LOG_DEBUG("added entry: %s (%s)", name, path);
@@ -114,8 +143,15 @@ int config_rename(GitConfig *cfg, const char *old_name, const char *new_name)
 		return -1;
 	}
 
-	free(entry->name);
-	entry->name = strdup(new_name);
+	/* Save old pointer in case strdup fails */
+	char *saved_name = entry->name;
+	char *new_dup    = strdup(new_name);
+	if (!new_dup) {
+		LOG_ERROR("allocation failed during rename");
+		return -1;
+	}
+	entry->name = new_dup;
+	free(saved_name);
 	LOG_DEBUG("renamed %s -> %s", old_name, new_name);
 	return 0;
 }

@@ -52,6 +52,13 @@ static size_t visible_width(const char *s)
 Table *table_create(int col_count, const char **headers)
 {
 	LOG_TRACE("table_create(%d cols)", col_count);
+
+	/* Clamp to maximum supported columns */
+	if (col_count > 8)
+		col_count = 8;
+	if (col_count < 0)
+		col_count = 0;
+
 	Table *t = calloc(1, sizeof(Table));
 	if (!t)
 		return NULL;
@@ -90,6 +97,10 @@ int table_add_row(Table *table, ...)
 	for (int i = 0; i < table->col_count && i < 8; i++) {
 		const char *cell = va_arg(ap, const char *);
 		row->cells[i] = cell ? strdup(cell) : strdup("");
+		if (!row->cells[i]) {
+			va_end(ap);
+			return -1;
+		}
 	}
 	va_end(ap);
 
@@ -114,8 +125,11 @@ int table_add_row_raw(Table *table, const char **cells, int count)
 	TableRow *row = &table->rows[table->row_count];
 	row->count = table->col_count;
 
-	for (int i = 0; i < table->col_count && i < 8; i++)
+	for (int i = 0; i < table->col_count && i < 8; i++) {
 		row->cells[i] = cells[i] ? strdup(cells[i]) : strdup("");
+		if (!row->cells[i])
+			return -1;
+	}
 
 	table->row_count++;
 	return 0;

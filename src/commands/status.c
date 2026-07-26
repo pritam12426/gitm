@@ -100,11 +100,11 @@ static void status_collect(const RepoEntry *entry, void *out)
 	char *sp = r->status_buf;
 	size_t remaining = sizeof(r->status_buf);
 	int n = 0;
-	if (modified > 0)  n += snprintf(sp + n, remaining - (size_t) n, "%dm ", modified);
-	if (added > 0)     n += snprintf(sp + n, remaining - (size_t) n, "%da ", added);
-	if (deleted > 0)   n += snprintf(sp + n, remaining - (size_t) n, "%dd ", deleted);
-	if (untracked > 0) n += snprintf(sp + n, remaining - (size_t) n, "%du ", untracked);
-	if (other > 0)     n += snprintf(sp + n, remaining - (size_t) n, "%do ", other);
+	if (modified > 0 && (size_t) n < remaining)  n += snprintf(sp + n, remaining - (size_t) n, "%dm ", modified);
+	if (added > 0 && (size_t) n < remaining)     n += snprintf(sp + n, remaining - (size_t) n, "%da ", added);
+	if (deleted > 0 && (size_t) n < remaining)   n += snprintf(sp + n, remaining - (size_t) n, "%dd ", deleted);
+	if (untracked > 0 && (size_t) n < remaining) n += snprintf(sp + n, remaining - (size_t) n, "%du ", untracked);
+	if (other > 0 && (size_t) n < remaining)     n += snprintf(sp + n, remaining - (size_t) n, "%do ", other);
 	if (n > 0)
 		r->status_buf[n - 1] = '\0';
 	else

@@ -67,6 +67,12 @@ static int cmd_clean(const ArgParseResult *result)
 	fflush(stderr);
 
 	int ch = getchar();
+	/* Consume rest of line to prevent stale input on next prompt */
+	if (ch != EOF && ch != '\n') {
+		int extra;
+		while ((extra = getchar()) != EOF && extra != '\n')
+			;
+	}
 	if (ch != 'y' && ch != 'Y') {
 		fprintf(stderr, "Aborted.\n");
 		cmd_cleanup(&cfg, config_path);

@@ -44,7 +44,7 @@ static int cmd_list(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group, indices, cfg.count);
+	size_t filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group, indices, MAX_REPOS);
 
 	LOG_DEBUG("filtered to %zu repos (tag=%s, group=%s)",
 	          filtered,

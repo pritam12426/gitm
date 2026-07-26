@@ -168,7 +168,7 @@ int cmd_ensure_config_dir(void)
 		LOG_ERROR(MSG_CFG_PATH_ERR);
 		return -1;
 	}
-	config_ensure_dir();
+	int rc = config_ensure_dir();
 	free(path);
-	return 0;
+	return rc;
 }

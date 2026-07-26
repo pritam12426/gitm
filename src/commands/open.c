@@ -10,10 +10,13 @@
  * Opens a registered repository in $EDITOR or file manager.
  */
 
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "cmd.h"
 #include "cmd_util.h"
@@ -54,10 +57,30 @@ static int cmd_open(const ArgParseResult *result)
 	fprintf(stderr, "Opening %s in %s\n", entry->path, editor);
 	LOG_INFO("opening %s in %s", entry->path, editor);
 
-	ProcessResult r  = process_exec(entry->path,
-                                   (char *const *) (const char *[]) { editor, entry->path, NULL });
-	int           rc = r.exit_code;
-	process_result_free(&r);
+	/*
+	 * Fork directly — process_exec() captures stdout/stderr via pipes,
+	 * which breaks interactive editors that need the terminal.
+	 * We need stdin/stdout/stderr connected to the terminal.
+	 */
+	pid_t pid = fork();
+	if (pid < 0) {
+		LOG_ERROR("fork failed");
+		cmd_cleanup(&cfg, config_path);
+		return 1;
+	}
+
+	if (pid == 0) {
+		execlp(editor, editor, entry->path, (char *) NULL);
+		_exit(EXIT_CMD_NOT_FOUND);
+	}
+
+	int status = -1;
+	while (waitpid(pid, &status, 0) < 0) {
+		if (errno != EINTR)
+			break;
+	}
+
+	int rc = (status >= 0 && WIFEXITED(status)) ? WEXITSTATUS(status) : -1;
 
 	cmd_cleanup(&cfg, config_path);
 	return rc;

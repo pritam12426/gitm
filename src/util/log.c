@@ -211,7 +211,10 @@ void log_record(Log_level_t level,
 {
 	if (fmt == NULL) return;
 
+	/* Check if initialized (with lock to avoid data race) */
+	pthread_mutex_lock(&g_log_mutex);
 	if (g_log_stream == NULL) {
+		pthread_mutex_unlock(&g_log_mutex);
 
 #ifdef LOG_SHOW_TIME_STAMP
 		fprintf(stderr,
@@ -227,6 +230,7 @@ void log_record(Log_level_t level,
 		if (new_line) fputc('\n', stderr);
 		return ;
 	}
+	pthread_mutex_unlock(&g_log_mutex);
 
 	// Take a mutex so only one thread writes at a time
 	// (prevents interleaved log lines from concurrent requests)

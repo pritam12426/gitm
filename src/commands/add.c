@@ -44,7 +44,7 @@ static int cmd_add(const ArgParseResult *result)
 	}
 
 	/* Resolve to absolute path */
-	char abs_path[MAX_PATH_LEN];
+	char abs_path[PATH_MAX];
 	if (realpath(repo_path, abs_path) == NULL) {
 		LOG_ERROR("could not resolve path: %s", repo_path);
 		return 1;

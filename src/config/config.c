@@ -131,14 +131,25 @@ int config_load(const char *path, GitConfig *cfg)
 
 		cfg->entries[cfg->count].path   = strdup(path_str);
 		cfg->entries[cfg->count].name   = strdup(name_str);
+
+		/* OOM: clean up partially loaded entry */
+		if (!cfg->entries[cfg->count].path || !cfg->entries[cfg->count].name) {
+			free(cfg->entries[cfg->count].path);
+			free(cfg->entries[cfg->count].name);
+			memset(&cfg->entries[cfg->count], 0, sizeof(RepoEntry));
+			fclose(f);
+			return -1;
+		}
+
+		/* Zero-init tags/groups before strncpy (strncpy doesn't null-terminate) */
+		cfg->entries[cfg->count].tags[0]   = '\0';
+		cfg->entries[cfg->count].groups[0] = '\0';
 		if (tags_str)
 			strncpy(cfg->entries[cfg->count].tags, tags_str, TAG_BUF_SIZE - 1);
-		else
-			cfg->entries[cfg->count].tags[0] = '\0';
+		cfg->entries[cfg->count].tags[TAG_BUF_SIZE - 1] = '\0';
 		if (groups_str)
 			strncpy(cfg->entries[cfg->count].groups, groups_str, GROUP_BUF_SIZE - 1);
-		else
-			cfg->entries[cfg->count].groups[0] = '\0';
+		cfg->entries[cfg->count].groups[GROUP_BUF_SIZE - 1] = '\0';
 		cfg->count++;
 	}
 
@@ -166,6 +177,9 @@ int config_save(const char *path, const GitConfig *cfg)
 		else if (cfg->entries[i].tags[0])
 			fprintf(f, "%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name,
 			        cfg->entries[i].tags);
+		else if (cfg->entries[i].groups[0])
+			fprintf(f, "%s:%s::%s\n", cfg->entries[i].path, cfg->entries[i].name,
+			        cfg->entries[i].groups);
 		else
 			fprintf(f, "%s:%s\n", cfg->entries[i].path, cfg->entries[i].name);
 	}

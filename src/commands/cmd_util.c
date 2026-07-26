@@ -33,6 +33,7 @@ int cmd_load_config(GitConfig *cfg, char **path_out)
 		LOG_ERROR(MSG_CFG_LOAD_ERR);
 		free(*path_out);
 		*path_out = NULL;
+		config_free(cfg);
 		return -1;
 	}
 
@@ -71,7 +72,7 @@ void cmd_register_filter_flags(ArgCommand *cmd,
 
 void cmd_print_name_path(FILE *stream, const char *name, const char *path)
 {
-	fprintf(stream, "%*s : %s\n", NAME_COL_WIDTH, name, path);
+	fprintf(stream, "%*s : %s\n", NAME_COL_WIDTH, name ? name : "(null)", path ? path : "(null)");
 }
 
 void cmd_display_plain_result(int exit_code, const char *stdout_buf, size_t stdout_len,

@@ -10,6 +10,7 @@
  * Clones a repository and registers it.
  */
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,12 +51,13 @@ static int cmd_clone(const ArgParseResult *result)
 	}
 
 	/* Build destination: current dir / name */
-	char        dest[MAX_PATH_LEN];
+	char        dest[PATH_MAX];
 	const char *pwd = getenv("PWD");
 	if (pwd)
 		snprintf(dest, sizeof(dest), "%s/%s", pwd, name);
 	else
 		snprintf(dest, sizeof(dest), "%s", name);
+	dest[sizeof(dest) - 1] = '\0';
 
 	fprintf(stderr, "Cloning %s into %s...\n", url, dest);
 
@@ -89,7 +91,8 @@ static int cmd_clone(const ArgParseResult *result)
 
 	if (cmd_save_config(&cfg, loaded_path) != 0) {
 		LOG_WARN("cloned successfully but failed to save config");
-		return 0;
+		/* cmd_save_config already called cmd_cleanup on failure */
+		return 1;
 	}
 
 	fprintf(stderr, "Registered as '%s'\n", name);

@@ -93,12 +93,16 @@ static int cmd_recent(const ArgParseResult *result)
 
 	size_t indices[MAX_REPOS];
 	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
-	                                     indices, cfg.count);
+	                                     indices, MAX_REPOS);
 
 	/* Phase 1: parallel collection */
 	RecentResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered,
-	                 recent_collect, sizeof(RecentResult), results);
+	if (parallel_collect(&cfg, indices, filtered,
+	                     recent_collect, sizeof(RecentResult), results) != 0) {
+		LOG_ERROR("parallel collection failed");
+		cmd_cleanup(&cfg, config_path);
+		return 1;
+	}
 
 	/* Phase 2: sort by timestamp (most recent first) */
 	SortKey keys[MAX_REPOS];

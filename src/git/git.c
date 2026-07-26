@@ -150,6 +150,10 @@ char *git_last_commit_date(const char *path)
 	}
 
 	char  *result = strdup(r.stdout_buf);
+	if (!result) {
+		process_result_free(&r);
+		return NULL;
+	}
 	size_t len    = strlen(result);
 	if (len > 0 && result[len - 1] == '\n')
 		result[len - 1] = '\0';
@@ -178,6 +182,10 @@ char *git_toplevel(const char *path)
 
 	/* Strip trailing newline */
 	char  *result = strdup(r.stdout_buf);
+	if (!result) {
+		process_result_free(&r);
+		return NULL;
+	}
 	size_t len    = strlen(result);
 	if (len > 0 && result[len - 1] == '\n')
 		result[len - 1] = '\0';
@@ -196,6 +204,10 @@ char *git_current_branch(const char *path)
 	}
 
 	char  *result = strdup(r.stdout_buf);
+	if (!result) {
+		process_result_free(&r);
+		return NULL;
+	}
 	size_t len    = strlen(result);
 	if (len > 0 && result[len - 1] == '\n')
 		result[len - 1] = '\0';

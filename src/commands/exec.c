@@ -10,6 +10,7 @@
  * Runs a git command on a registered repository.
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,10 +56,14 @@ static int cmd_exec(const ArgParseResult *result)
 
 	ProcessResult r = process_exec(entry->path, (char *const *) git_argv);
 
-	if (r.stdout_len > 0)
-		fwrite(r.stdout_buf, 1, r.stdout_len, stdout);
-	if (r.stderr_len > 0)
-		fwrite(r.stderr_buf, 1, r.stderr_len, stderr);
+	if (r.stdout_len > 0 && fwrite(r.stdout_buf, 1, r.stdout_len, stdout) != r.stdout_len) {
+		if (errno != EPIPE)
+			LOG_ERROR("fwrite stdout: %s", strerror(errno));
+	}
+	if (r.stderr_len > 0 && fwrite(r.stderr_buf, 1, r.stderr_len, stderr) != r.stderr_len) {
+		if (errno != EPIPE)
+			LOG_ERROR("fwrite stderr: %s", strerror(errno));
+	}
 
 	int rc = r.exit_code;
 	process_result_free(&r);
