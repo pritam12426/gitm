@@ -1,4 +1,4 @@
-# gitm
+# Gitm
 
 A fast C17 multi-repo Git registry manager. Maintains a list of Git repositories and provides commands to inspect, manage, and operate on them.
 

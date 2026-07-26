@@ -112,7 +112,7 @@ static int cmd_doctor(const ArgParseResult *result)
 		table_free(t);
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
-			fprintf(stderr, "%s ... %s\n",
+			fprintf(stderr, "%22s : %s\n",
 			        cfg.entries[indices[i]].name, results[i].status);
 		}
 		fprintf(stderr, "\n%d/%zu repositories OK\n",

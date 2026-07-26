@@ -64,7 +64,7 @@ static void freq_map_add(FreqMap *m, const char *name)
 
 	strncpy(m->items[m->count].name, name, sizeof(m->items[0].name) - 1);
 	m->items[m->count].name[sizeof(m->items[0].name) - 1] = '\0';
-	m->items[m->count].count = 1;
+	m->items[m->count].count                              = 1;
 	m->count++;
 }
 
@@ -77,8 +77,10 @@ static int freq_cmp_desc(const void *a, const void *b)
 {
 	const FreqEntry *ea = a;
 	const FreqEntry *eb = b;
-	if (eb->count > ea->count) return  1;
-	if (eb->count < ea->count) return -1;
+	if (eb->count > ea->count)
+		return 1;
+	if (eb->count < ea->count)
+		return -1;
 	return strcmp(ea->name, eb->name);
 }
 
@@ -126,27 +128,29 @@ static void print_plain(const char *title, const FreqMap *m, bool color)
 
 	for (size_t i = 0; i < m->count; i++) {
 		if (color)
-			fprintf(stderr, "  %s%-20s%s %zu\n",
-			        ANSI_FG_YELLOW, m->items[i].name, ANSI_RESET, m->items[i].count);
+			fprintf(stderr,
+			        "  %s%-20s%s %zu\n",
+			        ANSI_FG_YELLOW,
+			        m->items[i].name,
+			        ANSI_RESET,
+			        m->items[i].count);
 		else
-			fprintf(stderr, "  %-20s %zu\n",
-			        m->items[i].name, m->items[i].count);
+			fprintf(stderr, "  %-20s %zu\n", m->items[i].name, m->items[i].count);
 	}
 
 	if (m->none_count > 0) {
 		if (color)
-			fprintf(stderr, "  %s%-20s%s %zu\n",
-			        ANSI_FG_YELLOW, "(none)", ANSI_RESET, m->none_count);
+			fprintf(
+			    stderr, "  %s%-20s%s %zu\n", ANSI_FG_YELLOW, "(none)", ANSI_RESET, m->none_count);
 		else
-			fprintf(stderr, "  %-20s %zu\n",
-			        "(none)", m->none_count);
+			fprintf(stderr, "  %-20s %zu\n", "(none)", m->none_count);
 	}
 }
 
 static Table *build_table(const char *col_header, const FreqMap *m, bool color)
 {
 	const char *headers[] = { col_header, "Repos" };
-	Table *t = table_create(2, headers);
+	Table      *t         = table_create(2, headers);
 	table_set_color(t, color);
 
 	for (size_t i = 0; i < m->count; i++) {
@@ -170,9 +174,9 @@ static int cmd_stats(const ArgParseResult *result)
 {
 	(void) result;
 
-	bool   color = CMD_COLOR();
-	char  *config_path = NULL;
-	GitConfig cfg = { 0 };
+	bool      color       = CMD_COLOR();
+	char     *config_path = NULL;
+	GitConfig cfg         = { 0 };
 
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
@@ -190,7 +194,7 @@ static int cmd_stats(const ArgParseResult *result)
 	freq_map_init(&groups);
 
 	for (size_t i = 0; i < cfg.count; i++) {
-		parse_tokens(&tags,   cfg.entries[i].tags);
+		parse_tokens(&tags, cfg.entries[i].tags);
 		parse_tokens(&groups, cfg.entries[i].groups);
 	}
 
@@ -211,7 +215,7 @@ static int cmd_stats(const ArgParseResult *result)
 		table_print(t_groups, stdout);
 		table_free(t_groups);
 	} else {
-		print_plain("Tags:",   &tags,   color);
+		print_plain("Tags:", &tags, color);
 		print_plain("Groups:", &groups, color);
 		fputc('\n', stderr);
 	}
@@ -224,10 +228,7 @@ static int cmd_stats(const ArgParseResult *result)
 
 void cmd_register_stats(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "stats",
-	                                       "Show tag and group frequency summary",
-	                                       cmd_stats);
+	ArgCommand *cmd = argparse_add_command(parser, "stats", "Show tag and group frequency summary", cmd_stats);
 	const char *aliases[] = { "ts" };
 	argparse_command_set_aliases(cmd, aliases, 1);
 	cmd_register_table_flag(cmd);

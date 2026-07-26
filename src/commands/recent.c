@@ -145,7 +145,7 @@ static int cmd_recent(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			RecentResult *r = &results[keys[i].result_index];
-			fprintf(stdout, "%-20s %-40s %s\n", r->name, r->path, r->date_str);
+			fprintf(stdout, "%-25s %22s : %s\n", r->date_str, r->name, r->path);
 		}
 	}
 

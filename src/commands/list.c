@@ -29,8 +29,8 @@ static int cmd_list(const ArgParseResult *result)
 	(void) result;
 
 	LOG_TRACE("cmd_list");
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -44,10 +44,10 @@ static int cmd_list(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t  filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group,
-	                                     indices, cfg.count);
+	size_t filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group, indices, cfg.count);
 
-	LOG_DEBUG("filtered to %zu repos (tag=%s, group=%s)", filtered,
+	LOG_DEBUG("filtered to %zu repos (tag=%s, group=%s)",
+	          filtered,
 	          list_filter_tag ? list_filter_tag : "-",
 	          list_filter_group ? list_filter_group : "-");
 
@@ -60,16 +60,12 @@ static int cmd_list(const ArgParseResult *result)
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Path", "Tags", "Groups" };
-		Table *t = table_create(4, headers);
+		Table      *t         = table_create(4, headers);
 		table_set_color(t, CMD_COLOR());
 
 		for (size_t i = 0; i < filtered; i++) {
 			RepoEntry *e = &cfg.entries[indices[i]];
-			table_add_row(t,
-			              e->name,
-			              e->path,
-			              e->tags[0] ? e->tags : "-",
-			              e->groups[0] ? e->groups : "-");
+			table_add_row(t, e->name, e->path, e->tags[0] ? e->tags : "-", e->groups[0] ? e->groups : "-");
 		}
 
 		table_print(t, stdout);
@@ -77,7 +73,7 @@ static int cmd_list(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			RepoEntry *e = &cfg.entries[indices[i]];
-			fprintf(stdout, "%s\t%s\n", e->name, e->path);
+			fprintf(stdout, "%22s : %s\n", e->name, e->path);
 		}
 	}
 

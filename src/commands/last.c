@@ -36,25 +36,22 @@ typedef struct {
 
 static void last_collect(const RepoEntry *entry, void *out)
 {
-	LastResult *r = out;
+	LastResult   *r = out;
 	ProcessResult pr;
 
 	if (g_table_mode) {
-		pr = git_exec(entry->path, "log", "-1",
-		              "--format=%h|%an|%ar|%s", "HEAD", NULL);
+		pr = git_exec(entry->path, "log", "-1", "--format=%h|%an|%ar|%s", "HEAD", NULL);
 	} else {
-		bool color = CMD_COLOR();
-		const char *fmt = color
-		    ? "%C(yellow)%h%Creset %C(cyan)%an%Creset %Cgreen%ar%Creset %s"
-		    : "%h %an %ar %s";
-		char pretty_arg[512];
+		bool        color = CMD_COLOR();
+		const char *fmt   = color ? "%C(yellow)%h%Creset %C(cyan)%an%Creset %Cgreen%ar%Creset %s"
+		                          : "%h %an %ar %s";
+		char        pretty_arg[512];
 		snprintf(pretty_arg, sizeof(pretty_arg), "--pretty=tformat:%s", fmt);
-		pr = color
-		    ? git_exec_color(entry->path, "log", "-1", pretty_arg, "HEAD", NULL)
-		    : git_exec(entry->path, "log", "-1", pretty_arg, "HEAD", NULL);
+		pr = color ? git_exec_color(entry->path, "log", "-1", pretty_arg, "HEAD", NULL)
+		           : git_exec(entry->path, "log", "-1", pretty_arg, "HEAD", NULL);
 	}
 
-	r->exit_code = pr.exit_code;
+	r->exit_code  = pr.exit_code;
 	r->stdout_buf = pr.stdout_buf;
 	r->stdout_len = pr.stdout_len;
 	pr.stdout_buf = NULL;
@@ -69,9 +66,9 @@ static void last_display_plain(const LastResult *r, const char *name, bool color
 	}
 
 	if (color)
-		fprintf(stderr, "\n%s%s%s%s\n  ", ANSI_BOLD, ANSI_FG_CYAN, name, ANSI_RESET);
+		fprintf(stderr, "%s%s%22s : %s", ANSI_BOLD, ANSI_FG_CYAN, name, ANSI_RESET);
 	else
-		fprintf(stderr, "\n%s\n  ", name);
+		fprintf(stderr, "%22s :", name);
 
 	fputs(r->stdout_buf, stderr);
 }
@@ -79,7 +76,7 @@ static void last_display_plain(const LastResult *r, const char *name, bool color
 static void last_display_table(Table *t, const LastResult *r, const char *repo_name)
 {
 	if (r->exit_code == 0 && r->stdout_len > 0) {
-		char line[PROCESS_BUF_SIZE];
+		char   line[PROCESS_BUF_SIZE];
 		size_t len = r->stdout_len;
 		if (len >= sizeof(line))
 			len = sizeof(line) - 1;
@@ -88,7 +85,7 @@ static void last_display_table(Table *t, const LastResult *r, const char *repo_n
 		if (len > 0 && line[len - 1] == '\n')
 			line[len - 1] = '\0';
 
-		char *save = NULL;
+		char *save   = NULL;
 		char *hash   = strtok_r(line, "|", &save);
 		char *author = strtok_r(NULL, "|", &save);
 		char *date   = strtok_r(NULL, "|", &save);
@@ -114,8 +111,8 @@ static int cmd_last(const ArgParseResult *result)
 
 	bool color = CMD_COLOR();
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -141,7 +138,7 @@ static int cmd_last(const ArgParseResult *result)
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Hash", "Author", "Date", "Message" };
-		Table *t = table_create(5, headers);
+		Table      *t         = table_create(5, headers);
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++)
@@ -166,10 +163,7 @@ static int cmd_last(const ArgParseResult *result)
 
 void cmd_register_last(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "last",
-	                                       "Show last commit log for each repo",
-	                                       cmd_last);
+	ArgCommand *cmd = argparse_add_command(parser, "last", "Show last commit log for each repo", cmd_last);
 	const char *last_aliases[] = { "log", "l" };
 	argparse_command_set_aliases(cmd, last_aliases, 2);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);
