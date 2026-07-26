@@ -59,10 +59,11 @@ size_t parallel_thread_count(void);
  * Blocks until all collections complete. Returns 0 on success.
  */
 int parallel_collect(const GitConfig *cfg,
-                     const size_t *indices, size_t count,
-                     CollectFn collect,
-                     size_t result_size,
-                     void *results_out);
+                     const size_t    *indices,
+                     size_t           count,
+                     CollectFn        collect,
+                     size_t           result_size,
+                     void            *results_out);
 
 
 #ifdef __cplusplus
@@ -70,4 +71,4 @@ int parallel_collect(const GitConfig *cfg,
 #endif
 
 
-#endif  /* _PARALLEL__H_ */
+#endif /* _PARALLEL__H_ */

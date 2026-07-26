@@ -32,8 +32,8 @@ static int cmd_exec(const ArgParseResult *result)
 	const char *name = result->positionals[0];
 	LOG_DEBUG("exec on %s: %s", name, result->positional_count > 1 ? result->positionals[1] : "(none)");
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -74,10 +74,7 @@ static int cmd_exec(const ArgParseResult *result)
 
 void cmd_register_exec(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "exec",
-	                                       "Run a git command on a registered repo",
-	                                       cmd_exec);
+	ArgCommand *cmd = argparse_add_command(parser, "exec", "Run a git command on a registered repo", cmd_exec);
 	const char *exec_aliases[] = { "x" };
 	argparse_command_set_aliases(cmd, exec_aliases, 1);
 	argparse_add_positional(cmd, "name");

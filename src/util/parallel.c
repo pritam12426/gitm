@@ -55,10 +55,11 @@ size_t parallel_thread_count(void)
 
 
 int parallel_collect(const GitConfig *cfg,
-                     const size_t *indices, size_t count,
-                     CollectFn collect,
-                     size_t result_size,
-                     void *results_out)
+                     const size_t    *indices,
+                     size_t           count,
+                     CollectFn        collect,
+                     size_t           result_size,
+                     void            *results_out)
 {
 	if (count == 0)
 		return 0;

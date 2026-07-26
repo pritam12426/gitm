@@ -65,8 +65,8 @@ static int cmd_add(const ArgParseResult *result)
 	if (cmd_ensure_config_dir() != 0)
 		return 1;
 
-	GitConfig cfg = { 0 };
-	char      *loaded_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *loaded_path = NULL;
 	if (cmd_load_config(&cfg, &loaded_path) != 0)
 		return 1;
 
@@ -96,8 +96,13 @@ void cmd_register_add(ArgParser *parser)
 	ArgCommand *cmd = argparse_add_command(parser, "add", "Register a Git repository", cmd_add);
 	argparse_add_positional(cmd, "path");
 	argparse_add_positional(cmd, "[name]");
-	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAGS",
-	                    "Comma-separated tags (e.g., work,c)", &add_tags);
-	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUPS",
-	                    "Comma-separated groups (e.g., projects)", &add_groups);
+	argparse_add_option(
+	    cmd, "tag", 't', ARG_TYPE_STRING, "TAGS", "Comma-separated tags (e.g., work,c)", &add_tags);
+	argparse_add_option(cmd,
+	                    "group",
+	                    'g',
+	                    ARG_TYPE_STRING,
+	                    "GROUPS",
+	                    "Comma-separated groups (e.g., projects)",
+	                    &add_groups);
 }

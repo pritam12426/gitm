@@ -30,11 +30,11 @@ static const char *filter_group = NULL;
 
 static void branch_collect(const RepoEntry *entry, void *out)
 {
-	CmdGitResult   *r = out;
+	CmdGitResult *r = out;
 	ProcessResult pr;
 
 	bool color = g_table_mode ? false : CMD_COLOR();
-	pr = git_exec_smart(entry->path, color, "branch", "--list", NULL);
+	pr         = git_exec_smart(entry->path, color, "branch", "--list", NULL);
 
 	process_steal_stdout(r, &pr);
 }
@@ -47,8 +47,8 @@ static void branch_display_table(Table *t, const CmdGitResult *r, const char *re
 		return;
 	}
 
-	const char *p = r->stdout_buf;
-	bool first = true;
+	const char *p     = r->stdout_buf;
+	bool        first = true;
 	while (*p) {
 		while (*p == ' ')
 			p++;
@@ -64,12 +64,18 @@ static void branch_display_table(Table *t, const CmdGitResult *r, const char *re
 		memcpy(line, start, len);
 		line[len] = '\0';
 
-		const char *repo_disp = first ? repo_name : "";
-		bool is_current = (line[0] == '*');
+		const char *repo_disp  = first ? repo_name : "";
+		bool        is_current = (line[0] == '*');
 
 		if (color && is_current) {
 			char colored[MAX_NAME_LEN];
-			snprintf(colored, sizeof(colored), "%s%s* %s%s", ANSI_BOLD, ANSI_FG_GREEN, line + 2, ANSI_RESET);
+			snprintf(colored,
+			         sizeof(colored),
+			         "%s%s* %s%s",
+			         ANSI_BOLD,
+			         ANSI_FG_GREEN,
+			         line + 2,
+			         ANSI_RESET);
 			const char *cells[] = { repo_disp, colored };
 			table_add_row_raw(t, cells, 2);
 		} else {
@@ -91,8 +97,8 @@ static int cmd_branch(const ArgParseResult *result)
 	LOG_TRACE("cmd_branch");
 	bool color = CMD_COLOR();
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -122,7 +128,7 @@ static int cmd_branch(const ArgParseResult *result)
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Branch" };
-		Table *t = table_create(2, headers);
+		Table      *t         = table_create(2, headers);
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++)
@@ -133,9 +139,12 @@ static int cmd_branch(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			LOG_TRACE("showing branches for %s", cfg.entries[indices[i]].name);
-			cmd_display_plain_result(results[i].exit_code, results[i].stdout_buf,
-			                         results[i].stdout_len, cfg.entries[indices[i]].name,
-			                         "(no branches)", color);
+			cmd_display_plain_result(results[i].exit_code,
+			                         results[i].stdout_buf,
+			                         results[i].stdout_len,
+			                         cfg.entries[indices[i]].name,
+			                         "(no branches)",
+			                         color);
 		}
 	}
 
@@ -148,10 +157,7 @@ static int cmd_branch(const ArgParseResult *result)
 
 void cmd_register_branch(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "branch",
-	                                       "Show local branches",
-	                                       cmd_branch);
+	ArgCommand *cmd = argparse_add_command(parser, "branch", "Show local branches", cmd_branch);
 	const char *branch_aliases[] = { "br", "b" };
 	argparse_command_set_aliases(cmd, branch_aliases, 2);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);

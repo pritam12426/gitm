@@ -42,13 +42,16 @@ int cmd_load_config(GitConfig *cfg, char **path_out)
 }
 
 size_t cmd_filter_entries(const GitConfig *cfg,
-                           const char *filter_tag,
-                           const char *filter_group,
-                           size_t *out_indices, size_t max)
+                          const char      *filter_tag,
+                          const char      *filter_group,
+                          size_t          *out_indices,
+                          size_t           max)
 {
 	size_t count = 0;
 
-	LOG_TRACE("cmd_filter_entries(tag=%s, group=%s)", filter_tag ? filter_tag : "-", filter_group ? filter_group : "-");
+	LOG_TRACE("cmd_filter_entries(tag=%s, group=%s)",
+	          filter_tag ? filter_tag : "-",
+	          filter_group ? filter_group : "-");
 	for (size_t i = 0; i < cfg->count && count < max; i++) {
 		if (filter_tag && !config_entry_has_tag(&cfg->entries[i], filter_tag))
 			continue;
@@ -60,14 +63,10 @@ size_t cmd_filter_entries(const GitConfig *cfg,
 	return count;
 }
 
-void cmd_register_filter_flags(ArgCommand *cmd,
-                                const char **out_tag,
-                                const char **out_group)
+void cmd_register_filter_flags(ArgCommand *cmd, const char **out_tag, const char **out_group)
 {
-	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG",
-	                    "Filter by tag", out_tag);
-	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
-	                    "Filter by group", out_group);
+	argparse_add_option(cmd, "tag", 't', ARG_TYPE_STRING, "TAG", "Filter by tag", out_tag);
+	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP", "Filter by group", out_group);
 }
 
 void cmd_print_name_path(FILE *stream, const char *name, const char *path)
@@ -75,8 +74,12 @@ void cmd_print_name_path(FILE *stream, const char *name, const char *path)
 	fprintf(stream, "%*s : %s\n", NAME_COL_WIDTH, name ? name : "(null)", path ? path : "(null)");
 }
 
-void cmd_display_plain_result(int exit_code, const char *stdout_buf, size_t stdout_len,
-                              const char *name, const char *empty_msg, bool color)
+void cmd_display_plain_result(int         exit_code,
+                              const char *stdout_buf,
+                              size_t      stdout_len,
+                              const char *name,
+                              const char *empty_msg,
+                              bool        color)
 {
 	if (exit_code != 0 || stdout_len == 0) {
 		if (empty_msg)

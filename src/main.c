@@ -34,18 +34,28 @@ static const char *g_log_file      = NULL;
 
 static Log_level_t parse_log_level(const char *str)
 {
-	if (!str)                              return LOG_LEVEL_WARN;
-	if (strcmp(str, "off") == 0)   return LOG_LEVEL_OFF;
-	if (strcmp(str, "fatal") == 0) return LOG_LEVEL_FATAL;
-	if (strcmp(str, "error") == 0) return LOG_LEVEL_ERROR;
-	if (strcmp(str, "warn") == 0)  return LOG_LEVEL_WARN;
-	if (strcmp(str, "info") == 0)  return LOG_LEVEL_INFO;
-	if (strcmp(str, "debug") == 0) return LOG_LEVEL_DEBUG;
-	if (strcmp(str, "trace") == 0) return LOG_LEVEL_TRACE;
+	if (!str)
+		return LOG_LEVEL_WARN;
+	if (strcmp(str, "off") == 0)
+		return LOG_LEVEL_OFF;
+	if (strcmp(str, "fatal") == 0)
+		return LOG_LEVEL_FATAL;
+	if (strcmp(str, "error") == 0)
+		return LOG_LEVEL_ERROR;
+	if (strcmp(str, "warn") == 0)
+		return LOG_LEVEL_WARN;
+	if (strcmp(str, "info") == 0)
+		return LOG_LEVEL_INFO;
+	if (strcmp(str, "debug") == 0)
+		return LOG_LEVEL_DEBUG;
+	if (strcmp(str, "trace") == 0)
+		return LOG_LEVEL_TRACE;
 
-	fprintf(stderr, "%s: invalid log level: %s\n"
+	fprintf(stderr,
+	        "%s: invalid log level: %s\n"
 	        "Valid levels: off, fatal, error, warn, info, debug, trace\n",
-	        MAIN_BINARY, str);
+	        MAIN_BINARY,
+	        str);
 	exit(EXIT_FAILURE);
 }
 
@@ -78,13 +88,8 @@ int main(int argc, char *argv[])
 	                    "Set log verbosity: off, fatal, error, warn, info, debug, trace",
 	                    &g_log_level_str);
 
-	argparse_add_option(root,
-	                    "log-file",
-	                    'F',
-	                    ARG_TYPE_STRING,
-	                    "FILE",
-	                    "Set logging file",
-	                    &g_log_file);
+	argparse_add_option(
+	    root, "log-file", 'F', ARG_TYPE_STRING, "FILE", "Set logging file", &g_log_file);
 
 	argparse_add_option(root,
 	                    "edit-entry",
@@ -100,7 +105,7 @@ int main(int argc, char *argv[])
 
 	/* Verify git is available before doing anything else */
 	{
-		ProcessResult r = process_exec(NULL, (char *const []) { GIT_BINARY, "--version", NULL });
+		ProcessResult r = process_exec(NULL, (char *const[]) { GIT_BINARY, "--version", NULL });
 		if (r.exit_code != 0) {
 			LOG_FATAL("git binary not found in your $PATH, or not executable");
 			process_result_free(&r);
@@ -123,7 +128,8 @@ int main(int argc, char *argv[])
 		LOG_CUSTOM(LOG_LEVEL_DEBUG, false, "Command-line args: [");
 		for (int i = 0; i < argc; i++) {
 			fprintf(log_get_file(), "\"%s\"", argv[i]);
-			if (i != argc - 1) fputs(", ", log_get_file());
+			if (i != argc - 1)
+				fputs(", ", log_get_file());
 		}
 		fputs("]\n", log_get_file());
 	}

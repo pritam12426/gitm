@@ -32,7 +32,7 @@ static int buf_append(char **buf, size_t *len, size_t *cap, const char *data, si
 		return -1;
 
 	if (*len + data_len + 1 > *cap) {
-		size_t need = *len + data_len + 1;
+		size_t need    = *len + data_len + 1;
 		size_t new_cap = (*cap == 0) ? PROCESS_BUF_SIZE : *cap * 2;
 
 		/* Guard against overflow in doubling */
@@ -79,7 +79,7 @@ ProcessResult process_exec(const char *cwd, char *const argv[])
 	LOG_TRACE("exec: %s in %s", argv[0], cwd ? cwd : "(inherit)");
 
 	/* Ignore SIGPIPE so we don't die if the child exits early */
-	struct sigaction sa   = { .sa_handler = SIG_IGN };
+	struct sigaction sa = { .sa_handler = SIG_IGN };
 	struct sigaction old_sa;
 	sigaction(SIGPIPE, &sa, &old_sa);
 
@@ -100,8 +100,7 @@ ProcessResult process_exec(const char *cwd, char *const argv[])
 		close(stdout_pipe[0]);
 		close(stderr_pipe[0]);
 
-		if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0 ||
-		    dup2(stderr_pipe[1], STDERR_FILENO) < 0) {
+		if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0 || dup2(stderr_pipe[1], STDERR_FILENO) < 0) {
 			_exit(EXIT_CMD_NOT_FOUND);
 		}
 
@@ -226,7 +225,7 @@ ProcessResult process_exec_colored(const char *cwd, char *const argv[])
 	LOG_TRACE("exec(color): %s in %s", argv[0], cwd ? cwd : "(inherit)");
 
 	/* Ignore SIGPIPE so we don't die if the child exits early */
-	struct sigaction sa   = { .sa_handler = SIG_IGN };
+	struct sigaction sa = { .sa_handler = SIG_IGN };
 	struct sigaction old_sa;
 	sigaction(SIGPIPE, &sa, &old_sa);
 
@@ -247,8 +246,7 @@ ProcessResult process_exec_colored(const char *cwd, char *const argv[])
 		close(stdout_pipe[0]);
 		close(stderr_pipe[0]);
 
-		if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0 ||
-		    dup2(stderr_pipe[1], STDERR_FILENO) < 0) {
+		if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0 || dup2(stderr_pipe[1], STDERR_FILENO) < 0) {
 			_exit(EXIT_CMD_NOT_FOUND);
 		}
 

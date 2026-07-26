@@ -10,8 +10,8 @@
 
 #include "table.h"
 
-#include <stdarg.h>
 #include "log.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,8 +27,8 @@ static size_t visible_width(const char *s)
 	if (!s)
 		return 0;
 
-	size_t width = 0;
-	const char *p = s;
+	size_t      width = 0;
+	const char *p     = s;
 
 	while (*p) {
 		if (*p == '\x1b' && *(p + 1) == '[') {
@@ -81,22 +81,22 @@ int table_add_row(Table *table, ...)
 		return -1;
 
 	if (table->row_count >= table->row_capacity) {
-		size_t     new_cap = table->row_capacity ? table->row_capacity * 2 : INITIAL_ROW_CAP;
+		size_t    new_cap = table->row_capacity ? table->row_capacity * 2 : INITIAL_ROW_CAP;
 		TableRow *tmp     = realloc(table->rows, new_cap * sizeof(TableRow));
 		if (!tmp)
 			return -1;
-		table->rows        = tmp;
+		table->rows         = tmp;
 		table->row_capacity = new_cap;
 	}
 
 	TableRow *row = &table->rows[table->row_count];
-	row->count = table->col_count;
+	row->count    = table->col_count;
 
 	va_list ap;
 	va_start(ap, table);
 	for (int i = 0; i < table->col_count && i < 8; i++) {
 		const char *cell = va_arg(ap, const char *);
-		row->cells[i] = cell ? strdup(cell) : strdup("");
+		row->cells[i]    = cell ? strdup(cell) : strdup("");
 		if (!row->cells[i]) {
 			va_end(ap);
 			return -1;
@@ -114,16 +114,16 @@ int table_add_row_raw(Table *table, const char **cells, int count)
 		return -1;
 
 	if (table->row_count >= table->row_capacity) {
-		size_t     new_cap = table->row_capacity ? table->row_capacity * 2 : INITIAL_ROW_CAP;
+		size_t    new_cap = table->row_capacity ? table->row_capacity * 2 : INITIAL_ROW_CAP;
 		TableRow *tmp     = realloc(table->rows, new_cap * sizeof(TableRow));
 		if (!tmp)
 			return -1;
-		table->rows        = tmp;
+		table->rows         = tmp;
 		table->row_capacity = new_cap;
 	}
 
 	TableRow *row = &table->rows[table->row_count];
-	row->count = table->col_count;
+	row->count    = table->col_count;
 
 	for (int i = 0; i < table->col_count && i < 8; i++) {
 		row->cells[i] = cells[i] ? strdup(cells[i]) : strdup("");
@@ -155,7 +155,8 @@ void table_print(const Table *table, FILE *out)
 		return;
 
 	LOG_TRACE("table_print: calculating column widths (%d cols, %zu rows)",
-	          table->col_count, table->row_count);
+	          table->col_count,
+	          table->row_count);
 
 	/* Calculate max width per column — stack, no heap */
 	size_t widths[8] = { 0 };
@@ -226,7 +227,7 @@ void table_print(const Table *table, FILE *out)
 		const TableRow *row = &table->rows[r];
 		for (int c = 0; c < row->count && c < table->col_count; c++) {
 			const char *cell = row->cells[c] ? row->cells[c] : "";
-			size_t w = visible_width(cell);
+			size_t      w    = visible_width(cell);
 
 			fputs(cell, out);
 

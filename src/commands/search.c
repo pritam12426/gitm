@@ -30,8 +30,8 @@ static int cmd_search(const ArgParseResult *result)
 	const char *pattern = result->positionals[0];
 	LOG_DEBUG("searching for pattern: %s", pattern);
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -43,8 +43,8 @@ static int cmd_search(const ArgParseResult *result)
 
 	int found = 0;
 	for (size_t i = 0; i < cfg.count; i++) {
-		if (strcasestr(cfg.entries[i].name, pattern) != NULL ||
-			strcasestr(cfg.entries[i].path, pattern) != NULL) {
+		if (strcasestr(cfg.entries[i].name, pattern) != NULL
+		    || strcasestr(cfg.entries[i].path, pattern) != NULL) {
 			LOG_TRACE("match: %s", cfg.entries[i].name);
 			cmd_print_name_path(stdout, cfg.entries[i].name, cfg.entries[i].path);
 			found++;
@@ -60,10 +60,7 @@ static int cmd_search(const ArgParseResult *result)
 
 void cmd_register_search(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "search",
-	                                       "Search repos by name or path pattern",
-	                                       cmd_search);
+	ArgCommand *cmd = argparse_add_command(parser, "search", "Search repos by name or path pattern", cmd_search);
 	const char *search_aliases[] = { "find", "f" };
 	argparse_command_set_aliases(cmd, search_aliases, 2);
 	(void) cmd;

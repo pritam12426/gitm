@@ -44,7 +44,8 @@ static int cmd_list(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t filtered = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group, indices, MAX_REPOS);
+	size_t filtered
+	    = cmd_filter_entries(&cfg, list_filter_tag, list_filter_group, indices, MAX_REPOS);
 
 	LOG_DEBUG("filtered to %zu repos (tag=%s, group=%s)",
 	          filtered,
@@ -65,7 +66,8 @@ static int cmd_list(const ArgParseResult *result)
 
 		for (size_t i = 0; i < filtered; i++) {
 			RepoEntry *e = &cfg.entries[indices[i]];
-			table_add_row(t, e->name, e->path, e->tags[0] ? e->tags : "-", e->groups[0] ? e->groups : "-");
+			table_add_row(
+			    t, e->name, e->path, e->tags[0] ? e->tags : "-", e->groups[0] ? e->groups : "-");
 		}
 
 		table_print(t, stdout);
@@ -83,7 +85,8 @@ static int cmd_list(const ArgParseResult *result)
 
 void cmd_register_list(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser, "list", "List registered repositories", cmd_list);
+	ArgCommand *cmd
+	    = argparse_add_command(parser, "list", "List registered repositories", cmd_list);
 	const char *list_aliases[] = { "ls" };
 	argparse_command_set_aliases(cmd, list_aliases, 1);
 	cmd_register_filter_flags(cmd, &list_filter_tag, &list_filter_group);

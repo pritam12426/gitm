@@ -35,10 +35,10 @@ extern "C" {
 #define GROUP_BUF_SIZE (MAX_GROUPS * 64)
 
 typedef struct {
-	char *path;                      /* absolute path to the repo */
-	char *name;                      /* user-friendly alias */
-	char  tags[TAG_BUF_SIZE];       /* comma-separated tags, or "" */
-	char  groups[GROUP_BUF_SIZE];   /* comma-separated groups, or "" */
+	char *path;                   /* absolute path to the repo */
+	char *name;                   /* user-friendly alias */
+	char  tags[TAG_BUF_SIZE];     /* comma-separated tags, or "" */
+	char  groups[GROUP_BUF_SIZE]; /* comma-separated groups, or "" */
 } RepoEntry;
 
 typedef struct GitConfig {
@@ -83,8 +83,7 @@ void config_free(GitConfig *cfg);
  * Add a repo to the config. Returns 0 on success, -1 on error (duplicate path or name).
  * tags and groups are comma-separated strings, or "" for none.
  */
-int config_add(GitConfig *cfg, const char *path, const char *name,
-               const char *tags, const char *groups);
+int config_add(GitConfig *cfg, const char *path, const char *name, const char *tags, const char *groups);
 
 /*
  * Remove a repo by name. Returns 0 on success, -1 if not found.

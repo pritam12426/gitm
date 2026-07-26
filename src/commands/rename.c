@@ -30,8 +30,8 @@ static int cmd_rename(const ArgParseResult *result)
 	const char *new_name = result->positionals[1];
 	LOG_DEBUG("renaming %s -> %s", old_name, new_name);
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -52,10 +52,7 @@ static int cmd_rename(const ArgParseResult *result)
 
 void cmd_register_rename(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "rename",
-	                                       "Rename a repository alias",
-	                                       cmd_rename);
+	ArgCommand *cmd = argparse_add_command(parser, "rename", "Rename a repository alias", cmd_rename);
 	argparse_add_positional(cmd, "old-name");
 	argparse_add_positional(cmd, "new-name");
 }

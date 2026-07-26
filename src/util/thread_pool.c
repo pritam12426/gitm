@@ -30,7 +30,7 @@ static void *worker_fn(void *arg)
 		/* Dequeue one task */
 		tp_task_fn fn   = tp->queue[tp->head].fn;
 		void      *farg = tp->queue[tp->head].arg;
-		tp->head = (tp->head + 1) % TP_MAX_TASKS;
+		tp->head        = (tp->head + 1) % TP_MAX_TASKS;
 		tp->count--;
 
 		pthread_mutex_unlock(&tp->mutex);
@@ -57,8 +57,10 @@ ThreadPool *tp_create(size_t n)
 	pthread_cond_init(&tp->has_task, NULL);
 	pthread_cond_init(&tp->all_done, NULL);
 
-	if (n < 1)             n = 1;
-	if (n > TP_MAX_THREADS) n = TP_MAX_THREADS;
+	if (n < 1)
+		n = 1;
+	if (n > TP_MAX_THREADS)
+		n = TP_MAX_THREADS;
 	tp->thread_count = n;
 
 	for (size_t i = 0; i < n; i++) {
@@ -93,7 +95,7 @@ int tp_submit(ThreadPool *tp, tp_task_fn fn, void *arg)
 
 	tp->queue[tp->tail].fn  = fn;
 	tp->queue[tp->tail].arg = arg;
-	tp->tail = (tp->tail + 1) % TP_MAX_TASKS;
+	tp->tail                = (tp->tail + 1) % TP_MAX_TASKS;
 	tp->count++;
 	tp->pending++;
 

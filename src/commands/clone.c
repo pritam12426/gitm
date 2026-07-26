@@ -61,9 +61,7 @@ static int cmd_clone(const ArgParseResult *result)
 
 	fprintf(stderr, "Cloning %s into %s...\n", url, dest);
 
-	ProcessResult r = process_exec(NULL,
-	                               (char *const *) (const char *[]) {
-	                                   GIT_BINARY, "clone", url, dest, NULL });
+	ProcessResult r = process_exec(NULL, (char *const *) (const char *[]) { GIT_BINARY, "clone", url, dest, NULL });
 
 	if (r.exit_code != 0) {
 		if (r.stderr_len > 0)
@@ -78,8 +76,8 @@ static int cmd_clone(const ArgParseResult *result)
 	if (cmd_ensure_config_dir() != 0)
 		return 1;
 
-	GitConfig cfg = { 0 };
-	char      *loaded_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *loaded_path = NULL;
 	if (cmd_load_config(&cfg, &loaded_path) != 0)
 		return 1;
 
@@ -104,10 +102,7 @@ static int cmd_clone(const ArgParseResult *result)
 
 void cmd_register_clone(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "clone",
-	                                       "Clone a repository and register it",
-	                                       cmd_clone);
+	ArgCommand *cmd = argparse_add_command(parser, "clone", "Clone a repository and register it", cmd_clone);
 	argparse_add_positional(cmd, "url");
 	argparse_add_positional(cmd, "[name]");
 }

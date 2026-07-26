@@ -58,8 +58,8 @@ static int cmd_doctor(const ArgParseResult *result)
 {
 	(void) result;
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -70,15 +70,13 @@ static int cmd_doctor(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
-	                                     indices, cfg.count);
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, cfg.count);
 
 	LOG_DEBUG("running health check on %zu repos", filtered);
 
 	/* Phase 1: parallel collection */
 	DoctorResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered,
-	                 doctor_collect, sizeof(DoctorResult), results);
+	parallel_collect(&cfg, indices, filtered, doctor_collect, sizeof(DoctorResult), results);
 
 	/* Phase 2: display sequentially */
 	int errors = 0;
@@ -89,8 +87,8 @@ static int cmd_doctor(const ArgParseResult *result)
 
 	if (g_table_mode) {
 		const char *headers[] = { "Name", "Status" };
-		Table *t = table_create(2, headers);
-		bool color = CMD_COLOR();
+		Table      *t         = table_create(2, headers);
+		bool        color     = CMD_COLOR();
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++) {
@@ -99,7 +97,9 @@ static int cmd_doctor(const ArgParseResult *result)
 
 			if (color) {
 				char colored[MAX_NAME_LEN];
-				ansi_colorize(colored, sizeof(colored), status,
+				ansi_colorize(colored,
+				              sizeof(colored),
+				              status,
 				              results[i].is_ok ? ANSI_FG_GREEN : ANSI_FG_RED);
 				const char *cells[] = { name, colored };
 				table_add_row_raw(t, cells, 2);
@@ -112,11 +112,13 @@ static int cmd_doctor(const ArgParseResult *result)
 		table_free(t);
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
-			fprintf(stderr, "%*s : %s\n",
-			        NAME_COL_WIDTH, cfg.entries[indices[i]].name, results[i].status);
+			fprintf(stderr,
+			        "%*s : %s\n",
+			        NAME_COL_WIDTH,
+			        cfg.entries[indices[i]].name,
+			        results[i].status);
 		}
-		fprintf(stderr, "\n%d/%zu repositories OK\n",
-		        (int) (filtered - (size_t) errors), filtered);
+		fprintf(stderr, "\n%d/%zu repositories OK\n", (int) (filtered - (size_t) errors), filtered);
 	}
 
 	if (errors > 0)
@@ -130,10 +132,7 @@ static int cmd_doctor(const ArgParseResult *result)
 
 void cmd_register_doctor(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "doctor",
-	                                       "Health check all registered repositories",
-	                                       cmd_doctor);
+	ArgCommand *cmd = argparse_add_command(parser, "doctor", "Health check all registered repositories", cmd_doctor);
 	const char *doctor_aliases[] = { "doc", "d" };
 	argparse_command_set_aliases(cmd, doctor_aliases, 2);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);

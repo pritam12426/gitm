@@ -15,14 +15,14 @@
 
 
 // -- Text Styles -----------------------------------------------------------------
-#define ANSI_BOLD             "\x1b[1m"
-#define ANSI_DIM              "\x1b[2m"
-#define ANSI_ITALIC           "\x1b[3m"
-#define ANSI_UNDERLINE        "\x1b[4m"
-#define ANSI_BLINK            "\x1b[5m"
-#define ANSI_REVERSE          "\x1b[7m"
-#define ANSI_HIDDEN           "\x1b[8m"
-#define ANSI_STRIKE           "\x1b[9m"
+#define ANSI_BOLD      "\x1b[1m"
+#define ANSI_DIM       "\x1b[2m"
+#define ANSI_ITALIC    "\x1b[3m"
+#define ANSI_UNDERLINE "\x1b[4m"
+#define ANSI_BLINK     "\x1b[5m"
+#define ANSI_REVERSE   "\x1b[7m"
+#define ANSI_HIDDEN    "\x1b[8m"
+#define ANSI_STRIKE    "\x1b[9m"
 
 #define ANSI_NORMAL_INTENSITY "\x1b[22m"
 #define ANSI_NO_ITALIC        "\x1b[23m"

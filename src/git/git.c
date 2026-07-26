@@ -149,12 +149,12 @@ char *git_last_commit_date(const char *path)
 		return NULL;
 	}
 
-	char  *result = strdup(r.stdout_buf);
+	char *result = strdup(r.stdout_buf);
 	if (!result) {
 		process_result_free(&r);
 		return NULL;
 	}
-	size_t len    = strlen(result);
+	size_t len = strlen(result);
 	if (len > 0 && result[len - 1] == '\n')
 		result[len - 1] = '\0';
 
@@ -181,12 +181,12 @@ char *git_toplevel(const char *path)
 	}
 
 	/* Strip trailing newline */
-	char  *result = strdup(r.stdout_buf);
+	char *result = strdup(r.stdout_buf);
 	if (!result) {
 		process_result_free(&r);
 		return NULL;
 	}
-	size_t len    = strlen(result);
+	size_t len = strlen(result);
 	if (len > 0 && result[len - 1] == '\n')
 		result[len - 1] = '\0';
 
@@ -197,18 +197,20 @@ char *git_toplevel(const char *path)
 char *git_current_branch(const char *path)
 {
 	LOG_TRACE("git_current_branch(%s)", path);
+
 	ProcessResult r = git_exec(path, "rev-parse", "--abbrev-ref", "HEAD", NULL);
 	if (r.exit_code != 0 || r.stdout_len == 0) {
 		process_result_free(&r);
 		return NULL;
 	}
 
-	char  *result = strdup(r.stdout_buf);
+	char *result = strdup(r.stdout_buf);
 	if (!result) {
 		process_result_free(&r);
 		return NULL;
 	}
-	size_t len    = strlen(result);
+
+	size_t len = strlen(result);
 	if (len > 0 && result[len - 1] == '\n')
 		result[len - 1] = '\0';
 

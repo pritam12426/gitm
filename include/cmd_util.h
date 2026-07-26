@@ -48,17 +48,16 @@ int cmd_load_config(GitConfig *cfg, char **path_out);
  * Returns the number of matching entries.
  */
 size_t cmd_filter_entries(const GitConfig *cfg,
-                          const char *filter_tag,
-                          const char *filter_group,
-                          size_t *out_indices, size_t max);
+                          const char      *filter_tag,
+                          const char      *filter_group,
+                          size_t          *out_indices,
+                          size_t           max);
 
 /*
  * Register --tag and --group flags on a command.
  * Stores parsed values into *out_tag and *out_group.
  */
-void cmd_register_filter_flags(ArgCommand *cmd,
-                               const char **out_tag,
-                               const char **out_group);
+void cmd_register_filter_flags(ArgCommand *cmd, const char **out_tag, const char **out_group);
 
 /*
  * Print "name : path" aligned to NAME_COL_WIDTH.
@@ -70,8 +69,12 @@ void cmd_print_name_path(FILE *stream, const char *name, const char *path);
  * If empty_msg is NULL and output is empty, returns silently.
  * If empty_msg is provided, shows an "empty" indicator.
  */
-void cmd_display_plain_result(int exit_code, const char *stdout_buf, size_t stdout_len,
-                              const char *name, const char *empty_msg, bool color);
+void cmd_display_plain_result(int         exit_code,
+                              const char *stdout_buf,
+                              size_t      stdout_len,
+                              const char *name,
+                              const char *empty_msg,
+                              bool        color);
 
 /*
  * Resolve the user's editor from $EDITOR or $VISUAL.

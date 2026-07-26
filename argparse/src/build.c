@@ -34,10 +34,10 @@ ArgParser *argparse_new(const ArgParserConfig *config)
 
 	/* Root command for global options. Its parent is NULL — this is
 	 * the one node in the tree that terminates the upward walk. */
-	p->root.name         = "";
-	p->root.description  = NULL;
-	p->root.callback     = NULL;
-	p->root.parent       = NULL;
+	p->root.name        = "";
+	p->root.description = NULL;
+	p->root.callback    = NULL;
+	p->root.parent      = NULL;
 
 	return p;
 }
@@ -134,9 +134,7 @@ ArgCommand *argparse_add_subcommand(ArgCommand  *parent,
 	return cmd;
 }
 
-void argparse_command_set_aliases(ArgCommand  *cmd,
-                                  const char **aliases,
-                                  int          count)
+void argparse_command_set_aliases(ArgCommand *cmd, const char **aliases, int count)
 {
 	if (!cmd || count > ARGPARSE_MAX_ALIASES)
 		return;
@@ -159,40 +157,40 @@ void argparse_add_option(ArgCommand   *command,
 	if (!command || command->option_count >= ARGPARSE_MAX_OPTIONS)
 		return;
 
-	ArgOption *opt    = &command->options[command->option_count++];
-	opt->long_name    = long_name;
-	opt->short_name   = short_name;
-	opt->type         = type;
-	opt->metavar      = metavar;
-	opt->description  = description;
-	opt->storage      = storage;
+	ArgOption *opt       = &command->options[command->option_count++];
+	opt->long_name       = long_name;
+	opt->short_name      = short_name;
+	opt->type            = type;
+	opt->metavar         = metavar;
+	opt->description     = description;
+	opt->storage         = storage;
 	opt->exclusive_group = 0;
-	opt->env_var      = NULL;
-	opt->was_set      = false;
+	opt->env_var         = NULL;
+	opt->was_set         = false;
 }
 
 void argparse_add_option_with_env(ArgCommand   *command,
-                                   const char   *long_name,
-                                   char          short_name,
-                                   ArgOptionType type,
-                                   const char   *metavar,
-                                   const char   *description,
-                                   void         *storage,
-                                   const char   *env_var)
+                                  const char   *long_name,
+                                  char          short_name,
+                                  ArgOptionType type,
+                                  const char   *metavar,
+                                  const char   *description,
+                                  void         *storage,
+                                  const char   *env_var)
 {
 	if (!command || command->option_count >= ARGPARSE_MAX_OPTIONS)
 		return;
 
-	ArgOption *opt    = &command->options[command->option_count++];
-	opt->long_name    = long_name;
-	opt->short_name   = short_name;
-	opt->type         = type;
-	opt->metavar      = metavar;
-	opt->description  = description;
-	opt->storage      = storage;
-	opt->env_var      = env_var;
+	ArgOption *opt       = &command->options[command->option_count++];
+	opt->long_name       = long_name;
+	opt->short_name      = short_name;
+	opt->type            = type;
+	opt->metavar         = metavar;
+	opt->description     = description;
+	opt->storage         = storage;
+	opt->env_var         = env_var;
 	opt->exclusive_group = 0;
-	opt->was_set      = false;
+	opt->was_set         = false;
 }
 
 void argparse_add_option_exclusive(ArgCommand   *command,
@@ -207,16 +205,16 @@ void argparse_add_option_exclusive(ArgCommand   *command,
 	if (!command || command->option_count >= ARGPARSE_MAX_OPTIONS)
 		return;
 
-	ArgOption *opt    = &command->options[command->option_count++];
-	opt->long_name    = long_name;
-	opt->short_name   = short_name;
-	opt->type         = type;
-	opt->metavar      = metavar;
-	opt->description  = description;
-	opt->storage      = storage;
+	ArgOption *opt       = &command->options[command->option_count++];
+	opt->long_name       = long_name;
+	opt->short_name      = short_name;
+	opt->type            = type;
+	opt->metavar         = metavar;
+	opt->description     = description;
+	opt->storage         = storage;
 	opt->exclusive_group = exclusive_group;
-	opt->env_var      = NULL;
-	opt->was_set      = false;
+	opt->env_var         = NULL;
+	opt->was_set         = false;
 }
 
 void argparse_add_positional(ArgCommand *command, const char *name)

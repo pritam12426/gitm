@@ -31,11 +31,11 @@ static const char *filter_group = NULL;
 
 static void remote_collect(const RepoEntry *entry, void *out)
 {
-	CmdGitResult   *r = out;
+	CmdGitResult *r = out;
 	ProcessResult pr;
 
 	bool color = g_table_mode ? false : CMD_COLOR();
-	pr = git_exec_smart(entry->path, color, "remote", "-v", NULL);
+	pr         = git_exec_smart(entry->path, color, "remote", "-v", NULL);
 
 	process_steal_stdout(r, &pr);
 }
@@ -48,8 +48,8 @@ static void remote_display_table(Table *t, const CmdGitResult *r, const char *re
 		return;
 	}
 
-	const char *p = r->stdout_buf;
-	bool first = true;
+	const char *p     = r->stdout_buf;
+	bool        first = true;
 	while (*p) {
 		const char *start = p;
 		while (*p && *p != '\n')
@@ -64,7 +64,7 @@ static void remote_display_table(Table *t, const CmdGitResult *r, const char *re
 
 		char *tab = strchr(line, '\t');
 		if (tab) {
-			*tab = '\0';
+			*tab        = '\0';
 			char *rname = line;
 			char *rest  = tab + 1;
 
@@ -73,7 +73,7 @@ static void remote_display_table(Table *t, const CmdGitResult *r, const char *re
 			char *type  = "-";
 			if (paren) {
 				*paren = '\0';
-				type = paren + 1;
+				type   = paren + 1;
 				if (*type == '(') {
 					type++;
 					char *close = strchr(type, ')');
@@ -83,7 +83,7 @@ static void remote_display_table(Table *t, const CmdGitResult *r, const char *re
 			}
 
 			const char *repo_disp = first ? repo_name : "";
-			const char *cells[] = { repo_disp, rname, url, type };
+			const char *cells[]   = { repo_disp, rname, url, type };
 			table_add_row_raw(t, cells, 4);
 			first = false;
 		}
@@ -100,8 +100,8 @@ static int cmd_remote(const ArgParseResult *result)
 	LOG_TRACE("cmd_remote");
 	bool color = CMD_COLOR();
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -122,7 +122,8 @@ static int cmd_remote(const ArgParseResult *result)
 	}
 
 	CmdGitResult results[MAX_REPOS] = { 0 };
-	if (parallel_collect(&cfg, indices, filtered, remote_collect, sizeof(CmdGitResult), results) != 0) {
+	if (parallel_collect(&cfg, indices, filtered, remote_collect, sizeof(CmdGitResult), results)
+	    != 0) {
 		LOG_ERROR("parallel collection failed");
 		cmd_cleanup(&cfg, config_path);
 		return 1;
@@ -131,7 +132,7 @@ static int cmd_remote(const ArgParseResult *result)
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Remote", "URL", "Type" };
-		Table *t = table_create(4, headers);
+		Table      *t         = table_create(4, headers);
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++)
@@ -142,9 +143,12 @@ static int cmd_remote(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			LOG_TRACE("showing remotes for %s", cfg.entries[indices[i]].name);
-			cmd_display_plain_result(results[i].exit_code, results[i].stdout_buf,
-			                         results[i].stdout_len, cfg.entries[indices[i]].name,
-			                         "(no remotes)", color);
+			cmd_display_plain_result(results[i].exit_code,
+			                         results[i].stdout_buf,
+			                         results[i].stdout_len,
+			                         cfg.entries[indices[i]].name,
+			                         "(no remotes)",
+			                         color);
 		}
 	}
 
@@ -157,10 +161,7 @@ static int cmd_remote(const ArgParseResult *result)
 
 void cmd_register_remote(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "remote",
-	                                       "Show remote settings",
-	                                       cmd_remote);
+	ArgCommand *cmd = argparse_add_command(parser, "remote", "Show remote settings", cmd_remote);
 	const char *remote_aliases[] = { "rem" };
 	argparse_command_set_aliases(cmd, remote_aliases, 1);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);

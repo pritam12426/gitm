@@ -17,8 +17,7 @@
 #include "config.h"
 #include "log.h"
 
-int config_add(GitConfig *cfg, const char *path, const char *name,
-               const char *tags, const char *groups)
+int config_add(GitConfig *cfg, const char *path, const char *name, const char *tags, const char *groups)
 {
 	if (!cfg || !path || !name)
 		return -1;

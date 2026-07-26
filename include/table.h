@@ -33,8 +33,8 @@ extern "C" {
 
 
 typedef struct {
-	char *cells[8];          /* owning cell strings (strdup'd) — inline ptr array */
-	int   count;             /* number of cells in this row */
+	char *cells[8]; /* owning cell strings (strdup'd) — inline ptr array */
+	int   count;    /* number of cells in this row */
 } TableRow;
 
 typedef struct {

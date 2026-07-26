@@ -30,7 +30,7 @@ static const char *filter_group = NULL;
 
 static void last_collect(const RepoEntry *entry, void *out)
 {
-	CmdGitResult   *r = out;
+	CmdGitResult *r = out;
 	ProcessResult pr;
 
 	if (g_table_mode) {
@@ -81,11 +81,7 @@ static void last_display_table(Table *t, const CmdGitResult *r, const char *repo
 		char *msg    = strtok_r(NULL, "|", &save);
 
 		const char *cells[] = {
-			repo_name,
-			hash ? hash : "-",
-			author ? author : "-",
-			date ? date : "-",
-			msg ? msg : "-"
+			repo_name, hash ? hash : "-", author ? author : "-", date ? date : "-", msg ? msg : "-"
 		};
 		table_add_row_raw(t, cells, 5);
 	} else {

@@ -89,8 +89,15 @@ void ansi_print_repo_header(const char *name, bool color)
 void ansi_print_repo_empty(const char *name, const char *msg, bool color)
 {
 	if (color)
-		fprintf(stderr, "\n%s%s%s%s\n  %s%s%s\n", ANSI_BOLD, ANSI_FG_CYAN, name, ANSI_RESET,
-		        ANSI_DIM, msg, ANSI_RESET);
+		fprintf(stderr,
+		        "\n%s%s%s%s\n  %s%s%s\n",
+		        ANSI_BOLD,
+		        ANSI_FG_CYAN,
+		        name,
+		        ANSI_RESET,
+		        ANSI_DIM,
+		        msg,
+		        ANSI_RESET);
 	else
 		fprintf(stderr, "\n%s\n  %s\n", name, msg);
 }
@@ -105,12 +112,12 @@ long parse_date_to_timestamp(const char *date_str)
 		return 0;
 
 	struct tm tm = { 0 };
-	tm.tm_year = year - 1900;
-	tm.tm_mon  = month - 1;
-	tm.tm_mday = day;
-	tm.tm_hour = hour;
-	tm.tm_min  = min;
-	tm.tm_sec  = sec;
+	tm.tm_year   = year - 1900;
+	tm.tm_mon    = month - 1;
+	tm.tm_mday   = day;
+	tm.tm_hour   = hour;
+	tm.tm_min    = min;
+	tm.tm_sec    = sec;
 
 	return (long) mktime(&tm);
 }

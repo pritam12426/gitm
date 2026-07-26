@@ -25,8 +25,8 @@ static int cmd_clean(const ArgParseResult *result)
 	(void) result;
 
 	LOG_TRACE("cmd_clean");
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -49,7 +49,9 @@ static int cmd_clean(const ArgParseResult *result)
 	}
 
 	/* List orphans */
-	fprintf(stderr, "Found %zu orphaned %s:\n", orphan_count,
+	fprintf(stderr,
+	        "Found %zu orphaned %s:\n",
+	        orphan_count,
 	        PLURAL(orphan_count, "repository", "repositories"));
 	for (size_t i = 0; i < orphan_count; i++) {
 		size_t idx = orphans[i];
@@ -62,8 +64,7 @@ static int cmd_clean(const ArgParseResult *result)
 	}
 
 	/* Confirm removal */
-	fprintf(stderr, "\nRemove %zu %s? [y/N] ", orphan_count,
-	        PLURAL(orphan_count, "entry", "entries"));
+	fprintf(stderr, "\nRemove %zu %s? [y/N] ", orphan_count, PLURAL(orphan_count, "entry", "entries"));
 	fflush(stderr);
 
 	int ch = getchar();
@@ -89,8 +90,7 @@ static int cmd_clean(const ArgParseResult *result)
 	if (cmd_save_config(&cfg, config_path) != 0)
 		return 1;
 
-	fprintf(stderr, "Removed %zu %s.\n", orphan_count,
-	        PLURAL(orphan_count, "entry", "entries"));
+	fprintf(stderr, "Removed %zu %s.\n", orphan_count, PLURAL(orphan_count, "entry", "entries"));
 
 	LOG_INFO("removed %zu orphaned entries", orphan_count);
 
@@ -100,13 +100,9 @@ static int cmd_clean(const ArgParseResult *result)
 
 void cmd_register_clean(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "clean",
-	                                       "Remove repos that no longer exist on disk",
-	                                       cmd_clean);
+	ArgCommand *cmd = argparse_add_command(parser, "clean", "Remove repos that no longer exist on disk", cmd_clean);
 	const char *clean_aliases[] = { "prune" };
 	argparse_command_set_aliases(cmd, clean_aliases, 1);
-	argparse_add_option(cmd, "dry-run", 'n', ARG_TYPE_NONE, NULL,
-	                    "Show orphans without removing", &g_dry_run);
+	argparse_add_option(cmd, "dry-run", 'n', ARG_TYPE_NONE, NULL, "Show orphans without removing", &g_dry_run);
 	(void) cmd;
 }

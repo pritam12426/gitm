@@ -23,16 +23,16 @@ typedef struct GitConfig GitConfig;
 #define MAX_GROUPS 10
 
 /* Repository limit (enables stack allocation across commands) */
-#define MAX_REPOS  50
+#define MAX_REPOS 50
 
 /* Buffer sizes */
-#define MAX_PATH_LEN   512
-#define MAX_NAME_LEN   256
-#define MAX_COUNT_STR  32
+#define MAX_PATH_LEN  512
+#define MAX_NAME_LEN  256
+#define MAX_COUNT_STR 32
 
 /* Git */
-#define GIT_BINARY     "git"
-#define GIT_MAX_ARGS   32
+#define GIT_BINARY   "git"
+#define GIT_MAX_ARGS 32
 
 /* Process capture */
 #define PROCESS_BUF_SIZE 4096
@@ -41,7 +41,7 @@ typedef struct GitConfig GitConfig;
 #define NAME_COL_WIDTH 22
 
 /* Stats frequency map */
-#define FREQ_MAP_MAX   512
+#define FREQ_MAP_MAX 512
 
 /* Repeated user-facing messages */
 #define MSG_NO_REPOS       "No repositories registered.\n"
@@ -58,7 +58,7 @@ typedef struct GitConfig GitConfig;
 
 /* ── Config utilities ─────────────────────────────────────────────────────── */
 
-int  config_ensure_capacity(GitConfig *cfg);
+int config_ensure_capacity(GitConfig *cfg);
 bool config_has_duplicate_name(const GitConfig *cfg, const char *name, size_t exclude_index);
 bool config_has_duplicate_path(const GitConfig *cfg, const char *path, size_t exclude_index);
 

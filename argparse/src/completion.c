@@ -43,7 +43,8 @@ static void print_completion_bash(const ArgParser *parser)
 		printf("        %s)\n", cmd->name);
 		printf("            COMPREPLY=($(compgen -W \"");
 		for (int j = 0; j < cmd->option_count; j++) {
-			if (j > 0) printf(" ");
+			if (j > 0)
+				printf(" ");
 			if (cmd->options[j].long_name)
 				printf("--%s", cmd->options[j].long_name);
 		}
@@ -56,7 +57,8 @@ static void print_completion_bash(const ArgParser *parser)
 	printf("    if [[ ${cur} == -* ]]; then\n");
 	printf("        COMPREPLY=($(compgen -W \"");
 	for (int i = 0; i < parser->root.option_count; i++) {
-		if (i > 0) printf(" ");
+		if (i > 0)
+			printf(" ");
 		if (parser->root.options[i].long_name)
 			printf("--%s", parser->root.options[i].long_name);
 	}
@@ -92,19 +94,24 @@ static void zsh_print_option_spec(const ArgOption *opt, bool trailing)
 	if (opt->short_name) {
 		if (meta)
 			printf("            '(-%c --%s)'{-%c,--%s}'[%s]:%s:'",
-			       opt->short_name, opt->long_name,
-			       opt->short_name, opt->long_name, desc, meta);
+			       opt->short_name,
+			       opt->long_name,
+			       opt->short_name,
+			       opt->long_name,
+			       desc,
+			       meta);
 		else
 			printf("            '(-%c --%s)'{-%c,--%s}'[%s]'",
-			       opt->short_name, opt->long_name,
-			       opt->short_name, opt->long_name, desc);
+			       opt->short_name,
+			       opt->long_name,
+			       opt->short_name,
+			       opt->long_name,
+			       desc);
 	} else {
 		if (meta)
-			printf("            '--%s[%s]:%s:'",
-			       opt->long_name, desc, meta);
+			printf("            '--%s[%s]:%s:'", opt->long_name, desc, meta);
 		else
-			printf("            '--%s[%s]'",
-			       opt->long_name, desc);
+			printf("            '--%s[%s]'", opt->long_name, desc);
 	}
 
 	if (trailing)
@@ -185,21 +192,26 @@ static void print_completion_fish(const ArgParser *parser)
 	for (int i = 0; i < parser->command_count; i++) {
 		const ArgCommand *cmd = &parser->commands[i];
 		printf("complete -c %s -f -a '%s' -d '%s'\n",
-		       prog, cmd->name,
+		       prog,
+		       cmd->name,
 		       cmd->description ? cmd->description : "");
 	}
 
 	printf("\n# Global options\n");
 	for (int i = 0; i < parser->root.option_count; i++) {
 		const ArgOption *opt = &parser->root.options[i];
-		if (!opt->long_name) continue;
+		if (!opt->long_name)
+			continue;
 		if (opt->short_name)
 			printf("complete -c %s -s %c -l %s -d '%s'\n",
-			       prog, opt->short_name, opt->long_name,
+			       prog,
+			       opt->short_name,
+			       opt->long_name,
 			       opt->description ? opt->description : "");
 		else
 			printf("complete -c %s -l %s -d '%s'\n",
-			       prog, opt->long_name,
+			       prog,
+			       opt->long_name,
 			       opt->description ? opt->description : "");
 	}
 
@@ -208,14 +220,20 @@ static void print_completion_fish(const ArgParser *parser)
 		const ArgCommand *cmd = &parser->commands[i];
 		for (int j = 0; j < cmd->option_count; j++) {
 			const ArgOption *opt = &cmd->options[j];
-			if (!opt->long_name) continue;
+			if (!opt->long_name)
+				continue;
 			if (opt->short_name)
 				printf("complete -c %s -n '__fish_seen_subcommand_from %s' -s %c -l %s -d '%s'\n",
-				       prog, cmd->name, opt->short_name, opt->long_name,
+				       prog,
+				       cmd->name,
+				       opt->short_name,
+				       opt->long_name,
 				       opt->description ? opt->description : "");
 			else
 				printf("complete -c %s -n '__fish_seen_subcommand_from %s' -l %s -d '%s'\n",
-				       prog, cmd->name, opt->long_name,
+				       prog,
+				       cmd->name,
+				       opt->long_name,
 				       opt->description ? opt->description : "");
 		}
 	}
@@ -225,13 +243,11 @@ static void print_completion_fish(const ArgParser *parser)
 
 void shell_completion(const ArgParser *parser, const char *shell)
 {
-	if (parser->command_count == 0 &&
-	    (strcmp(shell, "bash") == 0 || strcmp(shell, "zsh") == 0)) {
+	if (parser->command_count == 0 && (strcmp(shell, "bash") == 0 || strcmp(shell, "zsh") == 0)) {
 		/* bash/zsh generators assume at least one registered command
 		 * exists; with none, still emit a minimal, valid script
 		 * instead of touching commands[0] out of bounds. */
-		fprintf(stderr, "%s: no commands registered, nothing to complete\n",
-		        parser->prog_name);
+		fprintf(stderr, "%s: no commands registered, nothing to complete\n", parser->prog_name);
 		return;
 	}
 
@@ -242,8 +258,10 @@ void shell_completion(const ArgParser *parser, const char *shell)
 	} else if (strcmp(shell, "fish") == 0) {
 		print_completion_fish(parser);
 	} else {
-		fprintf(stderr, "%s: unsupported shell: %s (use bash, zsh, or fish)\n",
-		        parser->prog_name, shell);
+		fprintf(stderr,
+		        "%s: unsupported shell: %s (use bash, zsh, or fish)\n",
+		        parser->prog_name,
+		        shell);
 	}
 }
 
@@ -261,9 +279,8 @@ void argparse_complete(const ArgParser *parser, int argc, char **argv)
 	 * level below root. */
 	ArgCommand *current = (ArgCommand *) &parser->root;
 	for (int i = 1; i < argc - 1; i++) {
-		ArgCommand *next = (current == &parser->root)
-		                     ? match_command((ArgParser *) parser, argv[i])
-		                     : match_subcommand(current, argv[i]);
+		ArgCommand *next = (current == &parser->root) ? match_command((ArgParser *) parser, argv[i])
+		                                              : match_subcommand(current, argv[i]);
 		if (!next)
 			break;
 		current = next;

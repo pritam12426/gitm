@@ -35,8 +35,8 @@ static int cmd_open(const ArgParseResult *result)
 	const char *name = result->positionals[0];
 	LOG_DEBUG("opening repo: %s", name);
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 

@@ -50,7 +50,7 @@ static void detect_color(void)
 
 #define GUTTER_MIN 12
 #define GUTTER_MAX 36
-#define GUTTER_PAD 2  /* spaces between the widest flag string and the description */
+#define GUTTER_PAD 2 /* spaces between the widest flag string and the description */
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 
@@ -64,7 +64,8 @@ static size_t visible_len(const char *s)
 			p += 2;
 			while (*p && !((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z')))
 				p++;
-			if (*p) p++;
+			if (*p)
+				p++;
 			continue;
 		}
 		vis++;
@@ -86,25 +87,29 @@ static void print_padded(FILE *out, const char *s, size_t width)
 
 static size_t clamp_width(size_t w)
 {
-	if (w < GUTTER_MIN) return GUTTER_MIN;
-	if (w > GUTTER_MAX) return GUTTER_MAX;
+	if (w < GUTTER_MIN)
+		return GUTTER_MIN;
+	if (w > GUTTER_MAX)
+		return GUTTER_MAX;
 	return w;
 }
 
 /* Builds the coloured "-x, --flag=METAVAR" text for a real option. */
-#define APPEND_INTO(buf, bufsz, lenvar, ...) \
-	do { \
-		if ((lenvar) < (bufsz)) { \
+#define APPEND_INTO(buf, bufsz, lenvar, ...)                                     \
+	do {                                                                         \
+		if ((lenvar) < (bufsz)) {                                                \
 			int n = snprintf((buf) + (lenvar), (bufsz) - (lenvar), __VA_ARGS__); \
-			if (n > 0) (lenvar) += (size_t) n; \
-			if ((lenvar) > (bufsz)) (lenvar) = (bufsz); /* clamp on truncation */ \
-		} \
+			if (n > 0)                                                           \
+				(lenvar) += (size_t) n;                                          \
+			if ((lenvar) > (bufsz))                                              \
+				(lenvar) = (bufsz); /* clamp on truncation */                    \
+		}                                                                        \
 	} while (0)
 
 static void build_option_flags(char *buf, size_t bufsz, const ArgOption *opt)
 {
 	size_t len = 0;
-	buf[0] = '\0';
+	buf[0]     = '\0';
 
 	if (opt->short_name)
 		APPEND_INTO(buf, bufsz, len, "%s-%c%s, ", C_BOLD_GREEN, opt->short_name, C_RESET);
@@ -122,12 +127,11 @@ static void build_option_flags(char *buf, size_t bufsz, const ArgOption *opt)
  * `metavar`, if given, is coloured the same way a real option's metavar
  * is: the "=" itself is left uncoloured (plain terminal default) and
  * only the value after it is dim — matching e.g. --log-level=LEVEL. */
-static void build_builtin_flags(char *buf, size_t bufsz,
-                                 const char *short_flag, const char *long_flag,
-                                 const char *metavar)
+static void build_builtin_flags(
+    char *buf, size_t bufsz, const char *short_flag, const char *long_flag, const char *metavar)
 {
 	size_t len = 0;
-	buf[0] = '\0';
+	buf[0]     = '\0';
 
 	if (short_flag)
 		APPEND_INTO(buf, bufsz, len, "%s%s%s, ", C_BOLD_GREEN, short_flag, C_RESET);
@@ -141,12 +145,11 @@ static void build_builtin_flags(char *buf, size_t bufsz,
 }
 
 /* Builds "name (alias1, alias2)" for a command/subcommand listing. */
-static void build_command_label(char *buf, size_t bufsz,
-                                 const char *name,
-                                 const char *const *aliases, int alias_count)
+static void build_command_label(
+    char *buf, size_t bufsz, const char *name, const char *const *aliases, int alias_count)
 {
 	size_t len = 0;
-	buf[0] = '\0';
+	buf[0]     = '\0';
 
 	APPEND_INTO(buf, bufsz, len, "%s", name);
 
@@ -210,18 +213,22 @@ static size_t options_gutter_width(const ArgOption *opts, int count, bool with_s
 	for (int i = 0; i < count; i++) {
 		build_option_flags(buf, sizeof(buf), &opts[i]);
 		size_t w = visible_len(buf);
-		if (w > max) max = w;
+		if (w > max)
+			max = w;
 	}
 
 	build_builtin_flags(buf, sizeof(buf), "-h", "--help", NULL);
-	if (visible_len(buf) > max) max = visible_len(buf);
+	if (visible_len(buf) > max)
+		max = visible_len(buf);
 
 	build_builtin_flags(buf, sizeof(buf), "-v", "--version", NULL);
-	if (visible_len(buf) > max) max = visible_len(buf);
+	if (visible_len(buf) > max)
+		max = visible_len(buf);
 
 	if (with_shell_completion) {
 		build_builtin_flags(buf, sizeof(buf), "-S", "--shell-completion", "SHELL");
-		if (visible_len(buf) > max) max = visible_len(buf);
+		if (visible_len(buf) > max)
+			max = visible_len(buf);
 	}
 
 	return clamp_width(max + GUTTER_PAD);
@@ -233,10 +240,11 @@ static size_t commands_gutter_width(const ArgCommand *const *cmds, int count)
 	char   buf[160];
 
 	for (int i = 0; i < count; i++) {
-		build_command_label(buf, sizeof(buf), cmds[i]->name,
-		                     cmds[i]->aliases, cmds[i]->alias_count);
+		build_command_label(
+		    buf, sizeof(buf), cmds[i]->name, cmds[i]->aliases, cmds[i]->alias_count);
 		size_t w = visible_len(buf);
-		if (w > max) max = w;
+		if (w > max)
+			max = w;
 	}
 	return clamp_width(max + GUTTER_PAD);
 }
@@ -262,8 +270,7 @@ static void print_commands_flat(const ArgCommand *cmd, int depth)
 
 		fprintf(stderr, "%*s  ", indent, "");
 		print_padded(stderr, label, width);
-		fprintf(stderr, "  %s%s%s\n",
-		        C_DIM, sub->description ? sub->description : "", C_RESET);
+		fprintf(stderr, "  %s%s%s\n", C_DIM, sub->description ? sub->description : "", C_RESET);
 
 		print_commands_flat(sub, depth + 1);
 	}
@@ -276,14 +283,20 @@ void argparse_usage(const ArgParser *parser, const ArgCommand *cmd)
 	detect_color();
 
 	if (cmd == NULL || cmd == &parser->root) {
-		fprintf(stderr, "%susage:%s %s%s%s [OPTIONS] COMMAND [ARGS]%s\n",
-		        C_BOLD, C_RESET, C_BOLD, parser->prog_name, C_RESET, C_RESET);
+		fprintf(stderr,
+		        "%susage:%s %s%s%s [OPTIONS] COMMAND [ARGS]%s\n",
+		        C_BOLD,
+		        C_RESET,
+		        C_BOLD,
+		        parser->prog_name,
+		        C_RESET,
+		        C_RESET);
 		return;
 	}
 
 	/* Build full usage name by walking the parent chain */
 	const ArgCommand *chain[ARGPARSE_MAX_CHAIN_DEPTH];
-	int                chain_len = 0;
+	int               chain_len = 0;
 	for (const ArgCommand *p = cmd->parent; p && p->name && p->name[0] != '\0'; p = p->parent) {
 		if (chain_len < ARGPARSE_MAX_CHAIN_DEPTH)
 			chain[chain_len++] = p;
@@ -311,8 +324,13 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 
 	/* Root command — show global help with commands list */
 	if (cmd == NULL || cmd == &parser->root) {
-		fprintf(stderr, "%sUsage:%s %s%s [OPTIONS] COMMAND [ARGS]%s\n",
-		        C_BOLD, C_RESET, C_BOLD, parser->prog_name, C_RESET);
+		fprintf(stderr,
+		        "%sUsage:%s %s%s [OPTIONS] COMMAND [ARGS]%s\n",
+		        C_BOLD,
+		        C_RESET,
+		        C_BOLD,
+		        parser->prog_name,
+		        C_RESET);
 
 		if (parser->description)
 			fprintf(stderr, "\n%s%s\n", C_DIM, parser->description);
@@ -332,8 +350,7 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 
 				fprintf(stderr, "  ");
 				print_padded(stderr, label, cmd_width);
-				fprintf(stderr, "  %s%s%s\n",
-				        C_DIM, c->description ? c->description : "", C_RESET);
+				fprintf(stderr, "  %s%s%s\n", C_DIM, c->description ? c->description : "", C_RESET);
 
 				if (c->subcommand_count > 0)
 					print_commands_flat(c, 1);
@@ -342,8 +359,8 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 		}
 
 		/* Global + built-in options, aligned in one block */
-		size_t opt_width = options_gutter_width(parser->root.options,
-		                                         parser->root.option_count, true);
+		size_t opt_width
+		    = options_gutter_width(parser->root.options, parser->root.option_count, true);
 
 		fprintf(stderr, "%sOptions:%s\n", C_BOLD, C_RESET);
 		for (int i = 0; i < parser->root.option_count; i++)
@@ -351,13 +368,20 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 
 		print_builtin_option(stderr, "-h", "--help", NULL, "Show this help message", opt_width);
 		print_builtin_option(stderr, "-v", "--version", NULL, "Show version", opt_width);
-		print_builtin_option(stderr, "-S", "--shell-completion", "SHELL",
-		                     "Output shell completion script (bash, zsh, fish)", opt_width);
+		print_builtin_option(stderr,
+		                     "-S",
+		                     "--shell-completion",
+		                     "SHELL",
+		                     "Output shell completion script (bash, zsh, fish)",
+		                     opt_width);
 		fprintf(stderr, "\n");
 
 		if (parser->command_count > 0)
-			fprintf(stderr, "%sSee '%s COMMAND --help' for more information on a command.%s\n\n",
-			        C_DIM, parser->prog_name, C_RESET);
+			fprintf(stderr,
+			        "%sSee '%s COMMAND --help' for more information on a command.%s\n\n",
+			        C_DIM,
+			        parser->prog_name,
+			        C_RESET);
 
 		/* Footer */
 		if (parser->bug_url || parser->author) {
@@ -375,7 +399,7 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 	/* Subcommand help — build full usage name by walking the parent
 	 * chain (root excluded, cmd's own name printed once at the end). */
 	const ArgCommand *chain[ARGPARSE_MAX_CHAIN_DEPTH];
-	int                chain_len = 0;
+	int               chain_len = 0;
 	for (const ArgCommand *p = cmd->parent; p && p->name && p->name[0] != '\0'; p = p->parent) {
 		if (chain_len < ARGPARSE_MAX_CHAIN_DEPTH)
 			chain[chain_len++] = p;
@@ -421,8 +445,7 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 
 			fprintf(stderr, "  ");
 			print_padded(stderr, label, sub_width);
-			fprintf(stderr, "  %s%s%s\n",
-			        C_DIM, sub->description ? sub->description : "", C_RESET);
+			fprintf(stderr, "  %s%s%s\n", C_DIM, sub->description ? sub->description : "", C_RESET);
 		}
 	}
 

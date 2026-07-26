@@ -166,8 +166,13 @@ static int validate_exclusive(ArgParser *parser, ArgCommand *cmd)
 			if (groups[gid]) {
 				argparse_usage(parser, cmd == &parser->root ? NULL : cmd);
 				detect_val_color();
-				fprintf(stderr, "%s%s: %serror:%s options in group %d are mutually exclusive\n",
-				        V_C_BOLD, parser->prog_name, V_C_BOLD_RED, V_C_RESET, gid);
+				fprintf(stderr,
+				        "%s%s: %serror:%s options in group %d are mutually exclusive\n",
+				        V_C_BOLD,
+				        parser->prog_name,
+				        V_C_BOLD_RED,
+				        V_C_RESET,
+				        gid);
 				return -1;
 			}
 			groups[gid] = 1;
@@ -186,12 +191,20 @@ static int validate_required(ArgParser *parser, ArgCommand *cmd)
 			argparse_usage(parser, cmd == &parser->root ? NULL : cmd);
 			detect_val_color();
 			if (opt->long_name)
-				fprintf(stderr, "%s%s: %serror:%s required option '--%s' is missing\n",
-				        V_C_BOLD, parser->prog_name, V_C_BOLD_RED, V_C_RESET,
+				fprintf(stderr,
+				        "%s%s: %serror:%s required option '--%s' is missing\n",
+				        V_C_BOLD,
+				        parser->prog_name,
+				        V_C_BOLD_RED,
+				        V_C_RESET,
 				        opt->long_name);
 			else
-				fprintf(stderr, "%s%s: %serror:%s required option '-%c' is missing\n",
-				        V_C_BOLD, parser->prog_name, V_C_BOLD_RED, V_C_RESET,
+				fprintf(stderr,
+				        "%s%s: %serror:%s required option '-%c' is missing\n",
+				        V_C_BOLD,
+				        parser->prog_name,
+				        V_C_BOLD_RED,
+				        V_C_RESET,
 				        opt->short_name);
 			return -1;
 		}
@@ -259,7 +272,7 @@ static int parse_tokens(ArgParser      *parser,
 	ArgCommand *current = *current_out;
 
 	while (1) {
-		Token tok = lexer_next(lex);
+		Token       tok     = lexer_next(lex);
 		const char *program = chain_program_name(parser, current);
 
 		switch (tok.type) {
@@ -402,9 +415,7 @@ static int parse_tokens(ArgParser      *parser,
 					const char *known[ARGPARSE_MAX_OPTIONS];
 					int         known_count = 0;
 					for (int j = 0; j < current->option_count; j++)
-						known[known_count++] = current->options[j].long_name
-						                        ? current->options[j].long_name
-						                        : "?";
+						known[known_count++] = current->options[j].long_name ? current->options[j].long_name : "?";
 					argparse_usage(parser, current == &parser->root ? NULL : current);
 					arg_error_unknown_option(program, short_str, known, known_count);
 					return -1;
@@ -452,7 +463,8 @@ static int parse_tokens(ArgParser      *parser,
 				}
 				}
 			}
-			short_done:
+
+		short_done:
 			break;
 		}
 
@@ -464,9 +476,8 @@ static int parse_tokens(ArgParser      *parser,
 				break;
 			}
 
-			ArgCommand *sub = (current == &parser->root)
-			                    ? match_command(parser, tok.value)
-			                    : match_subcommand(current, tok.value);
+			ArgCommand *sub = (current == &parser->root) ? match_command(parser, tok.value)
+			                                             : match_subcommand(current, tok.value);
 
 			if (sub && *chain_len < ARGPARSE_MAX_CHAIN_DEPTH) {
 				chain[(*chain_len)++] = sub;
@@ -474,9 +485,8 @@ static int parse_tokens(ArgParser      *parser,
 				break;
 			}
 
-			bool expects_subcommand = (current == &parser->root)
-			                            ? (parser->command_count > 0)
-			                            : (current->subcommand_count > 0);
+			bool expects_subcommand = (current == &parser->root) ? (parser->command_count > 0)
+			                                                     : (current->subcommand_count > 0);
 
 			if (expects_subcommand && current->positional_count == 0) {
 				const char *known[ARGPARSE_MAX_COMMANDS];
@@ -559,7 +569,7 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 	result.command = current;
 
 	/* Store for dispatch — caller calls argparse_dispatch() after re-init */
-	parser->dispatch_cmd = current;
+	parser->dispatch_cmd    = current;
 	parser->dispatch_result = malloc(sizeof(*parser->dispatch_result));
 	if (!parser->dispatch_result)
 		return -1;

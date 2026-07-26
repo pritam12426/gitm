@@ -38,8 +38,8 @@ typedef struct {
 static void recent_collect(const RepoEntry *entry, void *out)
 {
 	RecentResult *r = out;
-	r->name = entry->name;
-	r->path = entry->path;
+	r->name         = entry->name;
+	r->path         = entry->path;
 
 	char *date = git_last_commit_date(entry->path);
 	if (date) {
@@ -48,7 +48,7 @@ static void recent_collect(const RepoEntry *entry, void *out)
 			len = sizeof(r->date_str) - 1;
 		memcpy(r->date_str, date, len);
 		r->date_str[len] = '\0';
-		r->timestamp = parse_date_to_timestamp(r->date_str);
+		r->timestamp     = parse_date_to_timestamp(r->date_str);
 		format_relative_time(r->relative, sizeof(r->relative), r->timestamp);
 		free(date);
 	} else {
@@ -68,8 +68,10 @@ static int cmp_sort_key(const void *a, const void *b)
 {
 	const SortKey *ka = a;
 	const SortKey *kb = b;
-	if (kb->timestamp > ka->timestamp) return  1;
-	if (kb->timestamp < ka->timestamp) return -1;
+	if (kb->timestamp > ka->timestamp)
+		return 1;
+	if (kb->timestamp < ka->timestamp)
+		return -1;
 	return 0;
 }
 
@@ -78,8 +80,8 @@ static int cmd_recent(const ArgParseResult *result)
 	(void) result;
 
 	LOG_TRACE("cmd_recent");
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -92,13 +94,12 @@ static int cmd_recent(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
-	                                     indices, MAX_REPOS);
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);
 
 	/* Phase 1: parallel collection */
 	RecentResult results[MAX_REPOS] = { 0 };
-	if (parallel_collect(&cfg, indices, filtered,
-	                     recent_collect, sizeof(RecentResult), results) != 0) {
+	if (parallel_collect(&cfg, indices, filtered, recent_collect, sizeof(RecentResult), results)
+	    != 0) {
 		LOG_ERROR("parallel collection failed");
 		cmd_cleanup(&cfg, config_path);
 		return 1;
@@ -117,7 +118,7 @@ static int cmd_recent(const ArgParseResult *result)
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Path", "Last Commit Relative", "Last Commit" };
-		Table *t = table_create(4, headers);
+		Table      *t         = table_create(4, headers);
 		table_set_color(t, CMD_COLOR());
 
 		for (size_t i = 0; i < filtered; i++) {
@@ -140,10 +141,7 @@ static int cmd_recent(const ArgParseResult *result)
 
 void cmd_register_recent(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "recent",
-	                                       "List repos sorted by last commit date",
-	                                       cmd_recent);
+	ArgCommand *cmd = argparse_add_command(parser, "recent", "List repos sorted by last commit date", cmd_recent);
 	const char *recent_aliases[] = { "r" };
 	argparse_command_set_aliases(cmd, recent_aliases, 1);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);

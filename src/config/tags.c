@@ -22,8 +22,8 @@ bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
 
 	LOG_TRACE("config_entry_has_tag(%s, %s)", entry->name, tag);
 
-	const char *p = entry->tags;
-	size_t tag_len = strlen(tag);
+	const char *p       = entry->tags;
+	size_t      tag_len = strlen(tag);
 
 	while (*p) {
 		if (*p == ',') {
@@ -50,8 +50,8 @@ bool config_entry_has_group(const RepoEntry *entry, const char *group)
 
 	LOG_TRACE("config_entry_has_group(%s, %s)", entry->name, group);
 
-	const char *p = entry->groups;
-	size_t group_len = strlen(group);
+	const char *p         = entry->groups;
+	size_t      group_len = strlen(group);
 
 	while (*p) {
 		if (*p == ',') {

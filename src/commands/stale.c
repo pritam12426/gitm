@@ -41,8 +41,8 @@ typedef struct {
 static void stale_collect(const RepoEntry *entry, void *out)
 {
 	StaleResult *r = out;
-	r->name = entry->name;
-	r->path = entry->path;
+	r->name        = entry->name;
+	r->path        = entry->path;
 
 	char *date = git_last_commit_date(entry->path);
 	if (date) {
@@ -52,8 +52,8 @@ static void stale_collect(const RepoEntry *entry, void *out)
 		memcpy(r->date_str, date, len);
 		r->date_str[len] = '\0';
 
-		long ts  = parse_date_to_timestamp(r->date_str);
-		long now = (long) time(NULL);
+		long ts     = parse_date_to_timestamp(r->date_str);
+		long now    = (long) time(NULL);
 		r->days_ago = (now - ts) / 86400;
 		r->is_stale = (r->days_ago >= g_days);
 		free(date);
@@ -70,8 +70,8 @@ static int cmd_stale(const ArgParseResult *result)
 
 	LOG_TRACE("cmd_stale");
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -114,7 +114,7 @@ static int cmd_stale(const ArgParseResult *result)
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Last Commit", "Days Ago" };
-		Table *t = table_create(3, headers);
+		Table      *t         = table_create(3, headers);
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++) {
@@ -122,7 +122,7 @@ static int cmd_stale(const ArgParseResult *result)
 				continue;
 
 			const char *days_str;
-			char days_buf[MAX_COUNT_STR];
+			char        days_buf[MAX_COUNT_STR];
 			if (results[i].days_ago < 0) {
 				days_str = "no commits";
 			} else {
@@ -143,20 +143,27 @@ static int cmd_stale(const ArgParseResult *result)
 
 			if (results[i].days_ago < 0) {
 				if (color)
-					fprintf(stderr, "%s%-20s%s %s(no commits)%s\n",
-					        ANSI_BOLD, results[i].name, ANSI_RESET,
-					        ANSI_FG_YELLOW, ANSI_RESET);
+					fprintf(stderr,
+					        "%s%-20s%s %s(no commits)%s\n",
+					        ANSI_BOLD,
+					        results[i].name,
+					        ANSI_RESET,
+					        ANSI_FG_YELLOW,
+					        ANSI_RESET);
 				else
-					fprintf(stderr, "%-20s (no commits)\n",
-					        results[i].name);
+					fprintf(stderr, "%-20s (no commits)\n", results[i].name);
 			} else {
 				if (color)
-					fprintf(stderr, "%s%-20s%s %s(%ld days ago)%s\n",
-					        ANSI_BOLD, results[i].name, ANSI_RESET,
-					        ANSI_FG_YELLOW, results[i].days_ago, ANSI_RESET);
+					fprintf(stderr,
+					        "%s%-20s%s %s(%ld days ago)%s\n",
+					        ANSI_BOLD,
+					        results[i].name,
+					        ANSI_RESET,
+					        ANSI_FG_YELLOW,
+					        results[i].days_ago,
+					        ANSI_RESET);
 				else
-					fprintf(stderr, "%-20s (%ld days ago)\n",
-					        results[i].name, results[i].days_ago);
+					fprintf(stderr, "%-20s (%ld days ago)\n", results[i].name, results[i].days_ago);
 			}
 		}
 	}
@@ -169,16 +176,12 @@ static int cmd_stale(const ArgParseResult *result)
 
 void cmd_register_stale(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "stale",
-	                                       "Show repos with no commits in N days",
-	                                       cmd_stale);
+	ArgCommand *cmd = argparse_add_command(parser, "stale", "Show repos with no commits in N days", cmd_stale);
 	const char *stale_aliases[] = { "old" };
 	argparse_command_set_aliases(cmd, stale_aliases, 1);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);
 	cmd_register_table_flag(cmd);
 
-	argparse_add_option(cmd, "days", 'd', ARG_TYPE_INT, "N",
-	                    "Staleness threshold in days (default: 30)", &g_days);
+	argparse_add_option(cmd, "days", 'd', ARG_TYPE_INT, "N", "Staleness threshold in days (default: 30)", &g_days);
 	(void) cmd;
 }

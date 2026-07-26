@@ -61,31 +61,31 @@ int config_load(const char *path, GitConfig *cfg)
 			continue;
 		}
 
-		*first_colon    = '\0';
-		char *path_str  = line;
-		char *rest      = first_colon + 1;
+		*first_colon   = '\0';
+		char *path_str = line;
+		char *rest     = first_colon + 1;
 
 		char *second_colon = strchr(rest, ':');
 		char *name_str;
-		char *tags_str  = NULL;
+		char *tags_str   = NULL;
 		char *groups_str = NULL;
 
 		if (second_colon) {
 			*second_colon = '\0';
-			name_str = rest;
+			name_str      = rest;
 
 			char *after_name  = second_colon + 1;
 			char *third_colon = strchr(after_name, ':');
 
 			if (third_colon) {
 				*third_colon = '\0';
-				tags_str = after_name;
+				tags_str     = after_name;
 
 				char *after_tags   = third_colon + 1;
 				char *fourth_colon = strchr(after_tags, ':');
 				if (fourth_colon) {
 					*fourth_colon = '\0';
-					groups_str = after_tags;
+					groups_str    = after_tags;
 				} else {
 					groups_str = after_tags;
 				}
@@ -129,8 +129,8 @@ int config_load(const char *path, GitConfig *cfg)
 			return -1;
 		}
 
-		cfg->entries[cfg->count].path   = strdup(path_str);
-		cfg->entries[cfg->count].name   = strdup(name_str);
+		cfg->entries[cfg->count].path = strdup(path_str);
+		cfg->entries[cfg->count].name = strdup(name_str);
 
 		/* OOM: clean up partially loaded entry */
 		if (!cfg->entries[cfg->count].path || !cfg->entries[cfg->count].name) {
@@ -172,13 +172,20 @@ int config_save(const char *path, const GitConfig *cfg)
 
 	for (size_t i = 0; i < cfg->count; i++) {
 		if (cfg->entries[i].tags[0] && cfg->entries[i].groups[0])
-			fprintf(f, "%s:%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name,
-			        cfg->entries[i].tags, cfg->entries[i].groups);
+			fprintf(f,
+			        "%s:%s:%s:%s\n",
+			        cfg->entries[i].path,
+			        cfg->entries[i].name,
+			        cfg->entries[i].tags,
+			        cfg->entries[i].groups);
 		else if (cfg->entries[i].tags[0])
-			fprintf(f, "%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name,
-			        cfg->entries[i].tags);
+			fprintf(
+			    f, "%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name, cfg->entries[i].tags);
 		else if (cfg->entries[i].groups[0])
-			fprintf(f, "%s:%s::%s\n", cfg->entries[i].path, cfg->entries[i].name,
+			fprintf(f,
+			        "%s:%s::%s\n",
+			        cfg->entries[i].path,
+			        cfg->entries[i].name,
 			        cfg->entries[i].groups);
 		else
 			fprintf(f, "%s:%s\n", cfg->entries[i].path, cfg->entries[i].name);

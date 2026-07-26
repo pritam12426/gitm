@@ -42,8 +42,7 @@ char *config_default_path(void)
 
 	char path[MAX_PATH_LEN];
 #if defined(__APPLE__)
-	snprintf(path, sizeof(path), "%s/Library/Application Support/gitm/%s", home,
-	         CONFIG_FILE);
+	snprintf(path, sizeof(path), "%s/Library/Application Support/gitm/%s", home, CONFIG_FILE);
 #else
 	snprintf(path, sizeof(path), "%s/.local/share/gitm/%s", home, CONFIG_FILE);
 #endif
@@ -79,8 +78,8 @@ int config_ensure_dir(void)
 	}
 
 	/* Create directory (and any missing parents) */
-	int rc = 0;
-	char *p = path;
+	int   rc = 0;
+	char *p  = path;
 	while (*p) {
 		if (*p == '/') {
 			*p = '\0';

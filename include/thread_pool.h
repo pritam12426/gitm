@@ -23,8 +23,8 @@
 
 
 #include <pthread.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 
 #ifdef __cplusplus
@@ -38,14 +38,15 @@ extern "C" {
 typedef void (*tp_task_fn)(void *arg);
 
 typedef struct {
-	pthread_t        threads[TP_MAX_THREADS];
-	size_t           thread_count;
+	pthread_t threads[TP_MAX_THREADS];
+	size_t    thread_count;
 
 	/* Ring buffer task queue */
 	struct {
 		tp_task_fn fn;
 		void      *arg;
 	} queue[TP_MAX_TASKS];
+
 	size_t head;
 	size_t tail;
 	size_t count;
@@ -87,4 +88,4 @@ void tp_destroy(ThreadPool *tp);
 #endif
 
 
-#endif  /* _THREAD_POOL__H_ */
+#endif /* _THREAD_POOL__H_ */

@@ -42,7 +42,7 @@ static void status_collect(const RepoEntry *entry, void *out)
 	memset(r, 0, sizeof(*r));
 
 	ProcessResult pr = git_exec(entry->path, "status", "--porcelain", "--branch", NULL);
-	r->exit_code  = pr.exit_code;
+	r->exit_code     = pr.exit_code;
 
 	/* Steal stdout — prevents double-free */
 	r->stdout_buf = pr.stdout_buf;
@@ -57,7 +57,8 @@ static void status_collect(const RepoEntry *entry, void *out)
 	const char *p = r->stdout_buf;
 	if (p[0] == '#' && p[1] == '#') {
 		p += 2;
-		while (*p == ' ') p++;
+		while (*p == ' ')
+			p++;
 		const char *end = p;
 		while (*end && *end != '\n' && *end != '.' && *end != '[')
 			end++;
@@ -97,7 +98,7 @@ static void status_collect(const RepoEntry *entry, void *out)
 			p++;
 	}
 
-	char *sp = r->status_buf;
+	char  *sp        = r->status_buf;
 	size_t remaining = sizeof(r->status_buf);
 	int n = 0;
 	if (modified > 0 && (size_t) n < remaining)  n += snprintf(sp + n, remaining - (size_t) n, "%dm ", modified);
@@ -120,7 +121,15 @@ static void status_result_free(StatusResult *r)
 static void print_header(const char *name, const char *path, bool color)
 {
 	if (color)
-		fprintf(stderr, "\n%s%s%s%s %s(%s)%s\n", ANSI_BOLD, ANSI_FG_CYAN, name, ANSI_RESET, ANSI_DIM, path, ANSI_RESET);
+		fprintf(stderr,
+		        "\n%s%s%s%s %s(%s)%s\n",
+		        ANSI_BOLD,
+		        ANSI_FG_CYAN,
+		        name,
+		        ANSI_RESET,
+		        ANSI_DIM,
+		        path,
+		        ANSI_RESET);
 	else
 		fprintf(stderr, "\n%s (%s)\n", name, path);
 }
@@ -172,8 +181,9 @@ static int cmd_status(const ArgParseResult *result)
 	LOG_TRACE("cmd_status");
 	bool color = CMD_COLOR();
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
+
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -186,21 +196,19 @@ static int cmd_status(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
-	                                     indices, cfg.count);
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, cfg.count);
 
 	LOG_DEBUG("filtered to %zu repos", filtered);
 
 	/* Phase 1: parallel collection (1 git call per repo instead of 2) */
 	StatusResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered,
-	                 status_collect, sizeof(StatusResult), results);
+	parallel_collect(&cfg, indices, filtered, status_collect, sizeof(StatusResult), results);
 
 	/* Phase 2: display sequentially */
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Status", "Branch" };
-		Table *t = table_create(3, headers);
+		Table      *t         = table_create(3, headers);
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++) {
@@ -250,7 +258,7 @@ static int cmd_status(const ArgParseResult *result)
 					while (*p && *p != '\n')
 						p++;
 
-					char line[MAX_PATH_LEN];
+					char   line[MAX_PATH_LEN];
 					size_t len = (size_t) (p - start);
 					if (len >= sizeof(line))
 						len = sizeof(line) - 1;
@@ -276,10 +284,7 @@ static int cmd_status(const ArgParseResult *result)
 
 void cmd_register_status(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "status",
-	                                       "Show status of all registered repos",
-	                                       cmd_status);
+	ArgCommand *cmd = argparse_add_command(parser, "status", "Show status of all registered repos", cmd_status);
 	const char *status_aliases[] = { "st", "s" };
 	argparse_command_set_aliases(cmd, status_aliases, 2);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);

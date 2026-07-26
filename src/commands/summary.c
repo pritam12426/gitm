@@ -28,20 +28,20 @@ static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
 typedef struct {
-	int   branch_count;
-	long  dir_size;
+	int  branch_count;
+	long dir_size;
 } SummaryResult;
 
 static long get_dir_size(const char *path)
 {
-	ProcessResult r = git_exec(path, "count-objects", "-rvH", NULL);
+	ProcessResult r     = git_exec(path, "count-objects", "-rvH", NULL);
 	long          total = 0;
 
 	if (r.exit_code == 0 && r.stdout_len > 0) {
 		const char *p = r.stdout_buf;
 		while (*p) {
-			long   val = 0;
-			char   unit[8] = { 0 };
+			long val     = 0;
+			char unit[8] = { 0 };
 			if (sscanf(p, "%ld %7s", &val, unit) == 2) {
 				long converted = 0;
 				if (strstr(unit, "GiB") || strstr(unit, "GB")) {
@@ -80,7 +80,7 @@ static long get_dir_size(const char *path)
 
 static int count_branches(const char *path)
 {
-	ProcessResult r    = git_exec(path, "branch", "--list", NULL);
+	ProcessResult r     = git_exec(path, "branch", "--list", NULL);
 	int           count = 0;
 
 	if (r.exit_code == 0 && r.stdout_len > 0) {
@@ -114,8 +114,8 @@ static void format_size(char *buf, size_t buflen, long bytes)
 static void summary_collect(const RepoEntry *entry, void *out)
 {
 	SummaryResult *r = out;
-	r->branch_count = count_branches(entry->path);
-	r->dir_size     = get_dir_size(entry->path);
+	r->branch_count  = count_branches(entry->path);
+	r->dir_size      = get_dir_size(entry->path);
 }
 
 static int cmd_summary(const ArgParseResult *result)
@@ -123,8 +123,8 @@ static int cmd_summary(const ArgParseResult *result)
 	(void) result;
 
 	LOG_TRACE("cmd_summary");
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -135,19 +135,17 @@ static int cmd_summary(const ArgParseResult *result)
 	}
 
 	size_t indices[MAX_REPOS];
-	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group,
-	                                     indices, cfg.count);
+	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, cfg.count);
 
 	LOG_DEBUG("computing summary for %zu repos", filtered);
 
 	/* Phase 1: parallel collection */
 	SummaryResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered,
-	                 summary_collect, sizeof(SummaryResult), results);
+	parallel_collect(&cfg, indices, filtered, summary_collect, sizeof(SummaryResult), results);
 
 	/* Phase 2: aggregate sequentially */
-	int   total_branches = 0;
-	long  total_size     = 0;
+	int  total_branches = 0;
+	long total_size     = 0;
 
 	for (size_t i = 0; i < filtered; i++) {
 		total_branches += results[i].branch_count;
@@ -169,10 +167,7 @@ static int cmd_summary(const ArgParseResult *result)
 
 void cmd_register_summary(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "summary",
-	                                       "Total repos, branches, and size",
-	                                       cmd_summary);
+	ArgCommand *cmd = argparse_add_command(parser, "summary", "Total repos, branches, and size", cmd_summary);
 	const char *summary_aliases[] = { "sum" };
 	argparse_command_set_aliases(cmd, summary_aliases, 1);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);

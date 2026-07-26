@@ -31,11 +31,11 @@ static const char *filter_group = NULL;
 
 static void tag_collect(const RepoEntry *entry, void *out)
 {
-	CmdGitResult   *r = out;
+	CmdGitResult *r = out;
 	ProcessResult pr;
 
 	bool color = g_table_mode ? false : CMD_COLOR();
-	pr = git_exec_smart(entry->path, color, "tag", "-n1", "--sort=-version:refname", NULL);
+	pr         = git_exec_smart(entry->path, color, "tag", "-n1", "--sort=-version:refname", NULL);
 
 	process_steal_stdout(r, &pr);
 }
@@ -48,8 +48,8 @@ static void tag_display_table(Table *t, const CmdGitResult *r, const char *repo_
 		return;
 	}
 
-	const char *p = r->stdout_buf;
-	bool first = true;
+	const char *p     = r->stdout_buf;
+	bool        first = true;
 	while (*p) {
 		const char *start = p;
 		while (*p && *p != '\n')
@@ -62,10 +62,10 @@ static void tag_display_table(Table *t, const CmdGitResult *r, const char *repo_
 		memcpy(line, start, len);
 		line[len] = '\0';
 
-		char *space = strchr(line, ' ');
+		char       *space     = strchr(line, ' ');
 		const char *repo_disp = first ? repo_name : "";
 		if (space) {
-			*space = '\0';
+			*space              = '\0';
 			const char *cells[] = { repo_disp, line, space + 1 };
 			table_add_row_raw(t, cells, 3);
 		} else {
@@ -86,8 +86,8 @@ static int cmd_list_tag(const ArgParseResult *result)
 	LOG_TRACE("cmd_list_tag");
 	bool color = CMD_COLOR();
 
-	GitConfig cfg = { 0 };
-	char      *config_path = NULL;
+	GitConfig cfg         = { 0 };
+	char     *config_path = NULL;
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
@@ -117,7 +117,7 @@ static int cmd_list_tag(const ArgParseResult *result)
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Repository", "Tag", "Message" };
-		Table *t = table_create(3, headers);
+		Table      *t         = table_create(3, headers);
 		table_set_color(t, color);
 
 		for (size_t i = 0; i < filtered; i++)
@@ -144,10 +144,7 @@ static int cmd_list_tag(const ArgParseResult *result)
 
 void cmd_register_list_tag(ArgParser *parser)
 {
-	ArgCommand *cmd = argparse_add_command(parser,
-	                                       "list-tag",
-	                                       "Show tags with messages",
-	                                       cmd_list_tag);
+	ArgCommand *cmd = argparse_add_command(parser, "list-tag", "Show tags with messages", cmd_list_tag);
 	const char *list_tag_aliases[] = { "tags", "lt" };
 	argparse_command_set_aliases(cmd, list_tag_aliases, 2);
 	cmd_register_filter_flags(cmd, &filter_tag, &filter_group);
