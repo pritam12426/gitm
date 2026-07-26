@@ -28,15 +28,9 @@
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-typedef struct {
-	char  *stdout_buf;
-	size_t stdout_len;
-	int    exit_code;
-} LastResult;
-
 static void last_collect(const RepoEntry *entry, void *out)
 {
-	LastResult   *r = out;
+	CmdGitResult   *r = out;
 	ProcessResult pr;
 
 	if (g_table_mode) {
@@ -45,20 +39,15 @@ static void last_collect(const RepoEntry *entry, void *out)
 		bool        color = CMD_COLOR();
 		const char *fmt   = color ? "%C(yellow)%h%Creset %C(cyan)%an%Creset %Cgreen%ar%Creset %s"
 		                          : "%h %an %ar %s";
-		char        pretty_arg[512];
+		char        pretty_arg[MAX_PATH_LEN];
 		snprintf(pretty_arg, sizeof(pretty_arg), "--pretty=tformat:%s", fmt);
-		pr = color ? git_exec_color(entry->path, "log", "-1", pretty_arg, "HEAD", NULL)
-		           : git_exec(entry->path, "log", "-1", pretty_arg, "HEAD", NULL);
+		pr = git_exec_smart(entry->path, color, "log", "-1", pretty_arg, "HEAD", NULL);
 	}
 
-	r->exit_code  = pr.exit_code;
-	r->stdout_buf = pr.stdout_buf;
-	r->stdout_len = pr.stdout_len;
-	pr.stdout_buf = NULL;
-	process_result_free(&pr);
+	process_steal_stdout(r, &pr);
 }
 
-static void last_display_plain(const LastResult *r, const char *name, bool color)
+static void last_display_plain(const CmdGitResult *r, const char *name, bool color)
 {
 	if (r->exit_code != 0 || r->stdout_len == 0) {
 		ansi_print_repo_empty(name, "(no commits)", color);
@@ -66,14 +55,14 @@ static void last_display_plain(const LastResult *r, const char *name, bool color
 	}
 
 	if (color)
-		fprintf(stderr, "%s%s%22s : %s", ANSI_BOLD, ANSI_FG_CYAN, name, ANSI_RESET);
+		fprintf(stderr, "%s%s%*s : %s", ANSI_BOLD, ANSI_FG_CYAN, NAME_COL_WIDTH, name, ANSI_RESET);
 	else
-		fprintf(stderr, "%22s :", name);
+		fprintf(stderr, "%*s :", NAME_COL_WIDTH, name);
 
 	fputs(r->stdout_buf, stderr);
 }
 
-static void last_display_table(Table *t, const LastResult *r, const char *repo_name)
+static void last_display_table(Table *t, const CmdGitResult *r, const char *repo_name)
 {
 	if (r->exit_code == 0 && r->stdout_len > 0) {
 		char   line[PROCESS_BUF_SIZE];
@@ -132,8 +121,8 @@ static int cmd_last(const ArgParseResult *result)
 		return 0;
 	}
 
-	LastResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered, last_collect, sizeof(LastResult), results);
+	CmdGitResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered, last_collect, sizeof(CmdGitResult), results);
 
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");

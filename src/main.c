@@ -20,10 +20,12 @@
 
 #include "argparse.h"
 #include "cmd.h"
+#include "cmd_util.h"
 #include "config.h"
 #include "log.h"
 #include "process.h"
 #include "project_config.h"
+#include "share.h"
 
 /* Global options (stored on root command) */
 static bool        g_edit_entry    = false;
@@ -102,7 +104,7 @@ int main(int argc, char *argv[])
 		if (r.exit_code != 0) {
 			LOG_FATAL("git binary not found in your $PATH, or not executable");
 			process_result_free(&r);
-			return 127;
+			return EXIT_CMD_NOT_FOUND;
 		}
 		process_result_free(&r);
 	}
@@ -142,8 +144,7 @@ int main(int argc, char *argv[])
 
 		config_ensure_dir();
 
-		const char *editor = getenv("EDITOR");
-		if (!editor) editor = getenv("VISUAL");
+		const char *editor = cmd_resolve_editor();
 		if (!editor) {
 			LOG_ERROR("no $EDITOR or $VISUAL set");
 			free(path);
@@ -165,7 +166,7 @@ int main(int argc, char *argv[])
 		if (pid == 0) {
 			/* Child: exec editor with config path */
 			execlp(editor, editor, path, (char *) NULL);
-			_exit(127);
+			_exit(EXIT_CMD_NOT_FOUND);
 		}
 
 		/* Parent: wait for editor to exit */

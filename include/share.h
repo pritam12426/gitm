@@ -37,6 +37,9 @@ typedef struct GitConfig GitConfig;
 /* Process capture */
 #define PROCESS_BUF_SIZE 4096
 
+/* Output column width for repo names (non-table mode) */
+#define NAME_COL_WIDTH 22
+
 /* Stats frequency map */
 #define FREQ_MAP_MAX   512
 
@@ -45,6 +48,13 @@ typedef struct GitConfig GitConfig;
 #define MSG_CFG_PATH_ERR   "could not determine config path"
 #define MSG_CFG_LOAD_ERR   "could not load config"
 #define MSG_CFG_SAVE_ERR   "could not save config"
+#define MSG_REPO_NOT_FOUND "Repository not found: %s\n"
+
+/* Pluralization helper */
+#define PLURAL(n, s, p) ((n) == 1 ? (s) : (p))
+
+/* Exit codes */
+#define EXIT_CMD_NOT_FOUND 127
 
 /* ── Config utilities ─────────────────────────────────────────────────────── */
 
@@ -61,6 +71,21 @@ void cmd_cleanup(GitConfig *cfg, char *config_path);
 void ansi_colorize(char *buf, size_t buflen, const char *text, const char *code);
 void ansi_print_repo_header(const char *name, bool color);
 void ansi_print_repo_empty(const char *name, const char *msg, bool color);
+
+/* ── Date parsing ─────────────────────────────────────────────────────────── */
+
+long parse_date_to_timestamp(const char *date_str);
+
+/*
+ * Format a Unix timestamp as a relative time string ("3 hours ago", etc.).
+ * Writes into buf (up to buflen bytes). Uses current time as reference.
+ */
+void format_relative_time(char *buf, size_t buflen, long timestamp);
+
+/* ── Command config helpers ────────────────────────────────────────────────── */
+
+int cmd_save_config(GitConfig *cfg, char *config_path);
+int cmd_ensure_config_dir(void);
 
 
 #endif  // _SHARE__H_

@@ -29,45 +29,18 @@
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-typedef struct {
-	char  *stdout_buf;
-	size_t stdout_len;
-	int    exit_code;
-} RemoteResult;
-
 static void remote_collect(const RepoEntry *entry, void *out)
 {
-	RemoteResult *r = out;
-
+	CmdGitResult   *r = out;
 	ProcessResult pr;
-	if (g_table_mode) {
-		pr = git_exec(entry->path, "remote", "-v", NULL);
-	} else {
-		bool color = CMD_COLOR();
-		pr = color
-		    ? git_exec_color(entry->path, "remote", "-v", NULL)
-		    : git_exec(entry->path, "remote", "-v", NULL);
-	}
 
-	r->exit_code = pr.exit_code;
-	r->stdout_buf = pr.stdout_buf;
-	r->stdout_len = pr.stdout_len;
-	pr.stdout_buf = NULL;
-	process_result_free(&pr);
+	bool color = g_table_mode ? false : CMD_COLOR();
+	pr = git_exec_smart(entry->path, color, "remote", "-v", NULL);
+
+	process_steal_stdout(r, &pr);
 }
 
-static void remote_display_plain(const RemoteResult *r, const char *name, bool color)
-{
-	if (r->exit_code != 0 || r->stdout_len == 0) {
-		ansi_print_repo_empty(name, "(no remotes)", color);
-		return;
-	}
-
-	ansi_print_repo_header(name, color);
-	fputs(r->stdout_buf, stderr);
-}
-
-static void remote_display_table(Table *t, const RemoteResult *r, const char *repo_name)
+static void remote_display_table(Table *t, const CmdGitResult *r, const char *repo_name)
 {
 	if (r->exit_code != 0 || r->stdout_len == 0) {
 		const char *cells[] = { repo_name, "-", "-", "-" };
@@ -148,8 +121,8 @@ static int cmd_remote(const ArgParseResult *result)
 		return 0;
 	}
 
-	RemoteResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered, remote_collect, sizeof(RemoteResult), results);
+	CmdGitResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered, remote_collect, sizeof(CmdGitResult), results);
 
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
@@ -165,7 +138,9 @@ static int cmd_remote(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			LOG_TRACE("showing remotes for %s", cfg.entries[indices[i]].name);
-			remote_display_plain(&results[i], cfg.entries[indices[i]].name, color);
+			cmd_display_plain_result(results[i].exit_code, results[i].stdout_buf,
+			                         results[i].stdout_len, cfg.entries[indices[i]].name,
+			                         "(no remotes)", color);
 		}
 	}
 

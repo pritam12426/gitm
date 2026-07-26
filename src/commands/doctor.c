@@ -98,7 +98,7 @@ static int cmd_doctor(const ArgParseResult *result)
 			const char *status = results[i].status;
 
 			if (color) {
-				char colored[128];
+				char colored[MAX_NAME_LEN];
 				ansi_colorize(colored, sizeof(colored), status,
 				              results[i].is_ok ? ANSI_FG_GREEN : ANSI_FG_RED);
 				const char *cells[] = { name, colored };
@@ -112,8 +112,8 @@ static int cmd_doctor(const ArgParseResult *result)
 		table_free(t);
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
-			fprintf(stderr, "%22s : %s\n",
-			        cfg.entries[indices[i]].name, results[i].status);
+			fprintf(stderr, "%*s : %s\n",
+			        NAME_COL_WIDTH, cfg.entries[indices[i]].name, results[i].status);
 		}
 		fprintf(stderr, "\n%d/%zu repositories OK\n",
 		        (int) (filtered - (size_t) errors), filtered);

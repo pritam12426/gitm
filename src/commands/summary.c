@@ -135,7 +135,7 @@ static int cmd_summary(const ArgParseResult *result)
 		total_size     += results[i].dir_size;
 	}
 
-	char size_buf[32];
+	char size_buf[MAX_COUNT_STR];
 	format_size(size_buf, sizeof(size_buf), total_size);
 
 	LOG_INFO("summary: %zu repos, %d branches, %s", filtered, total_branches, size_buf);

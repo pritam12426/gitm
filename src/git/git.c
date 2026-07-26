@@ -105,6 +105,59 @@ ProcessResult git_exec_quiet(const char *cwd, ...)
 	return process_exec(cwd, mutable_argv);
 }
 
+ProcessResult git_exec_smart(const char *cwd, int use_color, ...)
+{
+	LOG_TRACE("git_exec_smart(cwd=%s, color=%d)", cwd ? cwd : "(inherit)", use_color);
+	va_list ap;
+	va_start(ap, use_color);
+
+	const char *args[GIT_MAX_ARGS];
+	int         argc = 0;
+
+	args[argc++] = GIT_BINARY;
+
+	if (use_color) {
+		args[argc++] = "-c";
+		args[argc++] = "color.ui=always";
+	}
+
+	const char *arg;
+	while (argc < GIT_MAX_ARGS - 1 && (arg = va_arg(ap, const char *)) != NULL) {
+		args[argc++] = arg;
+	}
+	va_end(ap);
+
+	args[argc] = NULL;
+
+	char *mutable_argv[GIT_MAX_ARGS];
+	for (int i = 0; i <= argc; i++) {
+		mutable_argv[i] = (char *) args[i];
+	}
+
+	if (use_color)
+		return process_exec_colored(cwd, mutable_argv);
+	else
+		return process_exec(cwd, mutable_argv);
+}
+
+char *git_last_commit_date(const char *path)
+{
+	LOG_TRACE("git_last_commit_date(%s)", path);
+	ProcessResult r = git_exec(path, "log", "-1", "--format=%ci", "HEAD", NULL);
+	if (r.exit_code != 0 || r.stdout_len == 0) {
+		process_result_free(&r);
+		return NULL;
+	}
+
+	char  *result = strdup(r.stdout_buf);
+	size_t len    = strlen(result);
+	if (len > 0 && result[len - 1] == '\n')
+		result[len - 1] = '\0';
+
+	process_result_free(&r);
+	return result;
+}
+
 bool git_is_repo(const char *path)
 {
 	ProcessResult r       = git_exec(path, "rev-parse", "--is-inside-work-tree", NULL);

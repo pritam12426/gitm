@@ -38,7 +38,7 @@ static int cmd_exec(const ArgParseResult *result)
 
 	RepoEntry *entry = config_find(&cfg, name);
 	if (!entry) {
-		fprintf(stderr, "Repository not found: %s\n", name);
+		fprintf(stderr, MSG_REPO_NOT_FOUND, name);
 		cmd_cleanup(&cfg, config_path);
 		return 1;
 	}

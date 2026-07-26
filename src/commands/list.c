@@ -73,7 +73,7 @@ static int cmd_list(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			RepoEntry *e = &cfg.entries[indices[i]];
-			fprintf(stdout, "%22s : %s\n", e->name, e->path);
+			cmd_print_name_path(stdout, e->name, e->path);
 		}
 	}
 

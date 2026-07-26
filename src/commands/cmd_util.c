@@ -12,9 +12,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "ansi_color.h"
 #include "cmd.h"
 #include "log.h"
+#include "share.h"
 
 
 int cmd_load_config(GitConfig *cfg, char **path_out)
@@ -64,4 +67,30 @@ void cmd_register_filter_flags(ArgCommand *cmd,
 	                    "Filter by tag", out_tag);
 	argparse_add_option(cmd, "group", 'g', ARG_TYPE_STRING, "GROUP",
 	                    "Filter by group", out_group);
+}
+
+void cmd_print_name_path(FILE *stream, const char *name, const char *path)
+{
+	fprintf(stream, "%*s : %s\n", NAME_COL_WIDTH, name, path);
+}
+
+void cmd_display_plain_result(int exit_code, const char *stdout_buf, size_t stdout_len,
+                              const char *name, const char *empty_msg, bool color)
+{
+	if (exit_code != 0 || stdout_len == 0) {
+		if (empty_msg)
+			ansi_print_repo_empty(name, empty_msg, color);
+		return;
+	}
+
+	ansi_print_repo_header(name, color);
+	fputs(stdout_buf, stderr);
+}
+
+const char *cmd_resolve_editor(void)
+{
+	const char *editor = getenv("EDITOR");
+	if (!editor)
+		editor = getenv("VISUAL");
+	return editor;
 }

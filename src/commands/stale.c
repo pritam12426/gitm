@@ -30,28 +30,10 @@ static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 static int         g_days       = 30;
 
-static long parse_date_to_timestamp(const char *date_str)
-{
-	int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0;
-
-	if (sscanf(date_str, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &min, &sec) != 6)
-		return 0;
-
-	long days = (long) (year - 1970) * 365 + (long) ((year - 1968) / 4);
-	static const int days_in_month[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
-	for (int m = 1; m < month; m++)
-		days += days_in_month[m];
-	if (month > 2 && (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)))
-		days++;
-	days += day - 1;
-
-	return days * 86400 + hour * 3600 + min * 60 + sec;
-}
-
 typedef struct {
 	const char *name;
 	const char *path;
-	char        date_str[32];
+	char        date_str[MAX_COUNT_STR];
 	long        days_ago;
 	bool        is_stale;
 } StaleResult;
@@ -62,28 +44,24 @@ static void stale_collect(const RepoEntry *entry, void *out)
 	r->name = entry->name;
 	r->path = entry->path;
 
-	ProcessResult pr = git_exec(entry->path, "log", "-1", "--format=%ci", "HEAD", NULL);
-
-	if (pr.exit_code == 0 && pr.stdout_len > 0) {
-		size_t len = pr.stdout_len;
-		if (len > 0 && pr.stdout_buf[len - 1] == '\n')
-			len--;
+	char *date = git_last_commit_date(entry->path);
+	if (date) {
+		size_t len = strlen(date);
 		if (len >= sizeof(r->date_str))
 			len = sizeof(r->date_str) - 1;
-		memcpy(r->date_str, pr.stdout_buf, len);
+		memcpy(r->date_str, date, len);
 		r->date_str[len] = '\0';
 
 		long ts  = parse_date_to_timestamp(r->date_str);
 		long now = (long) time(NULL);
 		r->days_ago = (now - ts) / 86400;
 		r->is_stale = (r->days_ago >= g_days);
+		free(date);
 	} else {
 		strcpy(r->date_str, "unknown");
 		r->days_ago = -1;
 		r->is_stale = true;
 	}
-
-	process_result_free(&pr);
 }
 
 static int cmd_stale(const ArgParseResult *result)
@@ -144,7 +122,7 @@ static int cmd_stale(const ArgParseResult *result)
 				continue;
 
 			const char *days_str;
-			char days_buf[32];
+			char days_buf[MAX_COUNT_STR];
 			if (results[i].days_ago < 0) {
 				days_str = "no commits";
 			} else {

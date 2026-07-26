@@ -29,43 +29,18 @@
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-typedef struct {
-	char  *stdout_buf;
-	size_t stdout_len;
-	int    exit_code;
-} TagResult;
-
 static void tag_collect(const RepoEntry *entry, void *out)
 {
-	TagResult *r = out;
-
+	CmdGitResult   *r = out;
 	ProcessResult pr;
-	if (g_table_mode) {
-		pr = git_exec(entry->path, "tag", "-n1", "--sort=-version:refname", NULL);
-	} else {
-		bool color = CMD_COLOR();
-		pr = color
-		    ? git_exec_color(entry->path, "tag", "-n1", "--sort=-version:refname", NULL)
-		    : git_exec(entry->path, "tag", "-n1", "--sort=-version:refname", NULL);
-	}
 
-	r->exit_code = pr.exit_code;
-	r->stdout_buf = pr.stdout_buf;
-	r->stdout_len = pr.stdout_len;
-	pr.stdout_buf = NULL;
-	process_result_free(&pr);
+	bool color = g_table_mode ? false : CMD_COLOR();
+	pr = git_exec_smart(entry->path, color, "tag", "-n1", "--sort=-version:refname", NULL);
+
+	process_steal_stdout(r, &pr);
 }
 
-static void tag_display_plain(const TagResult *r, const char *name, bool color)
-{
-	if (r->exit_code != 0 || r->stdout_len == 0)
-		return;
-
-	ansi_print_repo_header(name, color);
-	fputs(r->stdout_buf, stderr);
-}
-
-static void tag_display_table(Table *t, const TagResult *r, const char *repo_name)
+static void tag_display_table(Table *t, const CmdGitResult *r, const char *repo_name)
 {
 	if (r->exit_code != 0 || r->stdout_len == 0) {
 		const char *cells[] = { repo_name, "-", "-" };
@@ -132,8 +107,8 @@ static int cmd_list_tag(const ArgParseResult *result)
 		return 0;
 	}
 
-	TagResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered, tag_collect, sizeof(TagResult), results);
+	CmdGitResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered, tag_collect, sizeof(CmdGitResult), results);
 
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
@@ -149,7 +124,10 @@ static int cmd_list_tag(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			LOG_TRACE("listing tags for %s", cfg.entries[indices[i]].name);
-			tag_display_plain(&results[i], cfg.entries[indices[i]].name, color);
+			if (results[i].exit_code != 0 || results[i].stdout_len == 0)
+				continue;
+			ansi_print_repo_header(cfg.entries[indices[i]].name, color);
+			fputs(results[i].stdout_buf, stderr);
 		}
 	}
 

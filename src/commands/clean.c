@@ -37,8 +37,8 @@ static int cmd_clean(const ArgParseResult *result)
 	}
 
 	/* Find orphans */
-	size_t orphans[256];
-	size_t orphan_count = config_find_orphans(&cfg, orphans, 256);
+	size_t orphans[MAX_REPOS];
+	size_t orphan_count = config_find_orphans(&cfg, orphans, MAX_REPOS);
 
 	LOG_DEBUG("found %zu orphaned repos", orphan_count);
 
@@ -50,7 +50,7 @@ static int cmd_clean(const ArgParseResult *result)
 
 	/* List orphans */
 	fprintf(stderr, "Found %zu orphaned %s:\n", orphan_count,
-	        orphan_count == 1 ? "repository" : "repositories");
+	        PLURAL(orphan_count, "repository", "repositories"));
 	for (size_t i = 0; i < orphan_count; i++) {
 		size_t idx = orphans[i];
 		fprintf(stderr, "  %s (%s)\n", cfg.entries[idx].name, cfg.entries[idx].path);
@@ -63,7 +63,7 @@ static int cmd_clean(const ArgParseResult *result)
 
 	/* Confirm removal */
 	fprintf(stderr, "\nRemove %zu %s? [y/N] ", orphan_count,
-	        orphan_count == 1 ? "entry" : "entries");
+	        PLURAL(orphan_count, "entry", "entries"));
 	fflush(stderr);
 
 	int ch = getchar();
@@ -80,14 +80,11 @@ static int cmd_clean(const ArgParseResult *result)
 		return 1;
 	}
 
-	if (config_save(config_path, &cfg) != 0) {
-		LOG_ERROR(MSG_CFG_SAVE_ERR);
-		cmd_cleanup(&cfg, config_path);
+	if (cmd_save_config(&cfg, config_path) != 0)
 		return 1;
-	}
 
 	fprintf(stderr, "Removed %zu %s.\n", orphan_count,
-	        orphan_count == 1 ? "entry" : "entries");
+	        PLURAL(orphan_count, "entry", "entries"));
 
 	LOG_INFO("removed %zu orphaned entries", orphan_count);
 

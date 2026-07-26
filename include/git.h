@@ -51,6 +51,18 @@ ProcessResult git_exec_color(const char *cwd, ...);
 ProcessResult git_exec_quiet(const char *cwd, ...);
 
 /*
+ * Run a git command, choosing color or plain based on use_color.
+ * Equivalent to: use_color ? git_exec_color(...) : git_exec(...)
+ */
+ProcessResult git_exec_smart(const char *cwd, int use_color, ...);
+
+/*
+ * Get the last commit date of a repo (format: "YYYY-MM-DD HH:MM:SS +ZZZZ").
+ * Returns NULL on error. Caller must free.
+ */
+char *git_last_commit_date(const char *path);
+
+/*
  * Check if a directory is inside a git repository.
  */
 bool git_is_repo(const char *path);

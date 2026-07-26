@@ -154,14 +154,14 @@ static Table *build_table(const char *col_header, const FreqMap *m, bool color)
 	table_set_color(t, color);
 
 	for (size_t i = 0; i < m->count; i++) {
-		char count_str[32];
+		char count_str[MAX_COUNT_STR];
 		snprintf(count_str, sizeof(count_str), "%zu", m->items[i].count);
 		const char *cells[] = { m->items[i].name, count_str };
 		table_add_row_raw(t, cells, 2);
 	}
 
 	if (m->none_count > 0) {
-		char count_str[32];
+		char count_str[MAX_COUNT_STR];
 		snprintf(count_str, sizeof(count_str), "%zu", m->none_count);
 		const char *cells[] = { "(none)", count_str };
 		table_add_row_raw(t, cells, 2);

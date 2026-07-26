@@ -32,6 +32,16 @@ typedef struct {
 } ProcessResult;
 
 /*
+ * Stripped-down result for commands that only need stdout + exit code.
+ * Used by branch, last, list-tag, remote.
+ */
+typedef struct {
+	char  *stdout_buf;
+	size_t stdout_len;
+	int    exit_code;
+} CmdGitResult;
+
+/*
  * Execute a command in a child process.
  *
  *   cwd    — working directory (NULL inherits current)
@@ -50,6 +60,12 @@ ProcessResult process_exec(const char *cwd, char *const argv[]);
  * Respects NO_COLOR: if already set in the parent env, colours are not forced.
  */
 ProcessResult process_exec_colored(const char *cwd, char *const argv[]);
+
+/*
+ * Steal stdout from a ProcessResult into a CmdGitResult.
+ * Frees the source ProcessResult. Prevents double-free.
+ */
+void process_steal_stdout(CmdGitResult *dst, ProcessResult *src);
 
 /*
  * Free the buffers in a ProcessResult.

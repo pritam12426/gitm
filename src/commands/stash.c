@@ -33,7 +33,7 @@ typedef struct {
 	const char *path;
 	bool        was_dirty;
 	bool        stashed;
-	char        message[256];
+	char        message[MAX_NAME_LEN];
 } StashResult;
 
 static void stash_collect(const RepoEntry *entry, void *out)

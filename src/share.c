@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "ansi_color.h"
 #include "config.h"
@@ -92,4 +93,82 @@ void ansi_print_repo_empty(const char *name, const char *msg, bool color)
 		        ANSI_DIM, msg, ANSI_RESET);
 	else
 		fprintf(stderr, "\n%s\n  %s\n", name, msg);
+}
+
+/* ── Date parsing ───────────────────────────────────────────────────────────── */
+
+long parse_date_to_timestamp(const char *date_str)
+{
+	int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0;
+
+	if (sscanf(date_str, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &min, &sec) != 6)
+		return 0;
+
+	struct tm tm = { 0 };
+	tm.tm_year = year - 1900;
+	tm.tm_mon  = month - 1;
+	tm.tm_mday = day;
+	tm.tm_hour = hour;
+	tm.tm_min  = min;
+	tm.tm_sec  = sec;
+
+	return (long) mktime(&tm);
+}
+
+void format_relative_time(char *buf, size_t buflen, long timestamp)
+{
+	if (timestamp <= 0) {
+		snprintf(buf, buflen, "unknown");
+		return;
+	}
+
+	long diff = (long) time(NULL) - timestamp;
+	if (diff < 0)
+		diff = 0;
+
+	if (diff < 60)
+		snprintf(buf, buflen, "just now");
+	else if (diff < 3600) {
+		long v = diff / 60;
+		snprintf(buf, buflen, "%ld min ago", v);
+	} else if (diff < 86400) {
+		long v = diff / 3600;
+		snprintf(buf, buflen, "%ld hour%s ago", v, v == 1 ? "" : "s");
+	} else if (diff < 604800) {
+		long v = diff / 86400;
+		snprintf(buf, buflen, "%ld day%s ago", v, v == 1 ? "" : "s");
+	} else if (diff < 2592000) {
+		long v = diff / 604800;
+		snprintf(buf, buflen, "%ld week%s ago", v, v == 1 ? "" : "s");
+	} else if (diff < 31536000) {
+		long v = diff / 2592000;
+		snprintf(buf, buflen, "%ld month%s ago", v, v == 1 ? "" : "s");
+	} else {
+		long v = diff / 31536000;
+		snprintf(buf, buflen, "%ld year%s ago", v, v == 1 ? "" : "s");
+	}
+}
+
+/* ── Command config helpers ─────────────────────────────────────────────────── */
+
+int cmd_save_config(GitConfig *cfg, char *config_path)
+{
+	if (config_save(config_path, cfg) != 0) {
+		LOG_ERROR(MSG_CFG_SAVE_ERR);
+		cmd_cleanup(cfg, config_path);
+		return -1;
+	}
+	return 0;
+}
+
+int cmd_ensure_config_dir(void)
+{
+	char *path = config_default_path();
+	if (!path) {
+		LOG_ERROR(MSG_CFG_PATH_ERR);
+		return -1;
+	}
+	config_ensure_dir();
+	free(path);
+	return 0;
 }

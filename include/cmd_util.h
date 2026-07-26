@@ -60,6 +60,25 @@ void cmd_register_filter_flags(ArgCommand *cmd,
                                const char **out_tag,
                                const char **out_group);
 
+/*
+ * Print "name : path" aligned to NAME_COL_WIDTH.
+ */
+void cmd_print_name_path(FILE *stream, const char *name, const char *path);
+
+/*
+ * Display a CmdGitResult in plain (non-table) mode.
+ * If empty_msg is NULL and output is empty, returns silently.
+ * If empty_msg is provided, shows an "empty" indicator.
+ */
+void cmd_display_plain_result(int exit_code, const char *stdout_buf, size_t stdout_len,
+                              const char *name, const char *empty_msg, bool color);
+
+/*
+ * Resolve the user's editor from $EDITOR or $VISUAL.
+ * Returns the editor path, or NULL if not set.
+ */
+const char *cmd_resolve_editor(void);
+
 
 #ifdef __cplusplus
 }

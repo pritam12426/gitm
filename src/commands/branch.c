@@ -28,45 +28,18 @@
 static const char *filter_tag   = NULL;
 static const char *filter_group = NULL;
 
-typedef struct {
-	char  *stdout_buf;
-	size_t stdout_len;
-	int    exit_code;
-} BranchResult;
-
 static void branch_collect(const RepoEntry *entry, void *out)
 {
-	BranchResult *r = out;
-
+	CmdGitResult   *r = out;
 	ProcessResult pr;
-	if (g_table_mode) {
-		pr = git_exec(entry->path, "branch", "--list", NULL);
-	} else {
-		bool color = CMD_COLOR();
-		pr = color
-		    ? git_exec_color(entry->path, "branch", "--list", NULL)
-		    : git_exec(entry->path, "branch", "--list", NULL);
-	}
 
-	r->exit_code = pr.exit_code;
-	r->stdout_buf = pr.stdout_buf;
-	r->stdout_len = pr.stdout_len;
-	pr.stdout_buf = NULL;
-	process_result_free(&pr);
+	bool color = g_table_mode ? false : CMD_COLOR();
+	pr = git_exec_smart(entry->path, color, "branch", "--list", NULL);
+
+	process_steal_stdout(r, &pr);
 }
 
-static void branch_display_plain(const BranchResult *r, const char *name, bool color)
-{
-	if (r->exit_code != 0 || r->stdout_len == 0) {
-		ansi_print_repo_empty(name, "(no branches)", color);
-		return;
-	}
-
-	ansi_print_repo_header(name, color);
-	fputs(r->stdout_buf, stderr);
-}
-
-static void branch_display_table(Table *t, const BranchResult *r, const char *repo_name, bool color)
+static void branch_display_table(Table *t, const CmdGitResult *r, const char *repo_name, bool color)
 {
 	if (r->exit_code != 0 || r->stdout_len == 0) {
 		const char *cells[] = { repo_name, "-" };
@@ -85,7 +58,7 @@ static void branch_display_table(Table *t, const BranchResult *r, const char *re
 			p++;
 
 		size_t len = (size_t) (p - start);
-		char   line[256];
+		char   line[MAX_NAME_LEN];
 		if (len >= sizeof(line))
 			len = sizeof(line) - 1;
 		memcpy(line, start, len);
@@ -95,7 +68,7 @@ static void branch_display_table(Table *t, const BranchResult *r, const char *re
 		bool is_current = (line[0] == '*');
 
 		if (color && is_current) {
-			char colored[256];
+			char colored[MAX_NAME_LEN];
 			snprintf(colored, sizeof(colored), "%s%s* %s%s", ANSI_BOLD, ANSI_FG_GREEN, line + 2, ANSI_RESET);
 			const char *cells[] = { repo_disp, colored };
 			table_add_row_raw(t, cells, 2);
@@ -139,8 +112,8 @@ static int cmd_branch(const ArgParseResult *result)
 		return 0;
 	}
 
-	BranchResult results[MAX_REPOS] = { 0 };
-	parallel_collect(&cfg, indices, filtered, branch_collect, sizeof(BranchResult), results);
+	CmdGitResult results[MAX_REPOS] = { 0 };
+	parallel_collect(&cfg, indices, filtered, branch_collect, sizeof(CmdGitResult), results);
 
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
@@ -156,7 +129,9 @@ static int cmd_branch(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			LOG_TRACE("showing branches for %s", cfg.entries[indices[i]].name);
-			branch_display_plain(&results[i], cfg.entries[indices[i]].name, color);
+			cmd_display_plain_result(results[i].exit_code, results[i].stdout_buf,
+			                         results[i].stdout_len, cfg.entries[indices[i]].name,
+			                         "(no branches)", color);
 		}
 	}
 

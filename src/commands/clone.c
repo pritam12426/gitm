@@ -73,14 +73,8 @@ static int cmd_clone(const ArgParseResult *result)
 	process_result_free(&r);
 
 	/* Register the cloned repo */
-	char *config_path = config_default_path();
-	if (!config_path) {
-		LOG_ERROR(MSG_CFG_PATH_ERR);
+	if (cmd_ensure_config_dir() != 0)
 		return 1;
-	}
-
-	config_ensure_dir();
-	free(config_path);
 
 	GitConfig cfg = { 0 };
 	char      *loaded_path = NULL;
@@ -93,8 +87,9 @@ static int cmd_clone(const ArgParseResult *result)
 		return 0;
 	}
 
-	if (config_save(loaded_path, &cfg) != 0) {
+	if (cmd_save_config(&cfg, loaded_path) != 0) {
 		LOG_WARN("cloned successfully but failed to save config");
+		return 0;
 	}
 
 	fprintf(stderr, "Registered as '%s'\n", name);

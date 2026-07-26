@@ -46,7 +46,7 @@ static int cmd_search(const ArgParseResult *result)
 		if (strcasestr(cfg.entries[i].name, pattern) != NULL ||
 			strcasestr(cfg.entries[i].path, pattern) != NULL) {
 			LOG_TRACE("match: %s", cfg.entries[i].name);
-			fprintf(stdout, "%22s : %s\n", cfg.entries[i].name, cfg.entries[i].path);
+			cmd_print_name_path(stdout, cfg.entries[i].name, cfg.entries[i].path);
 			found++;
 		}
 	}

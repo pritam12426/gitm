@@ -30,27 +30,10 @@ static const char *filter_group = NULL;
 typedef struct {
 	const char *name;
 	const char *path;
-	char        date_str[32];
+	char        date_str[MAX_COUNT_STR];
+	char        relative[MAX_COUNT_STR];
 	long        timestamp;
 } RecentResult;
-
-static long parse_date_to_timestamp(const char *date_str)
-{
-	int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0;
-
-	if (sscanf(date_str, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &min, &sec) != 6)
-		return 0;
-
-	long days = (long) (year - 1970) * 365 + (long) ((year - 1968) / 4);
-	static const int days_in_month[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
-	for (int m = 1; m < month; m++)
-		days += days_in_month[m];
-	if (month > 2 && (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)))
-		days++;
-	days += day - 1;
-
-	return days * 86400 + hour * 3600 + min * 60 + sec;
-}
 
 static void recent_collect(const RepoEntry *entry, void *out)
 {
@@ -58,23 +41,21 @@ static void recent_collect(const RepoEntry *entry, void *out)
 	r->name = entry->name;
 	r->path = entry->path;
 
-	ProcessResult pr = git_exec(entry->path, "log", "-1", "--format=%ci", "HEAD", NULL);
-
-	if (pr.exit_code == 0 && pr.stdout_len > 0) {
-		size_t len = pr.stdout_len;
-		if (len > 0 && pr.stdout_buf[len - 1] == '\n')
-			len--;
+	char *date = git_last_commit_date(entry->path);
+	if (date) {
+		size_t len = strlen(date);
 		if (len >= sizeof(r->date_str))
 			len = sizeof(r->date_str) - 1;
-		memcpy(r->date_str, pr.stdout_buf, len);
+		memcpy(r->date_str, date, len);
 		r->date_str[len] = '\0';
 		r->timestamp = parse_date_to_timestamp(r->date_str);
+		format_relative_time(r->relative, sizeof(r->relative), r->timestamp);
+		free(date);
 	} else {
 		strcpy(r->date_str, "unknown");
+		strcpy(r->relative, "unknown");
 		r->timestamp = 0;
 	}
-
-	process_result_free(&pr);
 }
 
 /* Sort key for decorating results before qsort */
@@ -131,13 +112,13 @@ static int cmd_recent(const ArgParseResult *result)
 	/* Phase 3: display in sorted order */
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
-		const char *headers[] = { "Name", "Path", "Last Commit" };
-		Table *t = table_create(3, headers);
+		const char *headers[] = { "Name", "Path", "Last Commit Relative", "Last Commit" };
+		Table *t = table_create(4, headers);
 		table_set_color(t, CMD_COLOR());
 
 		for (size_t i = 0; i < filtered; i++) {
 			RecentResult *r = &results[keys[i].result_index];
-			table_add_row(t, r->name, r->path, r->date_str);
+			table_add_row(t, r->name, r->path, r->relative, r->date_str);
 		}
 
 		table_print(t, stdout);
@@ -145,7 +126,7 @@ static int cmd_recent(const ArgParseResult *result)
 	} else {
 		for (size_t i = 0; i < filtered; i++) {
 			RecentResult *r = &results[keys[i].result_index];
-			fprintf(stdout, "%-25s %22s : %s\n", r->date_str, r->name, r->path);
+			fprintf(stdout, "%-20s %*s : %s\n", r->relative, NAME_COL_WIDTH, r->name, r->path);
 		}
 	}
 

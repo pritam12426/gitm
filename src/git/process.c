@@ -79,11 +79,11 @@ ProcessResult process_exec(const char *cwd, char *const argv[])
 		close(stderr_pipe[1]);
 
 		if (cwd && chdir(cwd) != 0) {
-			_exit(127);
+			_exit(EXIT_CMD_NOT_FOUND);
 		}
 
 		execvp(argv[0], (char *const *) argv);
-		_exit(127);
+		_exit(EXIT_CMD_NOT_FOUND);
 	}
 
 	/* Parent process */
@@ -93,7 +93,7 @@ ProcessResult process_exec(const char *cwd, char *const argv[])
 	/* Read stdout */
 	char   *std_out = NULL;
 	size_t  out_len = 0, out_cap = 0;
-	char    tmp[4096];
+	char    tmp[PROCESS_BUF_SIZE];
 	ssize_t n;
 
 	while ((n = read(stdout_pipe[0], tmp, sizeof(tmp))) > 0) {
@@ -171,11 +171,11 @@ ProcessResult process_exec_colored(const char *cwd, char *const argv[])
 		close(stderr_pipe[1]);
 
 		if (cwd && chdir(cwd) != 0) {
-			_exit(127);
+			_exit(EXIT_CMD_NOT_FOUND);
 		}
 
 		execvp(argv[0], (char *const *) argv);
-		_exit(127);
+		_exit(EXIT_CMD_NOT_FOUND);
 	}
 
 	/* Parent process */
@@ -235,4 +235,13 @@ void process_result_free(ProcessResult *r)
 	r->stderr_buf = NULL;
 	r->stdout_len = 0;
 	r->stderr_len = 0;
+}
+
+void process_steal_stdout(CmdGitResult *dst, ProcessResult *src)
+{
+	dst->exit_code  = src->exit_code;
+	dst->stdout_buf = src->stdout_buf;
+	dst->stdout_len = src->stdout_len;
+	src->stdout_buf = NULL;
+	process_result_free(src);
 }

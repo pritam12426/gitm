@@ -62,15 +62,8 @@ static int cmd_add(const ArgParseResult *result)
 		}
 	}
 
-	char *config_path = config_default_path();
-	if (!config_path) {
-		LOG_ERROR(MSG_CFG_PATH_ERR);
+	if (cmd_ensure_config_dir() != 0)
 		return 1;
-	}
-
-	/* Ensure config dir exists */
-	config_ensure_dir();
-	free(config_path);
 
 	GitConfig cfg = { 0 };
 	char      *loaded_path = NULL;
@@ -82,11 +75,8 @@ static int cmd_add(const ArgParseResult *result)
 		return 1;
 	}
 
-	if (config_save(loaded_path, &cfg) != 0) {
-		LOG_ERROR(MSG_CFG_SAVE_ERR);
-		cmd_cleanup(&cfg, loaded_path);
+	if (cmd_save_config(&cfg, loaded_path) != 0)
 		return 1;
-	}
 
 	fprintf(stderr, "Added %s (%s)", repo_name, abs_path);
 	if (add_tags)

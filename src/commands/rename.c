@@ -40,11 +40,8 @@ static int cmd_rename(const ArgParseResult *result)
 		return 1;
 	}
 
-	if (config_save(config_path, &cfg) != 0) {
-		LOG_ERROR(MSG_CFG_SAVE_ERR);
-		cmd_cleanup(&cfg, config_path);
+	if (cmd_save_config(&cfg, config_path) != 0)
 		return 1;
-	}
 
 	fprintf(stderr, "Renamed %s -> %s\n", old_name, new_name);
 	LOG_INFO("renamed %s -> %s", old_name, new_name);
