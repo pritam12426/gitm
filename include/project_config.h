@@ -11,9 +11,9 @@
 #define GITM                  "gitm"
 #define MAIN_BINARY           "gitm"
 
-#define PROJECT_VERSION       "0.1.0"
-#define PROJECT_VERSION_MAJOR 0
-#define PROJECT_VERSION_MINOR 1
+#define PROJECT_VERSION       "1.0.0"
+#define PROJECT_VERSION_MAJOR 1
+#define PROJECT_VERSION_MINOR 0
 #define PROJECT_VERSION_PATCH 0
 
 #define PROJECT_HOMEPAGE_URL  "https://github.com/pritam12426/" GITM

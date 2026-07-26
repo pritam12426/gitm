@@ -43,6 +43,9 @@ void cmd_register_all(ArgParser *parser)
 	cmd_register_last(parser);
 	cmd_register_branch(parser);
 	cmd_register_clean(parser);
+	cmd_register_clone(parser);
+	cmd_register_stale(parser);
+	cmd_register_stash(parser);
 	cmd_register_stats(parser);
 	LOG_TRACE("all commands registered");
 }

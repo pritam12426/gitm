@@ -27,7 +27,7 @@ main()
   ├── argparse_init()
   ├── global_options_init()         // --log-level, --log-file, --edit-entry
   ├── log_init(NULL, LOG_LEVEL_WARN) // early init so commands can log during parse
-  ├── cmd_register_all()            // registers all 18 subcommands (each may call cmd_register_table_flag)
+  ├── cmd_register_all()            // registers all 21 subcommands (each may call cmd_register_table_flag)
   ├── argparse_parse()              // matches command, calls callback
   │   └── cmd_callback()            // e.g. cmd_status()
   │       ├── config_default_path()
@@ -45,7 +45,7 @@ main()
 
 2. **`log_init(NULL, LOG_LEVEL_WARN)`**: Early init at WARN level so that `LOG_DEBUG`/`LOG_TRACE` messages during command registration are suppressed by default, but `LOG_ERROR`/`LOG_WARN` messages are visible. This is called _before_ `cmd_register_all()` so that `LOG_TRACE` in `cmd.c` works correctly.
 
-3. **`cmd_register_all()`** in `src/commands/cmd.c`: Calls each `cmd_register_*` function. These functions create subcommands with `argparse_add_command()` and add options with `argparse_add_option()`. Commands that support `--table` call `cmd_register_table_flag(cmd)`. Commands that support `--tag`/`--group` filtering call `cmd_register_filter_flags(cmd, ...)`.
+3. **`cmd_register_all()`** in `src/commands/cmd.c`: Calls each `cmd_register_*` function (21 total). These functions create subcommands with `argparse_add_command()` and add options with `argparse_add_option()`. Commands that support `--table` call `cmd_register_table_flag(cmd)`. Commands that support `--tag`/`--group` filtering call `cmd_register_filter_flags(cmd, ...)`.
 
 4. **`argparse_parse()`**: Tokenizes argv, matches the subcommand, calls its callback. Returns before `main()` continues if the command was `--help`, `--version`, `--shell-completion`, or `--edit-entry`.
 

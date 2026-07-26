@@ -141,7 +141,7 @@ gitm/
 │   │   ├── add.c               # gitm add
 │   │   ├── branch.c            # gitm branch
 │   │   ├── clean.c             # gitm clean
-│   │   ├── clone.c             # gitm clone (WIP, not registered)
+│   │   ├── clone.c             # gitm clone
 │   │   ├── doctor.c            # gitm doctor
 │   │   ├── exec.c              # gitm exec
 │   │   ├── info.c              # gitm info
@@ -154,8 +154,8 @@ gitm/
 │   │   ├── remove.c            # gitm remove
 │   │   ├── rename.c            # gitm rename
 │   │   ├── search.c            # gitm search
-│   │   ├── stale.c             # gitm stale (WIP, not registered)
-│   │   ├── stash.c             # gitm stash (WIP, not registered)
+│   │   ├── stale.c             # gitm stale
+│   │   ├── stash.c             # gitm stash
 │   │   ├── stats.c             # gitm stats
 │   │   ├── status.c            # gitm status (colourised + table mode)
 │   │   └── summary.c           # gitm summary

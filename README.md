@@ -13,6 +13,10 @@ Zero third-party dependencies. Uses a custom argument parser, system Git, and PO
 - **Orphan cleanup** — find and remove repos that no longer exist on disk
 - **Health checks** — verify all registered repos are valid Git repositories
 - **Per-repo exec** — run arbitrary Git commands on a specific repo
+- **Clone and register** — clone a Git repo and add it to the registry in one step
+- **Stale detection** — find repos with no commits in the last N days
+- **Batch stash** — stash dirty working trees across multiple repos at once
+- **Parallel execution** — pthread thread pool for fast per-repo data collection
 - **Shell completion** — built-in bash, zsh, and fish completion generation
 - **Coloured output** — Rust clap-style coloured help and status output
 - **Structured logging** — 7 severity levels (off, fatal, error, warn, info, debug, trace)
@@ -22,6 +26,7 @@ Zero third-party dependencies. Uses a custom argument parser, system Git, and PO
 - **C17** compiler (gcc or clang)
 - **POSIX** system (macOS, Linux)
 - **Git** installed and available in `$PATH`
+- **pthreads** (POSIX threads, included in libc on macOS/Linux)
 
 ## Build
 
@@ -65,6 +70,17 @@ gitm doctor --table
 
 # Tag and group frequency summary
 gitm stats --table
+
+# Clone a repo and register it
+gitm clone https://github.com/user/repo
+
+# Find stale repos (no commits in 30+ days)
+gitm stale --table
+gitm stale -d 60 --table
+
+# Stash dirty working trees across repos
+gitm stash
+gitm stash --table
 
 # Open config file in $EDITOR
 gitm --edit-entry
@@ -118,6 +134,9 @@ Each token is prefixed with a count. `clean` means no changes at all.
 | `branch`   | `br`, `b`    | Show local branches                       | Yes       |
 | `clean`    | `prune`      | Remove repos that no longer exist on disk | —         |
 | `stats`    | `ts`         | Show tag and group frequency summary      | Yes       |
+| `stale`    | `old`        | Show repos with no commits in N days      | Yes       |
+| `stash`    | `st`         | Stash dirty working trees across repos    | Yes       |
+| `clone`    | —            | Clone a repository and register it        | —         |
 
 All commands that iterate repositories support `--tag` and `--group` filters.
 

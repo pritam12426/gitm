@@ -45,6 +45,8 @@ void cmd_register_last(ArgParser *parser);
 void cmd_register_branch(ArgParser *parser);
 void cmd_register_clean(ArgParser *parser);
 void cmd_register_clone(ArgParser *parser);
+void cmd_register_stale(ArgParser *parser);
+void cmd_register_stash(ArgParser *parser);
 void cmd_register_stats(ArgParser *parser);
 
 
