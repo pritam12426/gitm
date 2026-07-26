@@ -63,9 +63,38 @@ gitm exec my-alias log --oneline -10
 # Health check
 gitm doctor --table
 
+# Tag and group frequency summary
+gitm stats --table
+
 # Open config file in $EDITOR
 gitm --edit-entry
 ```
+
+## Status Output
+
+`gitm status --table` shows a compact summary of each repo's working tree:
+
+```
+Name         | Path                   | Status   | Branch
+------------ + ---------------------- + -------- + ------
+project-a    | /Users/dev/project-a   | clean    | main
+project-b    | /Users/dev/project-b   | 3u       | dev
+project-c    | /Users/dev/project-c   | 2m 1u    | main
+project-d    | /Users/dev/project-d   | 1m 1d 3u | fix
+project-e    | /Users/dev/project-e   | 1a       | main
+```
+
+Status tokens (space-separated):
+
+| Token | Meaning         |
+| ----- | --------------- |
+| `m`   | Modified files  |
+| `a`   | Staged (added)  |
+| `d`   | Deleted files   |
+| `u`   | Untracked files |
+| `o`   | Other changes   |
+
+Each token is prefixed with a count. `clean` means no changes at all.
 
 ## Commands
 
@@ -88,6 +117,7 @@ gitm --edit-entry
 | `last`     | `log`, `l`   | Show last commit log for each repo        | Yes       |
 | `branch`   | `br`, `b`    | Show local branches                       | Yes       |
 | `clean`    | `prune`      | Remove repos that no longer exist on disk | —         |
+| `stats`    | `ts`         | Show tag and group frequency summary      | Yes       |
 
 All commands that iterate repositories support `--tag` and `--group` filters.
 
