@@ -37,12 +37,9 @@ static int cmd_exec(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
-	RepoEntry *entry = config_find(&cfg, name);
-	if (!entry) {
-		fprintf(stderr, MSG_REPO_NOT_FOUND, name);
-		cmd_cleanup(&cfg, config_path);
+	RepoEntry *entry = cmd_find_repo_or_fail(&cfg, config_path, name);
+	if (!entry)
 		return 1;
-	}
 
 	/* Build git command: "git" + remaining positionals */
 	const char *git_argv[GIT_MAX_ARGS];

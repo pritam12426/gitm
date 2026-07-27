@@ -13,9 +13,26 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "cmd_util.h"
 #include "config.h"
 #include "git.h"
 #include "log.h"
+#include "parallel.h"
+
+typedef struct {
+	bool path_exists;
+	bool is_dir;
+	bool is_git_repo;
+} ValidateResult;
+
+static void validate_collect(const RepoEntry *entry, void *out)
+{
+	ValidateResult *r   = out;
+	RepoHealth      h   = repo_check_health(entry->path);
+	r->path_exists      = (h != REPO_HEALTH_MISSING);
+	r->is_dir           = (h == REPO_HEALTH_OK || h == REPO_HEALTH_NOT_GIT);
+	r->is_git_repo      = (h == REPO_HEALTH_OK);
+}
 
 int config_validate(GitConfig *cfg)
 {
@@ -37,22 +54,26 @@ int config_validate(GitConfig *cfg)
 		}
 	}
 
-	/* Check for existence and git validity */
-	for (size_t i = 0; i < cfg->count; i++) {
-		struct stat st;
-		if (stat(cfg->entries[i].path, &st) != 0) {
-			LOG_ERROR("path does not exist: %s", cfg->entries[i].path);
-			errors++;
-			continue;
-		}
-		if (!S_ISDIR(st.st_mode)) {
-			LOG_ERROR("path is not a directory: %s", cfg->entries[i].path);
-			errors++;
-			continue;
-		}
-		if (!git_is_repo(cfg->entries[i].path)) {
-			LOG_WARN("not a git repository: %s", cfg->entries[i].path);
-			errors++;
+	/* Check for existence and git validity in parallel */
+	if (cfg->count > 0) {
+		size_t indices[MAX_REPOS];
+		for (size_t i = 0; i < cfg->count && i < MAX_REPOS; i++)
+			indices[i] = i;
+
+		ValidateResult results[MAX_REPOS] = { 0 };
+		parallel_collect(cfg, indices, cfg->count, validate_collect, sizeof(ValidateResult), results);
+
+		for (size_t i = 0; i < cfg->count; i++) {
+			if (!results[i].path_exists) {
+				LOG_ERROR("path does not exist: %s", cfg->entries[i].path);
+				errors++;
+			} else if (!results[i].is_dir) {
+				LOG_ERROR("path is not a directory: %s", cfg->entries[i].path);
+				errors++;
+			} else if (!results[i].is_git_repo) {
+				LOG_WARN("not a git repository: %s", cfg->entries[i].path);
+				errors++;
+			}
 		}
 	}
 

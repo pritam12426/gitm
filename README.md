@@ -135,7 +135,7 @@ Each token is prefixed with a count. `clean` means no changes at all.
 | `clean`    | `prune`      | Remove repos that no longer exist on disk | —         |
 | `stats`    | `ts`         | Show tag and group frequency summary      | Yes       |
 | `stale`    | `old`        | Show repos with no commits in N days      | Yes       |
-| `stash`    | `st`         | Stash dirty working trees across repos    | Yes       |
+| `stash`    | `sh`         | Stash dirty working trees across repos    | Yes       |
 | `clone`    | —            | Clone a repository and register it        | —         |
 
 All commands that iterate repositories support `--tag` and `--group` filters.

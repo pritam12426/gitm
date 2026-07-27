@@ -38,7 +38,9 @@ body:
       label: Scope
       description: Which part of gitm does this affect?
       options:
-        - Core (config, commands)
+        - New command
+        - Existing command
+        - Core (config, registry)
         - Argparse library
         - Build system
         - Documentation

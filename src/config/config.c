@@ -47,6 +47,7 @@ int config_load(const char *path, GitConfig *cfg)
 
 	char line[MAX_LINE_LEN];
 	while (fgets(line, sizeof(line), f)) {
+		/* Strip trailing newlines */
 		size_t len = strlen(line);
 		while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
 			line[--len] = '\0';
@@ -129,33 +130,44 @@ int config_load(const char *path, GitConfig *cfg)
 			return -1;
 		}
 
-		cfg->entries[cfg->count].path = strdup(path_str);
-		cfg->entries[cfg->count].name = strdup(name_str);
-
-		/* OOM: clean up partially loaded entry */
-		if (!cfg->entries[cfg->count].path || !cfg->entries[cfg->count].name) {
-			free(cfg->entries[cfg->count].path);
-			free(cfg->entries[cfg->count].name);
-			memset(&cfg->entries[cfg->count], 0, sizeof(RepoEntry));
+		if (repo_entry_init(&cfg->entries[cfg->count], path_str, name_str) != 0) {
 			fclose(f);
 			return -1;
 		}
 
-		/* Zero-init tags/groups before strncpy (strncpy doesn't null-terminate) */
-		cfg->entries[cfg->count].tags[0]   = '\0';
-		cfg->entries[cfg->count].groups[0] = '\0';
-		if (tags_str)
-			strncpy(cfg->entries[cfg->count].tags, tags_str, TAG_BUF_SIZE - 1);
-		cfg->entries[cfg->count].tags[TAG_BUF_SIZE - 1] = '\0';
-		if (groups_str)
-			strncpy(cfg->entries[cfg->count].groups, groups_str, GROUP_BUF_SIZE - 1);
-		cfg->entries[cfg->count].groups[GROUP_BUF_SIZE - 1] = '\0';
+		repo_entry_set_tags_groups(&cfg->entries[cfg->count], tags_str, groups_str);
 		cfg->count++;
 	}
 
 	fclose(f);
 	LOG_DEBUG("loaded %zu entries from config", cfg->count);
 	return 0;
+}
+
+int repo_entry_init(RepoEntry *entry, const char *path, const char *name)
+{
+	entry->path = strdup(path);
+	entry->name = strdup(name);
+	if (!entry->path || !entry->name) {
+		free(entry->path);
+		free(entry->name);
+		entry->path = NULL;
+		entry->name = NULL;
+		return -1;
+	}
+	return 0;
+}
+
+void repo_entry_set_tags_groups(RepoEntry *entry, const char *tags, const char *groups)
+{
+	entry->tags[0]   = '\0';
+	entry->groups[0] = '\0';
+	if (tags)
+		strncpy(entry->tags, tags, TAG_BUF_SIZE - 1);
+	entry->tags[TAG_BUF_SIZE - 1] = '\0';
+	if (groups)
+		strncpy(entry->groups, groups, GROUP_BUF_SIZE - 1);
+	entry->groups[GROUP_BUF_SIZE - 1] = '\0';
 }
 
 int config_save(const char *path, const GitConfig *cfg)
@@ -170,25 +182,18 @@ int config_save(const char *path, const GitConfig *cfg)
 		return -1;
 	}
 
+	char line[MAX_LINE_LEN];
 	for (size_t i = 0; i < cfg->count; i++) {
-		if (cfg->entries[i].tags[0] && cfg->entries[i].groups[0])
-			fprintf(f,
-			        "%s:%s:%s:%s\n",
-			        cfg->entries[i].path,
-			        cfg->entries[i].name,
-			        cfg->entries[i].tags,
-			        cfg->entries[i].groups);
-		else if (cfg->entries[i].tags[0])
-			fprintf(
-			    f, "%s:%s:%s\n", cfg->entries[i].path, cfg->entries[i].name, cfg->entries[i].tags);
-		else if (cfg->entries[i].groups[0])
-			fprintf(f,
-			        "%s:%s::%s\n",
-			        cfg->entries[i].path,
-			        cfg->entries[i].name,
-			        cfg->entries[i].groups);
+		const RepoEntry *e = &cfg->entries[i];
+		if (e->tags[0] && e->groups[0])
+			snprintf(line, sizeof(line), "%s:%s:%s:%s\n", e->path, e->name, e->tags, e->groups);
+		else if (e->tags[0])
+			snprintf(line, sizeof(line), "%s:%s:%s\n", e->path, e->name, e->tags);
+		else if (e->groups[0])
+			snprintf(line, sizeof(line), "%s:%s::%s\n", e->path, e->name, e->groups);
 		else
-			fprintf(f, "%s:%s\n", cfg->entries[i].path, cfg->entries[i].name);
+			snprintf(line, sizeof(line), "%s:%s\n", e->path, e->name);
+		fputs(line, f);
 	}
 
 	fclose(f);

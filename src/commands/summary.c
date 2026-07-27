@@ -34,38 +34,18 @@ typedef struct {
 
 static long get_dir_size(const char *path)
 {
-	ProcessResult r     = git_exec(path, "count-objects", "-rvH", NULL);
+	ProcessResult r     = git_exec(path, "count-objects", "-rv", NULL);
 	long          total = 0;
 
 	if (r.exit_code == 0 && r.stdout_len > 0) {
 		const char *p = r.stdout_buf;
 		while (*p) {
-			long val     = 0;
-			char unit[8] = { 0 };
-			if (sscanf(p, "%ld %7s", &val, unit) == 2) {
-				long converted = 0;
-				if (strstr(unit, "GiB") || strstr(unit, "GB")) {
-					if (val > LONG_MAX / (1024L * 1024 * 1024))
-						converted = LONG_MAX;
-					else
-						converted = val * 1024L * 1024 * 1024;
-				} else if (strstr(unit, "MiB") || strstr(unit, "MB")) {
-					if (val > LONG_MAX / (1024L * 1024))
-						converted = LONG_MAX;
-					else
-						converted = val * 1024L * 1024;
-				} else if (strstr(unit, "KiB") || strstr(unit, "KB")) {
-					if (val > LONG_MAX / 1024L)
-						converted = LONG_MAX;
-					else
-						converted = val * 1024L;
-				} else {
-					converted = val;
-				}
-				if (total > LONG_MAX - converted)
+			long val = 0;
+			if (sscanf(p, "%ld", &val) == 1) {
+				if (total > LONG_MAX - val)
 					total = LONG_MAX;
 				else
-					total += converted;
+					total += val;
 			}
 			while (*p && *p != '\n')
 				p++;

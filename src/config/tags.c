@@ -15,15 +15,10 @@
 #include "config.h"
 #include "log.h"
 
-bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
+static bool has_csv_token(const char *csv, const char *token)
 {
-	if (!entry || !tag || !entry->tags[0])
-		return false;
-
-	LOG_TRACE("config_entry_has_tag(%s, %s)", entry->name, tag);
-
-	const char *p       = entry->tags;
-	size_t      tag_len = strlen(tag);
+	size_t token_len = strlen(token);
+	const char *p    = csv;
 
 	while (*p) {
 		if (*p == ',') {
@@ -34,8 +29,8 @@ bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
 		while (*end && *end != ',')
 			end++;
 
-		size_t token_len = (size_t) (end - p);
-		if (token_len == tag_len && memcmp(p, tag, tag_len) == 0)
+		size_t len = (size_t) (end - p);
+		if (len == token_len && memcmp(p, token, token_len) == 0)
 			return true;
 
 		p = end;
@@ -43,30 +38,18 @@ bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
 	return false;
 }
 
+bool config_entry_has_tag(const RepoEntry *entry, const char *tag)
+{
+	if (!entry || !tag || !entry->tags[0])
+		return false;
+	LOG_TRACE("config_entry_has_tag(%s, %s)", entry->name, tag);
+	return has_csv_token(entry->tags, tag);
+}
+
 bool config_entry_has_group(const RepoEntry *entry, const char *group)
 {
 	if (!entry || !group || !entry->groups[0])
 		return false;
-
 	LOG_TRACE("config_entry_has_group(%s, %s)", entry->name, group);
-
-	const char *p         = entry->groups;
-	size_t      group_len = strlen(group);
-
-	while (*p) {
-		if (*p == ',') {
-			p++;
-			continue;
-		}
-		const char *end = p;
-		while (*end && *end != ',')
-			end++;
-
-		size_t token_len = (size_t) (end - p);
-		if (token_len == group_len && memcmp(p, group, group_len) == 0)
-			return true;
-
-		p = end;
-	}
-	return false;
+	return has_csv_token(entry->groups, group);
 }

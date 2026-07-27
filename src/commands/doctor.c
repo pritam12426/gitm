@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "ansi_color.h"
 #include "cmd.h"
@@ -37,20 +36,24 @@ typedef struct {
 static void doctor_collect(const RepoEntry *entry, void *out)
 {
 	DoctorResult *r = out;
-
-	struct stat st;
-	if (stat(entry->path, &st) != 0) {
-		r->status = "MISSING";
-		r->is_ok  = false;
-	} else if (!S_ISDIR(st.st_mode)) {
-		r->status = "NOT A DIRECTORY";
-		r->is_ok  = false;
-	} else if (!git_is_repo(entry->path)) {
-		r->status = "NOT A GIT REPO";
-		r->is_ok  = false;
-	} else {
+	RepoHealth    h = repo_check_health(entry->path);
+	switch (h) {
+	case REPO_HEALTH_OK:
 		r->status = "ok";
 		r->is_ok  = true;
+		break;
+	case REPO_HEALTH_MISSING:
+		r->status = "MISSING";
+		r->is_ok  = false;
+		break;
+	case REPO_HEALTH_NOT_DIR:
+		r->status = "NOT A DIRECTORY";
+		r->is_ok  = false;
+		break;
+	case REPO_HEALTH_NOT_GIT:
+		r->status = "NOT A GIT REPO";
+		r->is_ok  = false;
+		break;
 	}
 }
 
@@ -63,11 +66,7 @@ static int cmd_doctor(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
-	if (cfg.count == 0) {
-		fprintf(stderr, MSG_NO_REPOS);
-		cmd_cleanup(&cfg, config_path);
-		return 0;
-	}
+	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
 	size_t indices[MAX_REPOS];
 	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, cfg.count);

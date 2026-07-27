@@ -19,6 +19,9 @@
 
 #define INITIAL_ROW_CAP 16
 
+static const char PADDING[] = "                                        "; /* 40 spaces */
+static const char DASHES[]  = "----------------------------------------"; /* 40 dashes */
+
 /* ── ANSI helpers ────────────────────────────────────────────────────────────── */
 
 /* Returns the number of visible characters (skipping ANSI escape sequences). */
@@ -48,6 +51,19 @@ static size_t visible_width(const char *s)
 }
 
 /* ── Table creation ──────────────────────────────────────────────────────────── */
+
+static int table_ensure_capacity(Table *table)
+{
+	if (table->row_count < table->row_capacity)
+		return 0;
+	size_t    new_cap = table->row_capacity ? table->row_capacity * 2 : INITIAL_ROW_CAP;
+	TableRow *tmp     = realloc(table->rows, new_cap * sizeof(TableRow));
+	if (!tmp)
+		return -1;
+	table->rows         = tmp;
+	table->row_capacity = new_cap;
+	return 0;
+}
 
 Table *table_create(int col_count, const char **headers)
 {
@@ -80,14 +96,8 @@ int table_add_row(Table *table, ...)
 	if (!table || table->col_count == 0)
 		return -1;
 
-	if (table->row_count >= table->row_capacity) {
-		size_t    new_cap = table->row_capacity ? table->row_capacity * 2 : INITIAL_ROW_CAP;
-		TableRow *tmp     = realloc(table->rows, new_cap * sizeof(TableRow));
-		if (!tmp)
-			return -1;
-		table->rows         = tmp;
-		table->row_capacity = new_cap;
-	}
+	if (table_ensure_capacity(table) != 0)
+		return -1;
 
 	TableRow *row = &table->rows[table->row_count];
 	row->count    = table->col_count;
@@ -101,6 +111,7 @@ int table_add_row(Table *table, ...)
 			va_end(ap);
 			return -1;
 		}
+		row->widths[i] = visible_width(row->cells[i]);
 	}
 	va_end(ap);
 
@@ -113,14 +124,8 @@ int table_add_row_raw(Table *table, const char **cells, int count)
 	if (!table || !cells || count != table->col_count)
 		return -1;
 
-	if (table->row_count >= table->row_capacity) {
-		size_t    new_cap = table->row_capacity ? table->row_capacity * 2 : INITIAL_ROW_CAP;
-		TableRow *tmp     = realloc(table->rows, new_cap * sizeof(TableRow));
-		if (!tmp)
-			return -1;
-		table->rows         = tmp;
-		table->row_capacity = new_cap;
-	}
+	if (table_ensure_capacity(table) != 0)
+		return -1;
 
 	TableRow *row = &table->rows[table->row_count];
 	row->count    = table->col_count;
@@ -129,6 +134,7 @@ int table_add_row_raw(Table *table, const char **cells, int count)
 		row->cells[i] = cells[i] ? strdup(cells[i]) : strdup("");
 		if (!row->cells[i])
 			return -1;
+		row->widths[i] = visible_width(row->cells[i]);
 	}
 
 	table->row_count++;
@@ -175,9 +181,8 @@ void table_print(const Table *table, FILE *out)
 	/* Row widths */
 	for (size_t r = 0; r < table->row_count; r++) {
 		for (int c = 0; c < table->rows[r].count && c < table->col_count; c++) {
-			size_t w = visible_width(table->rows[r].cells[c]);
-			if (w > widths[c])
-				widths[c] = w;
+			if (table->rows[r].widths[c] > widths[c])
+				widths[c] = table->rows[r].widths[c];
 		}
 	}
 
@@ -197,8 +202,12 @@ void table_print(const Table *table, FILE *out)
 
 			/* Pad header to column width */
 			if (i < table->col_count - 1) {
-				for (size_t p = 0; p < widths[i] - w + 1; p++)
-					fputc(' ', out);
+				size_t pad = widths[i] - w + 1;
+				while (pad > 0) {
+					size_t chunk = pad > sizeof(PADDING) - 1 ? sizeof(PADDING) - 1 : pad;
+					fwrite(PADDING, 1, chunk, out);
+					pad -= chunk;
+				}
 				fputc('|', out);
 				fputc(' ', out);
 			} else {
@@ -209,8 +218,12 @@ void table_print(const Table *table, FILE *out)
 		/* Print separator line */
 		LOG_TRACE("table_print: printing separator line");
 		for (int i = 0; i < table->col_count; i++) {
-			for (size_t j = 0; j < widths[i]; j++)
-				fputc('-', out);
+			size_t w = widths[i];
+			while (w > 0) {
+				size_t chunk = w > sizeof(DASHES) - 1 ? sizeof(DASHES) - 1 : w;
+				fwrite(DASHES, 1, chunk, out);
+				w -= chunk;
+			}
 			if (i < table->col_count - 1) {
 				fputc(' ', out);
 				fputc('+', out);
@@ -227,14 +240,17 @@ void table_print(const Table *table, FILE *out)
 		const TableRow *row = &table->rows[r];
 		for (int c = 0; c < row->count && c < table->col_count; c++) {
 			const char *cell = row->cells[c] ? row->cells[c] : "";
-			size_t      w    = visible_width(cell);
 
 			fputs(cell, out);
 
 			if (c < table->col_count - 1) {
-				size_t padding = (widths[c] > w) ? widths[c] - w : 0;
-				for (size_t p = 0; p < padding + 1; p++)
-					fputc(' ', out);
+				size_t padding = (widths[c] > row->widths[c]) ? widths[c] - row->widths[c] : 0;
+				padding++; /* separator column */
+				while (padding > 0) {
+					size_t chunk = padding > sizeof(PADDING) - 1 ? sizeof(PADDING) - 1 : padding;
+					fwrite(PADDING, 1, chunk, out);
+					padding -= chunk;
+				}
 				fputc('|', out);
 				fputc(' ', out);
 			} else {

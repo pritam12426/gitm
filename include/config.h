@@ -132,6 +132,18 @@ size_t config_find_orphans(const GitConfig *cfg, size_t *out_indices, size_t max
  */
 int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count);
 
+/*
+ * Initialize a RepoEntry's path and name via strdup.
+ * Returns 0 on success, -1 on OOM (entry is cleaned up).
+ */
+int repo_entry_init(RepoEntry *entry, const char *path, const char *name);
+
+/*
+ * Set tags and groups on a RepoEntry from comma-separated strings.
+ * NULL or empty strings result in empty fields.
+ */
+void repo_entry_set_tags_groups(RepoEntry *entry, const char *tags, const char *groups);
+
 
 #ifdef __cplusplus
 }

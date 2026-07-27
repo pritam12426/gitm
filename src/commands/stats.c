@@ -40,11 +40,6 @@ static void freq_map_init(FreqMap *m)
 	m->none_count = 0;
 }
 
-static void freq_map_free(FreqMap *m)
-{
-	(void) m;
-}
-
 static void freq_map_add(FreqMap *m, const char *name)
 {
 	if (!*name) {
@@ -181,11 +176,7 @@ static int cmd_stats(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
-	if (cfg.count == 0) {
-		fprintf(stderr, MSG_NO_REPOS);
-		cmd_cleanup(&cfg, config_path);
-		return 0;
-	}
+	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
 	LOG_TRACE("building tag/group frequency maps for %zu entries", cfg.count);
 
@@ -220,8 +211,6 @@ static int cmd_stats(const ArgParseResult *result)
 		fputc('\n', stderr);
 	}
 
-	freq_map_free(&tags);
-	freq_map_free(&groups);
 	cmd_cleanup(&cfg, config_path);
 	return 0;
 }

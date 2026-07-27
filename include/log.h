@@ -80,6 +80,7 @@ void log_record(Log_level_t level,
  * -------------------------------------------------- */
 
 // Check if messages at the given level would be emitted right now.
+// Uses atomic read for lock-free fast path.
 #define LOG_LEVEL_IS_ENABLED(level) (log_get_level() >= (level))
 
 

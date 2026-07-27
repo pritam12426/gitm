@@ -53,16 +53,8 @@ static void branch_display_table(Table *t, const CmdGitResult *r, const char *re
 		while (*p == ' ')
 			p++;
 
-		const char *start = p;
-		while (*p && *p != '\n')
-			p++;
-
-		size_t len = (size_t) (p - start);
-		char   line[MAX_NAME_LEN];
-		if (len >= sizeof(line))
-			len = sizeof(line) - 1;
-		memcpy(line, start, len);
-		line[len] = '\0';
+		char line[MAX_NAME_LEN];
+		copy_next_line(&p, line, sizeof(line));
 
 		const char *repo_disp  = first ? repo_name : "";
 		bool        is_current = (line[0] == '*');
@@ -85,8 +77,6 @@ static void branch_display_table(Table *t, const CmdGitResult *r, const char *re
 		}
 
 		first = false;
-		if (*p == '\n')
-			p++;
 	}
 }
 
@@ -104,11 +94,7 @@ static int cmd_branch(const ArgParseResult *result)
 
 	LOG_DEBUG("loaded %zu repos from config", cfg.count);
 
-	if (cfg.count == 0) {
-		fprintf(stderr, MSG_NO_REPOS);
-		cmd_cleanup(&cfg, config_path);
-		return 0;
-	}
+	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
 	size_t indices[MAX_REPOS];
 	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);

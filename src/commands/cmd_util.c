@@ -13,9 +13,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <time.h>
 
 #include "ansi_color.h"
 #include "cmd.h"
+#include "git.h"
 #include "log.h"
 #include "share.h"
 
@@ -97,4 +100,59 @@ const char *cmd_resolve_editor(void)
 	if (!editor)
 		editor = getenv("VISUAL");
 	return editor;
+}
+
+int cmd_repo_commit_age(const char *path, char *date_out, size_t date_len, long *days_out)
+{
+	if (git_last_commit_date_into(path, date_out, date_len) != 0)
+		return -1;
+
+	long ts  = parse_date_to_timestamp(date_out);
+	long now = (long) time(NULL);
+	*days_out = (now - ts) / 86400;
+	return 0;
+}
+
+RepoEntry *cmd_find_repo_or_fail(GitConfig *cfg, char *config_path, const char *name)
+{
+	RepoEntry *entry = config_find(cfg, name);
+	if (!entry) {
+		fprintf(stderr, MSG_REPO_NOT_FOUND, name);
+		cmd_cleanup(cfg, config_path);
+	}
+	return entry;
+}
+
+size_t copy_next_line(const char **pp, char *buf, size_t buflen)
+{
+	const char *p = *pp;
+	if (!*p)
+		return 0;
+
+	const char *start = p;
+	while (*p && *p != '\n')
+		p++;
+
+	size_t len = (size_t) (p - start);
+	if (len >= buflen)
+		len = buflen - 1;
+	memcpy(buf, start, len);
+	buf[len] = '\0';
+
+	if (*p == '\n')
+		p++;
+	*pp = p;
+	return len;
+}
+
+RepoHealth repo_check_health(const char *path)
+{
+	struct stat st;
+	if (stat(path, &st) != 0)
+		return REPO_HEALTH_MISSING;
+	if (!S_ISDIR(st.st_mode))
+		return REPO_HEALTH_NOT_DIR;
+	if (!git_is_repo(path))
+		return REPO_HEALTH_NOT_GIT;
+	return REPO_HEALTH_OK;
 }

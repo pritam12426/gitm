@@ -156,6 +156,19 @@ void format_relative_time(char *buf, size_t buflen, long timestamp)
 	}
 }
 
+/* ── String utilities ─────────────────────────────────────────────────────── */
+
+char *strdup_strip_newline(const char *s)
+{
+	char *dup = strdup(s);
+	if (!dup)
+		return NULL;
+	size_t len = strlen(dup);
+	while (len > 0 && (dup[len - 1] == '\n' || dup[len - 1] == '\r'))
+		dup[--len] = '\0';
+	return dup;
+}
+
 /* ── Command config helpers ─────────────────────────────────────────────────── */
 
 int cmd_save_config(GitConfig *cfg, char *config_path)
@@ -170,12 +183,5 @@ int cmd_save_config(GitConfig *cfg, char *config_path)
 
 int cmd_ensure_config_dir(void)
 {
-	char *path = config_default_path();
-	if (!path) {
-		LOG_ERROR(MSG_CFG_PATH_ERR);
-		return -1;
-	}
-	int rc = config_ensure_dir();
-	free(path);
-	return rc;
+	return config_ensure_dir();
 }

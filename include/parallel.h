@@ -65,6 +65,11 @@ int parallel_collect(const GitConfig *cfg,
                      size_t           result_size,
                      void            *results_out);
 
+/*
+ * Release the persistent thread pool. Call once at program exit.
+ */
+void parallel_cleanup(void);
+
 
 #ifdef __cplusplus
 }

@@ -35,12 +35,9 @@ static int cmd_info(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
-	RepoEntry *entry = config_find(&cfg, name);
-	if (!entry) {
-		fprintf(stderr, MSG_REPO_NOT_FOUND, name);
-		cmd_cleanup(&cfg, config_path);
+	RepoEntry *entry = cmd_find_repo_or_fail(&cfg, config_path, name);
+	if (!entry)
 		return 1;
-	}
 
 	fprintf(stderr, "Name:      %s\n", entry->name);
 	fprintf(stderr, "Path:      %s\n", entry->path);
@@ -60,16 +57,7 @@ static int cmd_info(const ArgParseResult *result)
 	ProcessResult r = git_exec(entry->path, "remote", "-v", NULL);
 	if (r.exit_code == 0 && r.stdout_len > 0) {
 		fprintf(stderr, "Remotes:\n");
-		const char *p = r.stdout_buf;
-		while (*p) {
-			fprintf(stderr, "  ");
-			while (*p && *p != '\n')
-				fputc(*p++, stderr);
-			if (*p == '\n') {
-				fputc('\n', stderr);
-				p++;
-			}
-		}
+		fwrite(r.stdout_buf, 1, r.stdout_len, stderr);
 	}
 	process_result_free(&r);
 

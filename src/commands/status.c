@@ -33,6 +33,9 @@ typedef struct {
 	size_t stdout_len;
 	char   branch[MAX_NAME_LEN];
 	char   status_buf[MAX_NAME_LEN];
+	char   sync_buf[64];
+	int    ahead;
+	int    behind;
 	int    exit_code;
 } StatusResult;
 
@@ -71,6 +74,39 @@ static void status_collect(const RepoEntry *entry, void *out)
 	if (r->branch[0] == '\0')
 		snprintf(r->branch, sizeof(r->branch), "-");
 
+	/* Parse ahead/behind from "[ahead N, behind M]" */
+	const char *bracket = p;
+	while (*bracket && *bracket != '[' && *bracket != '\n')
+		bracket++;
+	if (*bracket == '[') {
+		const char *q = bracket + 1;
+		while (*q && *q != ']' && *q != '\n') {
+			if (strncmp(q, "ahead ", 6) == 0) {
+				q += 6;
+				r->ahead = atoi(q);
+				while (*q >= '0' && *q <= '9')
+					q++;
+			} else if (strncmp(q, "behind ", 7) == 0) {
+				q += 7;
+				r->behind = atoi(q);
+				while (*q >= '0' && *q <= '9')
+					q++;
+			} else {
+				q++;
+			}
+		}
+	}
+	if (r->ahead > 0 || r->behind > 0) {
+		int sn = 0;
+		if (r->ahead > 0)
+			sn += snprintf(r->sync_buf + sn, sizeof(r->sync_buf) - (size_t) sn, "%d ahead", r->ahead);
+		if (r->ahead > 0 && r->behind > 0)
+			sn += snprintf(r->sync_buf + sn, sizeof(r->sync_buf) - (size_t) sn, ", ");
+		if (r->behind > 0)
+			sn += snprintf(r->sync_buf + sn, sizeof(r->sync_buf) - (size_t) sn, "%d behind", r->behind);
+		(void) sn;
+	}
+
 	/* Parse status from porcelain lines (skip first branch line) */
 	p = r->stdout_buf;
 	while (*p && *p != '\n')
@@ -108,6 +144,8 @@ static void status_collect(const RepoEntry *entry, void *out)
 	if (other > 0 && (size_t) n < remaining)     n += snprintf(sp + n, remaining - (size_t) n, "%do ", other);
 	if (n > 0)
 		r->status_buf[n - 1] = '\0';
+	else if (r->ahead > 0 || r->behind > 0)
+		snprintf(r->status_buf, sizeof(r->status_buf), "%s", r->sync_buf);
 	else
 		snprintf(r->status_buf, sizeof(r->status_buf), "clean");
 }
@@ -118,28 +156,19 @@ static void status_result_free(StatusResult *r)
 	r->stdout_buf = NULL;
 }
 
-static void print_header(const char *name, const char *path, bool color)
+static void print_header(const char *name, const char *path, const char *sync, bool color)
 {
-	if (color)
-		fprintf(stderr,
-		        "\n%s%s%s%s %s(%s)%s\n",
-		        ANSI_BOLD,
-		        ANSI_FG_CYAN,
-		        name,
-		        ANSI_RESET,
-		        ANSI_DIM,
-		        path,
-		        ANSI_RESET);
-	else
-		fprintf(stderr, "\n%s (%s)\n", name, path);
-}
-
-static void print_clean(bool color)
-{
-	if (color)
-		fprintf(stderr, "  %sgreen%s\n", ANSI_FG_GREEN, ANSI_RESET);
-	else
-		fprintf(stderr, "  clean\n");
+	if (color) {
+		fprintf(stderr, "\n%s%s%s%s %s(%s)%s", ANSI_BOLD, ANSI_FG_CYAN, name, ANSI_RESET, ANSI_DIM, path, ANSI_RESET);
+		if (sync && sync[0])
+			fprintf(stderr, " %s—%s %s%s%s", ANSI_DIM, ANSI_RESET, ANSI_FG_YELLOW, sync, ANSI_RESET);
+		fprintf(stderr, "\n");
+	} else {
+		fprintf(stderr, "\n%s (%s)", name, path);
+		if (sync && sync[0])
+			fprintf(stderr, " — %s", sync);
+		fprintf(stderr, "\n");
+	}
 }
 
 static void print_error(bool color)
@@ -189,11 +218,7 @@ static int cmd_status(const ArgParseResult *result)
 
 	LOG_DEBUG("loaded %zu repos from config", cfg.count);
 
-	if (cfg.count == 0) {
-		fprintf(stderr, MSG_NO_REPOS);
-		cmd_cleanup(&cfg, config_path);
-		return 0;
-	}
+	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
 	size_t indices[MAX_REPOS];
 	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, cfg.count);
@@ -225,7 +250,14 @@ static int cmd_status(const ArgParseResult *result)
 					code = ANSI_FG_RED;
 				char colored[MAX_NAME_LEN];
 				ansi_colorize(colored, sizeof(colored), status_str, code);
-				const char *cells[] = { e->name, colored, r->branch };
+				char display[MAX_NAME_LEN];
+				if (r->ahead > 0 || r->behind > 0) {
+					char sync_colored[MAX_NAME_LEN];
+					ansi_colorize(sync_colored, sizeof(sync_colored), r->sync_buf, ANSI_FG_YELLOW);
+					snprintf(display, sizeof(display), "%s %s", colored, sync_colored);
+				} else
+					snprintf(display, sizeof(display), "%s", colored);
+				const char *cells[] = { e->name, display, r->branch };
 				table_add_row_raw(t, cells, 3);
 			} else {
 				table_add_row(t, e->name, status_str, r->branch);
@@ -239,38 +271,36 @@ static int cmd_status(const ArgParseResult *result)
 			RepoEntry    *e = &cfg.entries[indices[i]];
 			StatusResult *r = &results[i];
 
-			print_header(e->name, e->path, color);
-
 			if (r->exit_code != 0) {
+				print_header(e->name, e->path, NULL, color);
 				print_error(color);
-			} else if (r->stdout_len == 0) {
-				print_clean(color);
-			} else {
-				const char *p = r->stdout_buf;
-				/* Skip branch line */
-				while (*p && *p != '\n')
-					p++;
-				if (*p == '\n')
-					p++;
-
-				while (*p) {
-					const char *start = p;
-					while (*p && *p != '\n')
-						p++;
-
-					char   line[MAX_PATH_LEN];
-					size_t len = (size_t) (p - start);
-					if (len >= sizeof(line))
-						len = sizeof(line) - 1;
-					memcpy(line, start, len);
-					line[len] = '\0';
-
-					print_status_line(line, color);
-
-					if (*p == '\n')
-						p++;
-				}
+				continue;
 			}
+
+			if (!r->stdout_buf || r->stdout_len == 0)
+				continue;
+
+			const char *p = r->stdout_buf;
+			/* Skip branch line */
+			while (*p && *p != '\n')
+				p++;
+			if (*p == '\n')
+				p++;
+
+			bool has_file_changes = (*p != '\0');
+			bool has_sync_info    = (r->ahead > 0 || r->behind > 0);
+
+			if (!has_file_changes && !has_sync_info)
+				continue;
+
+			print_header(e->name, e->path, has_sync_info ? r->sync_buf : NULL, color);
+
+		while (*p) {
+			char line[MAX_PATH_LEN];
+			copy_next_line(&p, line, sizeof(line));
+
+			print_status_line(line, color);
+		}
 		}
 	}
 

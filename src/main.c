@@ -23,6 +23,7 @@
 #include "cmd_util.h"
 #include "config.h"
 #include "log.h"
+#include "parallel.h"
 #include "process.h"
 #include "project_config.h"
 #include "share.h"
@@ -196,6 +197,7 @@ int main(int argc, char *argv[])
 	/* Dispatch command callback (logging is already at correct level) */
 	int dispatch_rc = argparse_dispatch(parser);
 
+	parallel_cleanup();
 	argparse_free(parser);
 	return dispatch_rc != 0 ? dispatch_rc : rc;
 }

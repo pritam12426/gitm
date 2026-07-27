@@ -51,16 +51,8 @@ static void remote_display_table(Table *t, const CmdGitResult *r, const char *re
 	const char *p     = r->stdout_buf;
 	bool        first = true;
 	while (*p) {
-		const char *start = p;
-		while (*p && *p != '\n')
-			p++;
-
-		size_t len = (size_t) (p - start);
-		char   line[MAX_PATH_LEN];
-		if (len >= sizeof(line))
-			len = sizeof(line) - 1;
-		memcpy(line, start, len);
-		line[len] = '\0';
+		char line[MAX_PATH_LEN];
+		copy_next_line(&p, line, sizeof(line));
 
 		char *tab = strchr(line, '\t');
 		if (tab) {
@@ -87,9 +79,6 @@ static void remote_display_table(Table *t, const CmdGitResult *r, const char *re
 			table_add_row_raw(t, cells, 4);
 			first = false;
 		}
-
-		if (*p == '\n')
-			p++;
 	}
 }
 
@@ -107,11 +96,7 @@ static int cmd_remote(const ArgParseResult *result)
 
 	LOG_DEBUG("loaded %zu repos from config", cfg.count);
 
-	if (cfg.count == 0) {
-		fprintf(stderr, MSG_NO_REPOS);
-		cmd_cleanup(&cfg, config_path);
-		return 0;
-	}
+	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
 	size_t indices[MAX_REPOS];
 	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);

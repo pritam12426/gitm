@@ -30,11 +30,7 @@ static int cmd_clean(const ArgParseResult *result)
 	if (cmd_load_config(&cfg, &config_path) != 0)
 		return 1;
 
-	if (cfg.count == 0) {
-		fprintf(stderr, MSG_NO_REPOS);
-		cmd_cleanup(&cfg, config_path);
-		return 0;
-	}
+	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
 	/* Find orphans */
 	size_t orphans[MAX_REPOS];

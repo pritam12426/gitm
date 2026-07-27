@@ -41,20 +41,13 @@ static void recent_collect(const RepoEntry *entry, void *out)
 	r->name         = entry->name;
 	r->path         = entry->path;
 
-	char *date = git_last_commit_date(entry->path);
-	if (date) {
-		size_t len = strlen(date);
-		if (len >= sizeof(r->date_str))
-			len = sizeof(r->date_str) - 1;
-		memcpy(r->date_str, date, len);
-		r->date_str[len] = '\0';
-		r->timestamp     = parse_date_to_timestamp(r->date_str);
-		format_relative_time(r->relative, sizeof(r->relative), r->timestamp);
-		free(date);
-	} else {
+	if (git_last_commit_date_into(entry->path, r->date_str, sizeof(r->date_str)) != 0) {
 		strcpy(r->date_str, "unknown");
 		strcpy(r->relative, "unknown");
 		r->timestamp = 0;
+	} else {
+		r->timestamp = parse_date_to_timestamp(r->date_str);
+		format_relative_time(r->relative, sizeof(r->relative), r->timestamp);
 	}
 }
 
@@ -87,11 +80,7 @@ static int cmd_recent(const ArgParseResult *result)
 
 	LOG_DEBUG("loaded %zu repos from config", cfg.count);
 
-	if (cfg.count == 0) {
-		fprintf(stderr, MSG_NO_REPOS);
-		cmd_cleanup(&cfg, config_path);
-		return 0;
-	}
+	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
 	size_t indices[MAX_REPOS];
 	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);

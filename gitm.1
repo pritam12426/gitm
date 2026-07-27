@@ -2,7 +2,7 @@
 .\"
 .\" SPDX-License-Identifier: MIT
 .\"
-.Dd July 26, 2026
+.Dd July 27, 2026
 .Dt GITM 1
 .Os
 .Sh NAME
@@ -10,7 +10,7 @@
 .Nd multi-repo Git registry manager
 .Sh SYNOPSIS
 .Nm
-.Op Fl hrv
+.Op Fl hv
 .Op Fl L Ar level
 .Op Fl F Ar file
 .Ar command
@@ -122,8 +122,10 @@ is omitted, it is derived from the URL.
 gitm status [-t Ar tag ] [-g Ar group ] [-T]
 .Ed
 .Pp
-Show the status of all registered repositories, including current branch,
-working tree cleanliness, and commit counts.
+Show the status of all registered repositories, including current branch
+and working tree changes.
+Clean repos are omitted by default.
+Repos ahead or behind their remote show sync info.
 .Bl -tag -width Ds
 .It Fl t , Fl -tag Ns = Ns Ar tag
 Filter by tag.
@@ -299,7 +301,7 @@ Filter by group.
 .It Fl T , Fl -table
 Show output in tabular format.
 .El
-.Ss stash (st)
+.Ss stash (sh)
 .Bd -literal -offset indent
 gitm stash [-t Ar tag ] [-g Ar group ] [-T]
 .Ed

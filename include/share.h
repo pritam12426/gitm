@@ -82,6 +82,14 @@ long parse_date_to_timestamp(const char *date_str);
  */
 void format_relative_time(char *buf, size_t buflen, long timestamp);
 
+/* ── String utilities ─────────────────────────────────────────────────────── */
+
+/*
+ * Duplicate a string, stripping trailing newline/carriage return.
+ * Returns a heap-allocated string, or NULL on OOM. Caller must free.
+ */
+char *strdup_strip_newline(const char *s);
+
 /* ── Command config helpers ────────────────────────────────────────────────── */
 
 int cmd_save_config(GitConfig *cfg, char *config_path);

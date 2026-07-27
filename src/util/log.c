@@ -11,6 +11,7 @@
 
 #include "log.h"
 
+#include <stdatomic.h>
 #include <pthread.h>  // pthread_mutex_t, pthread_mutex_lock(), pthread_mutex_unlock()
 #include <stdarg.h>   // va_list, va_start(), va_end()
 #include <stdio.h>    // fprintf(), fopen(), fclose(), fflush(), vfprintf(), stderr
@@ -39,7 +40,7 @@
 // a plain mutex is simpler and slightly faster than a rwlock.
 
 static pthread_mutex_t g_log_mutex  = PTHREAD_MUTEX_INITIALIZER;
-static Log_level_t     g_log_level  = LOG_LEVEL_INFO;
+static _Atomic Log_level_t g_log_level = LOG_LEVEL_INFO;
 static FILE           *g_log_stream = NULL;  // NULL = not yet initialised
 static bool            g_use_color  = false;
 
@@ -154,7 +155,7 @@ void log_init(const char *file_path, Log_level_t level)
 
 		g_log_stream = new_stream;
 		g_use_color  = new_color;
-		g_log_level  = level;
+		atomic_store(&g_log_level, level);
 	}
 	pthread_mutex_unlock(&g_log_mutex);
 }
@@ -163,19 +164,14 @@ void log_init(const char *file_path, Log_level_t level)
 // Set the minimum log level; messages below this are suppressed
 void log_set_level(Log_level_t level)
 {
-	pthread_mutex_lock(&g_log_mutex);
-	g_log_level = level;
-	pthread_mutex_unlock(&g_log_mutex);
+	atomic_store(&g_log_level, level);
 }
 
 
 // Get the current minimum log level
 Log_level_t log_get_level(void)
 {
-	pthread_mutex_lock(&g_log_mutex);
-	Log_level_t level = g_log_level;
-	pthread_mutex_unlock(&g_log_mutex);
-	return level;
+	return atomic_load(&g_log_level);
 }
 
 
@@ -211,40 +207,32 @@ void log_record(Log_level_t level,
 {
 	if (fmt == NULL) return;
 
-	/* Check if initialized (with lock to avoid data race) */
-	pthread_mutex_lock(&g_log_mutex);
-	if (g_log_stream == NULL) {
-		pthread_mutex_unlock(&g_log_mutex);
-
-#ifdef LOG_SHOW_TIME_STAMP
-		fprintf(stderr,
-		        "%s[%s:%d:%s]%s ",
-		        COLOR_DIM,
-		        file,
-		        line,
-		        func,
-		        COLOR_RESET);
-#endif  // defined(LOG_SHOW_SOURCE_LOCATION) && defined(DEBUG)
-
-		fprintf(stderr, COLOR_BOLD_RED "[LOG] error: log_init() not called — dropping message" COLOR_RESET);
-		if (new_line) fputc('\n', stderr);
-		return ;
-	}
-	pthread_mutex_unlock(&g_log_mutex);
-
-	// Take a mutex so only one thread writes at a time
-	// (prevents interleaved log lines from concurrent requests)
 	pthread_mutex_lock(&g_log_mutex);
 	{
-		// Suppress messages below the configured level
-		if (level > g_log_level) {
+		if (g_log_stream == NULL) {
+			pthread_mutex_unlock(&g_log_mutex);
+#ifdef LOG_SHOW_TIME_STAMP
+			fprintf(stderr,
+			        "%s[%s:%d:%s]%s ",
+			        COLOR_DIM,
+			        file,
+			        line,
+			        func,
+			        COLOR_RESET);
+#endif
+			fprintf(stderr, COLOR_BOLD_RED "[LOG] error: log_init() not called — dropping message" COLOR_RESET);
+			if (new_line) fputc('\n', stderr);
+			return;
+		}
+
+		if (level > atomic_load(&g_log_level)) {
 			pthread_mutex_unlock(&g_log_mutex);
 			return;
 		}
 
 #ifdef LOG_SHOW_TIME_STAMP
 		log_time_stamp_handler(g_log_stream, g_use_color);
-#endif  // LOG_SHOW_TIME_STAMP
+#endif
 
 		if (g_use_color)
 			color_log_handler(g_log_stream, level);
@@ -259,7 +247,7 @@ void log_record(Log_level_t level,
 		        line,
 		        func,
 		        g_use_color ? COLOR_RESET : "");
-#endif  // LOG_SHOW_SOURCE_LOCATION
+#endif
 
 		va_list args;
 		va_start(args, fmt);
@@ -268,8 +256,8 @@ void log_record(Log_level_t level,
 
 		if (new_line) fputc('\n', g_log_stream);
 
-		fflush(g_log_stream);
+		if (level <= LOG_LEVEL_ERROR)
+			fflush(g_log_stream);
 	}
-
 	pthread_mutex_unlock(&g_log_mutex);
 }

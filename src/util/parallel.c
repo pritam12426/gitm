@@ -53,6 +53,27 @@ size_t parallel_thread_count(void)
 	return n;
 }
 
+/* Reusable thread pool — created once, resized as needed */
+static ThreadPool *g_pool       = NULL;
+static size_t      g_pool_size  = 0;
+
+static ThreadPool *get_pool(size_t need)
+{
+	if (g_pool && g_pool_size >= need)
+		return g_pool;
+
+	if (g_pool) {
+		tp_destroy(g_pool);
+		g_pool = NULL;
+		g_pool_size = 0;
+	}
+
+	g_pool = tp_create(need);
+	if (g_pool)
+		g_pool_size = need;
+	return g_pool;
+}
+
 
 int parallel_collect(const GitConfig *cfg,
                      const size_t    *indices,
@@ -74,13 +95,12 @@ int parallel_collect(const GitConfig *cfg,
 
 	LOG_DEBUG("parallel_collect: %zu repos across %zu threads", count, n_threads);
 
-	ThreadPool *tp = tp_create(n_threads);
+	ThreadPool *tp = get_pool(n_threads);
 	if (!tp)
 		return -1;
 
 	/* Stack-allocated task descriptors (count <= MAX_REPOS) */
 	CollectTask tasks[MAX_REPOS];
-	memset(tasks, 0, sizeof(CollectTask) * count);
 
 	for (size_t i = 0; i < count; i++) {
 		tasks[i].fn     = collect;
@@ -90,8 +110,16 @@ int parallel_collect(const GitConfig *cfg,
 	}
 
 	tp_wait(tp);
-	tp_destroy(tp);
 
 	LOG_DEBUG("parallel_collect: done");
 	return 0;
+}
+
+void parallel_cleanup(void)
+{
+	if (g_pool) {
+		tp_destroy(g_pool);
+		g_pool      = NULL;
+		g_pool_size = 0;
+	}
 }

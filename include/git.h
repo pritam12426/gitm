@@ -45,12 +45,6 @@ ProcessResult git_exec(const char *cwd, ...);
 ProcessResult git_exec_color(const char *cwd, ...);
 
 /*
- * Convenience: run a git command and return true if exit code is 0.
- * Output is still in result — caller must free.
- */
-ProcessResult git_exec_quiet(const char *cwd, ...);
-
-/*
  * Run a git command, choosing color or plain based on use_color.
  * Equivalent to: use_color ? git_exec_color(...) : git_exec(...)
  */
@@ -61,6 +55,12 @@ ProcessResult git_exec_smart(const char *cwd, int use_color, ...);
  * Returns NULL on error. Caller must free.
  */
 char *git_last_commit_date(const char *path);
+
+/*
+ * Copy the last commit date into a caller-provided buffer (no heap alloc).
+ * Returns 0 on success, -1 on error. buf is always null-terminated.
+ */
+int git_last_commit_date_into(const char *path, char *buf, size_t buflen);
 
 /*
  * Check if a directory is inside a git repository.

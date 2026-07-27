@@ -56,29 +56,12 @@ int config_add(GitConfig *cfg, const char *path, const char *name, const char *t
 
 	/* Resolve to absolute path */
 	char abs_path[PATH_MAX];
-	if (realpath(path, abs_path)) {
-		cfg->entries[cfg->count].path = strdup(abs_path);
-	} else {
-		cfg->entries[cfg->count].path = strdup(path);
-	}
-	cfg->entries[cfg->count].name = strdup(name);
+	const char *resolved = realpath(path, abs_path) ? abs_path : path;
 
-	/* OOM check: clean up on failure */
-	if (!cfg->entries[cfg->count].path || !cfg->entries[cfg->count].name) {
-		free(cfg->entries[cfg->count].path);
-		free(cfg->entries[cfg->count].name);
+	if (repo_entry_init(&cfg->entries[cfg->count], resolved, name) != 0)
 		return -1;
-	}
 
-	/* Zero-init tags/groups before strncpy */
-	cfg->entries[cfg->count].tags[0]   = '\0';
-	cfg->entries[cfg->count].groups[0] = '\0';
-	if (tags)
-		strncpy(cfg->entries[cfg->count].tags, tags, TAG_BUF_SIZE - 1);
-	cfg->entries[cfg->count].tags[TAG_BUF_SIZE - 1] = '\0';
-	if (groups)
-		strncpy(cfg->entries[cfg->count].groups, groups, GROUP_BUF_SIZE - 1);
-	cfg->entries[cfg->count].groups[GROUP_BUF_SIZE - 1] = '\0';
+	repo_entry_set_tags_groups(&cfg->entries[cfg->count], tags, groups);
 	cfg->count++;
 
 	LOG_DEBUG("added entry: %s (%s)", name, path);
@@ -137,7 +120,8 @@ int config_rename(GitConfig *cfg, const char *old_name, const char *new_name)
 		return -1;
 	}
 
-	if (config_has_duplicate_name(cfg, new_name, cfg->count)) {
+	size_t entry_index = (size_t) (entry - cfg->entries);
+	if (config_has_duplicate_name(cfg, new_name, entry_index)) {
 		LOG_ERROR("name already in use: %s", new_name);
 		return -1;
 	}
