@@ -42,7 +42,7 @@ static void stash_collect(const RepoEntry *entry, void *out)
 	r->name        = entry->name;
 	r->path        = entry->path;
 
-	/* Check if working tree is dirty */
+	// Check if working tree is dirty
 	ProcessResult pr = git_exec(entry->path, "status", "--porcelain", NULL);
 
 	if (pr.exit_code != 0) {
@@ -53,7 +53,7 @@ static void stash_collect(const RepoEntry *entry, void *out)
 		return;
 	}
 
-	/* If no output, tree is clean */
+	// If no output, tree is clean
 	if (pr.stdout_len == 0) {
 		r->was_dirty  = false;
 		r->stashed    = false;
@@ -65,7 +65,7 @@ static void stash_collect(const RepoEntry *entry, void *out)
 	r->was_dirty = true;
 	process_result_free(&pr);
 
-	/* Working tree is dirty — run git stash */
+	// Working tree is dirty — run git stash
 	ProcessResult stash_pr = git_exec(entry->path, "stash", NULL);
 
 	if (stash_pr.exit_code == 0 && stash_pr.stdout_len > 0) {
@@ -113,7 +113,7 @@ static int cmd_stash(const ArgParseResult *result)
 	StashResult results[MAX_REPOS] = { 0 };
 	parallel_collect(&cfg, indices, filtered, stash_collect, sizeof(StashResult), results);
 
-	/* Count results */
+	// Count results
 	size_t dirty_count = 0, stashed_count = 0, clean_count = 0;
 	for (size_t i = 0; i < filtered; i++) {
 		if (!results[i].was_dirty)

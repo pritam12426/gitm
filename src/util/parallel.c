@@ -53,7 +53,7 @@ size_t parallel_thread_count(void)
 	return n;
 }
 
-/* Reusable thread pool — created once, resized as needed */
+// Reusable thread pool — created once, resized as needed
 static ThreadPool *g_pool       = NULL;
 static size_t      g_pool_size  = 0;
 
@@ -85,7 +85,7 @@ int parallel_collect(const GitConfig *cfg,
 	if (count == 0)
 		return 0;
 
-	/* Clamp to MAX_REPOS to prevent stack overflow in tasks[] array */
+	// Clamp to MAX_REPOS to prevent stack overflow in tasks[] array
 	if (count > MAX_REPOS)
 		count = MAX_REPOS;
 
@@ -99,7 +99,7 @@ int parallel_collect(const GitConfig *cfg,
 	if (!tp)
 		return -1;
 
-	/* Stack-allocated task descriptors (count <= MAX_REPOS) */
+	// Stack-allocated task descriptors (count <= MAX_REPOS)
 	CollectTask tasks[MAX_REPOS];
 
 	for (size_t i = 0; i < count; i++) {

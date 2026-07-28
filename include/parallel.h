@@ -76,4 +76,4 @@ void parallel_cleanup(void);
 #endif
 
 
-#endif /* _PARALLEL__H_ */
+#endif // _PARALLEL__H_

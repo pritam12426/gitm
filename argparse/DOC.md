@@ -120,7 +120,7 @@ argparse_add_option_exclusive(cmd, "table", 't', ARG_TYPE_NONE, NULL,
 ### Required options
 
 ```c
-ArgOption *opt = /* ... */;
+ArgOption *opt = // ...;
 opt->required = true;
 // Parser errors if option is not provided
 ```

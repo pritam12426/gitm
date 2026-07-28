@@ -47,7 +47,7 @@ static void status_collect(const RepoEntry *entry, void *out)
 	ProcessResult pr = git_exec(entry->path, "status", "--porcelain", "--branch", NULL);
 	r->exit_code     = pr.exit_code;
 
-	/* Steal stdout — prevents double-free */
+	// Steal stdout — prevents double-free
 	r->stdout_buf = pr.stdout_buf;
 	r->stdout_len = pr.stdout_len;
 	pr.stdout_buf = NULL;
@@ -56,7 +56,7 @@ static void status_collect(const RepoEntry *entry, void *out)
 	if (r->exit_code != 0 || r->stdout_len == 0)
 		return;
 
-	/* Parse branch from first line: "## branch-name...[ahead N]" */
+	// Parse branch from first line: "## branch-name...[ahead N]"
 	const char *p = r->stdout_buf;
 	if (p[0] == '#' && p[1] == '#') {
 		p += 2;
@@ -74,7 +74,7 @@ static void status_collect(const RepoEntry *entry, void *out)
 	if (r->branch[0] == '\0')
 		snprintf(r->branch, sizeof(r->branch), "-");
 
-	/* Parse ahead/behind from "[ahead N, behind M]" */
+	// Parse ahead/behind from "[ahead N, behind M]"
 	const char *bracket = p;
 	while (*bracket && *bracket != '[' && *bracket != '\n')
 		bracket++;
@@ -107,7 +107,7 @@ static void status_collect(const RepoEntry *entry, void *out)
 		(void) sn;
 	}
 
-	/* Parse status from porcelain lines (skip first branch line) */
+	// Parse status from porcelain lines (skip first branch line)
 	p = r->stdout_buf;
 	while (*p && *p != '\n')
 		p++;
@@ -225,11 +225,11 @@ static int cmd_status(const ArgParseResult *result)
 
 	LOG_DEBUG("filtered to %zu repos", filtered);
 
-	/* Phase 1: parallel collection (1 git call per repo instead of 2) */
+	// Phase 1: parallel collection (1 git call per repo instead of 2)
 	StatusResult results[MAX_REPOS] = { 0 };
 	parallel_collect(&cfg, indices, filtered, status_collect, sizeof(StatusResult), results);
 
-	/* Phase 2: display sequentially */
+	// Phase 2: display sequentially
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Status", "Branch" };
@@ -281,7 +281,7 @@ static int cmd_status(const ArgParseResult *result)
 				continue;
 
 			const char *p = r->stdout_buf;
-			/* Skip branch line */
+			// Skip branch line
 			while (*p && *p != '\n')
 				p++;
 			if (*p == '\n')
@@ -304,7 +304,7 @@ static int cmd_status(const ArgParseResult *result)
 		}
 	}
 
-	/* Phase 3: cleanup */
+	// Phase 3: cleanup
 	for (size_t i = 0; i < filtered; i++)
 		status_result_free(&results[i]);
 

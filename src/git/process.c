@@ -27,7 +27,7 @@
 
 static int buf_append(char **buf, size_t *len, size_t *cap, const char *data, size_t data_len)
 {
-	/* Guard against size_t overflow */
+	// Guard against size_t overflow
 	if (*len + data_len < *len || *len + data_len + 1 < *len + data_len)
 		return -1;
 
@@ -35,7 +35,7 @@ static int buf_append(char **buf, size_t *len, size_t *cap, const char *data, si
 		size_t need    = *len + data_len + 1;
 		size_t new_cap = (*cap == 0) ? PROCESS_BUF_SIZE : *cap * 2;
 
-		/* Guard against overflow in doubling */
+		// Guard against overflow in doubling
 		if (new_cap < *cap)
 			return -1;
 
@@ -78,7 +78,7 @@ static ProcessResult process_exec_internal(const char *cwd, char *const argv[], 
 
 	LOG_TRACE("exec(%s): %s in %s", force_color ? "color" : "plain", argv[0], cwd ? cwd : "(inherit)");
 
-	/* Ignore SIGPIPE so we don't die if the child exits early */
+	// Ignore SIGPIPE so we don't die if the child exits early
 	struct sigaction sa = { .sa_handler = SIG_IGN };
 	struct sigaction old_sa;
 	sigaction(SIGPIPE, &sa, &old_sa);
@@ -96,7 +96,7 @@ static ProcessResult process_exec_internal(const char *cwd, char *const argv[], 
 	}
 
 	if (pid == 0) {
-		/* Child process */
+		// Child process
 		close(stdout_pipe[0]);
 		close(stderr_pipe[0]);
 
@@ -120,10 +120,10 @@ static ProcessResult process_exec_internal(const char *cwd, char *const argv[], 
 		_exit(EXIT_CMD_NOT_FOUND);
 	}
 
-	/* Restore parent's SIGPIPE disposition */
+	// Restore parent's SIGPIPE disposition
 	sigaction(SIGPIPE, &old_sa, NULL);
 
-	/* Parent process */
+	// Parent process
 	close(stdout_pipe[1]);
 	close(stderr_pipe[1]);
 
@@ -187,7 +187,7 @@ static ProcessResult process_exec_internal(const char *cwd, char *const argv[], 
 	close(stdout_pipe[0]);
 	close(stderr_pipe[0]);
 
-	/* Wait for child */
+	// Wait for child
 	int status = -1;
 	while (waitpid(pid, &status, 0) < 0) {
 		if (errno != EINTR)

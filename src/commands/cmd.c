@@ -12,7 +12,7 @@
 
 #include "log.h"
 
-/* Shared --table flag */
+// Shared --table flag
 bool g_table_mode = false;
 
 void cmd_register_table_flag(ArgCommand *cmd)
@@ -26,7 +26,7 @@ void cmd_register_table_flag(ArgCommand *cmd)
 	                    &g_table_mode);
 }
 
-/* Registration functions (defined in each command file) */
+// Registration functions (defined in each command file)
 
 void cmd_register_all(ArgParser *parser)
 {

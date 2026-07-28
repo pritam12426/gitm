@@ -46,14 +46,14 @@ static int cmd_info(const ArgParseResult *result)
 	if (entry->groups[0])
 		fprintf(stderr, "Groups:    %s\n", entry->groups);
 
-	/* Branch */
+	// Branch
 	char *branch = git_current_branch(entry->path);
 	if (branch) {
 		fprintf(stderr, "Branch:    %s\n", branch);
 		free(branch);
 	}
 
-	/* Remotes */
+	// Remotes
 	ProcessResult r = git_exec(entry->path, "remote", "-v", NULL);
 	if (r.exit_code == 0 && r.stdout_len > 0) {
 		fprintf(stderr, "Remotes:\n");
@@ -61,7 +61,7 @@ static int cmd_info(const ArgParseResult *result)
 	}
 	process_result_free(&r);
 
-	/* Last commit */
+	// Last commit
 	ProcessResult r2 = git_exec(entry->path, "log", "-1", "--format=%h %s (%ar)", NULL);
 	if (r2.exit_code == 0 && r2.stdout_len > 0) {
 		fprintf(stderr, "Last:      %s", r2.stdout_buf);

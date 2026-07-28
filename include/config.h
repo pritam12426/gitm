@@ -35,10 +35,10 @@ extern "C" {
 #define GROUP_BUF_SIZE (MAX_GROUPS * 64)
 
 typedef struct {
-	char *path;                   /* absolute path to the repo */
-	char *name;                   /* user-friendly alias */
-	char  tags[TAG_BUF_SIZE];     /* comma-separated tags, or "" */
-	char  groups[GROUP_BUF_SIZE]; /* comma-separated groups, or "" */
+	char *path;                   // absolute path to the repo
+	char *name;                   // user-friendly alias
+	char  tags[TAG_BUF_SIZE];     // comma-separated tags, or ""
+	char  groups[GROUP_BUF_SIZE]; // comma-separated groups, or ""
 } RepoEntry;
 
 typedef struct GitConfig {

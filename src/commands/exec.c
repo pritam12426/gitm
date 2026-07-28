@@ -41,7 +41,7 @@ static int cmd_exec(const ArgParseResult *result)
 	if (!entry)
 		return 1;
 
-	/* Build git command: "git" + remaining positionals */
+	// Build git command: "git" + remaining positionals
 	const char *git_argv[GIT_MAX_ARGS];
 	int         git_argc = 0;
 	git_argv[git_argc++] = GIT_BINARY;

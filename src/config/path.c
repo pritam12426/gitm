@@ -56,7 +56,7 @@ int config_ensure_dir(void)
 	if (!path)
 		return -1;
 
-	/* Find last '/' to isolate directory portion */
+	// Find last '/' to isolate directory portion
 	char *last_slash = strrchr(path, '/');
 	if (!last_slash) {
 		free(path);
@@ -77,7 +77,7 @@ int config_ensure_dir(void)
 		return -1;
 	}
 
-	/* Create directory (and any missing parents) */
+	// Create directory (and any missing parents)
 	int   rc = 0;
 	char *p  = path;
 	while (*p) {
@@ -94,7 +94,7 @@ int config_ensure_dir(void)
 		}
 		p++;
 	}
-	/* Final component */
+	// Final component
 	if (rc == 0 && mkdir(path, 0755) != 0 && errno != EEXIST) {
 		LOG_ERROR("failed to create config dir: %s: %s", path, strerror(errno));
 		rc = -1;

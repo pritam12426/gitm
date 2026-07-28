@@ -32,7 +32,7 @@ static int cmd_clean(const ArgParseResult *result)
 
 	CMD_RETURN_IF_EMPTY(cfg, config_path);
 
-	/* Find orphans */
+	// Find orphans
 	size_t orphans[MAX_REPOS];
 	size_t orphan_count = config_find_orphans(&cfg, orphans, MAX_REPOS);
 
@@ -44,7 +44,7 @@ static int cmd_clean(const ArgParseResult *result)
 		return 0;
 	}
 
-	/* List orphans */
+	// List orphans
 	fprintf(stderr,
 	        "Found %zu orphaned %s:\n",
 	        orphan_count,
@@ -59,12 +59,12 @@ static int cmd_clean(const ArgParseResult *result)
 		return 0;
 	}
 
-	/* Confirm removal */
+	// Confirm removal
 	fprintf(stderr, "\nRemove %zu %s? [y/N] ", orphan_count, PLURAL(orphan_count, "entry", "entries"));
 	fflush(stderr);
 
 	int ch = getchar();
-	/* Consume rest of line to prevent stale input on next prompt */
+	// Consume rest of line to prevent stale input on next prompt
 	if (ch != EOF && ch != '\n') {
 		int extra;
 		while ((extra = getchar()) != EOF && extra != '\n')
@@ -76,7 +76,7 @@ static int cmd_clean(const ArgParseResult *result)
 		return 0;
 	}
 
-	/* Remove orphans (indices are already in order from config_find_orphans) */
+	// Remove orphans (indices are already in order from config_find_orphans)
 	if (config_remove_at_indices(&cfg, orphans, orphan_count) != 0) {
 		LOG_ERROR("failed to remove orphans");
 		cmd_cleanup(&cfg, config_path);

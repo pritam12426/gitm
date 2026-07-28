@@ -15,7 +15,7 @@
 
 #include <stdlib.h>
 
-/* ── Constructor / destructor ──────────────────────────────────────────────── */
+// ── Constructor / destructor ────────────────────────────────────────────────
 
 ArgParser *argparse_new(const ArgParserConfig *config)
 {
@@ -65,7 +65,7 @@ void argparse_free(ArgParser *parser)
 	free(parser);
 }
 
-/* ── Setters ───────────────────────────────────────────────────────────────── */
+// ── Setters ─────────────────────────────────────────────────────────────────
 
 void argparse_set_description(ArgParser *parser, const char *desc)
 {
@@ -85,7 +85,7 @@ void argparse_set_author(ArgParser *parser, const char *author)
 		parser->author = author;
 }
 
-/* ── Building the command tree ─────────────────────────────────────────────── */
+// ── Building the command tree ───────────────────────────────────────────────
 
 ArgCommand *argparse_add_command(ArgParser   *parser,
                                  const char  *name,
@@ -144,7 +144,7 @@ void argparse_command_set_aliases(ArgCommand *cmd, const char **aliases, int cou
 	cmd->alias_count = count;
 }
 
-/* ── Option building ───────────────────────────────────────────────────────── */
+// ── Option building ─────────────────────────────────────────────────────────
 
 void argparse_add_option(ArgCommand   *command,
                          const char   *long_name,

@@ -11,7 +11,7 @@
  * runtime completion candidate generation (argparse_complete).
  */
 
-#define _POSIX_C_SOURCE 200809L /* for fileno() */
+#define _POSIX_C_SOURCE 200809L // for fileno()
 
 #include "argparse.h"
 #include "argparse_internal.h"
@@ -20,7 +20,7 @@
 #include <string.h>
 #include <unistd.h>
 
-/* ── Bash completion ───────────────────────────────────────────────────────── */
+// ── Bash completion ─────────────────────────────────────────────────────────
 
 static void print_completion_bash(const ArgParser *parser)
 {
@@ -71,7 +71,7 @@ static void print_completion_bash(const ArgParser *parser)
 	printf("complete -F _%s %s\n", prog, prog);
 }
 
-/* ── Zsh completion ────────────────────────────────────────────────────────── */
+// ── Zsh completion ──────────────────────────────────────────────────────────
 
 /* Print a single _arguments option spec line for the given option.
  * Handles short+long pairing, value metavars, and description quoting.
@@ -130,7 +130,7 @@ static void print_completion_zsh(const ArgParser *parser)
 	printf("    local curcontext=\"${curcontext}\" state state_descr line\n");
 	printf("    typeset -A opt_args\n\n");
 
-	/* Global options */
+	// Global options
 	printf("    _arguments -s \\\n");
 	for (int i = 0; i < parser->root.option_count; i++) {
 		zsh_print_option_spec(&parser->root.options[i], true);
@@ -138,10 +138,10 @@ static void print_completion_zsh(const ArgParser *parser)
 	printf("        '1:command:->command' \\\n");
 	printf("        '*::arg:->args'\n\n");
 
-	/* State dispatch */
+	// State dispatch
 	printf("    case $state in\n");
 
-	/* Command name completion */
+	// Command name completion
 	printf("    command)\n");
 	printf("        _values 'command' \\\n");
 	for (int i = 0; i < parser->command_count; i++) {
@@ -151,7 +151,7 @@ static void print_completion_zsh(const ArgParser *parser)
 	}
 	printf("        ;;\n");
 
-	/* Command-specific option completion */
+	// Command-specific option completion
 	printf("    args)\n");
 	printf("        case $words[1] in\n");
 	for (int i = 0; i < parser->command_count; i++) {
@@ -183,7 +183,7 @@ static void print_completion_zsh(const ArgParser *parser)
 	printf("_%s \"$@\"\n", prog);
 }
 
-/* ── Fish completion ───────────────────────────────────────────────────────── */
+// ── Fish completion ─────────────────────────────────────────────────────────
 
 static void print_completion_fish(const ArgParser *parser)
 {
@@ -239,7 +239,7 @@ static void print_completion_fish(const ArgParser *parser)
 	}
 }
 
-/* ── Completion dispatch ───────────────────────────────────────────────────── */
+// ── Completion dispatch ─────────────────────────────────────────────────────
 
 void shell_completion(const ArgParser *parser, const char *shell)
 {
@@ -265,7 +265,7 @@ void shell_completion(const ArgParser *parser, const char *shell)
 	}
 }
 
-/* ── Runtime completion ────────────────────────────────────────────────────── */
+// ── Runtime completion ──────────────────────────────────────────────────────
 
 void argparse_complete(const ArgParser *parser, int argc, char **argv)
 {

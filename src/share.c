@@ -24,7 +24,7 @@
 #include "config.h"
 #include "log.h"
 
-/* ── Config utilities ────────────────────────────────────────────────────────── */
+// ── Config utilities ──────────────────────────────────────────────────────────
 
 int config_ensure_capacity(GitConfig *cfg)
 {
@@ -63,7 +63,7 @@ bool config_has_duplicate_path(const GitConfig *cfg, const char *path, size_t ex
 	return false;
 }
 
-/* ── Command cleanup ─────────────────────────────────────────────────────────── */
+// ── Command cleanup ───────────────────────────────────────────────────────────
 
 void cmd_cleanup(GitConfig *cfg, char *config_path)
 {
@@ -71,7 +71,7 @@ void cmd_cleanup(GitConfig *cfg, char *config_path)
 	free(config_path);
 }
 
-/* ── ANSI color utilities ────────────────────────────────────────────────────── */
+// ── ANSI color utilities ──────────────────────────────────────────────────────
 
 void ansi_colorize(char *buf, size_t buflen, const char *text, const char *code)
 {
@@ -102,7 +102,7 @@ void ansi_print_repo_empty(const char *name, const char *msg, bool color)
 		fprintf(stderr, "\n%s\n  %s\n", name, msg);
 }
 
-/* ── Date parsing ───────────────────────────────────────────────────────────── */
+// ── Date parsing ─────────────────────────────────────────────────────────────
 
 long parse_date_to_timestamp(const char *date_str)
 {
@@ -133,8 +133,9 @@ void format_relative_time(char *buf, size_t buflen, long timestamp)
 	if (diff < 0)
 		diff = 0;
 
-	if (diff < 60)
+	if (diff < 60) {
 		snprintf(buf, buflen, "just now");
+	}
 	else if (diff < 3600) {
 		long v = diff / 60;
 		snprintf(buf, buflen, "%ld min ago", v);
@@ -156,7 +157,7 @@ void format_relative_time(char *buf, size_t buflen, long timestamp)
 	}
 }
 
-/* ── String utilities ─────────────────────────────────────────────────────── */
+// ── String utilities ───────────────────────────────────────────────────────
 
 char *strdup_strip_newline(const char *s)
 {
@@ -169,7 +170,7 @@ char *strdup_strip_newline(const char *s)
 	return dup;
 }
 
-/* ── Command config helpers ─────────────────────────────────────────────────── */
+// ── Command config helpers ───────────────────────────────────────────────────
 
 int cmd_save_config(GitConfig *cfg, char *config_path)
 {

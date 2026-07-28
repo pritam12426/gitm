@@ -17,16 +17,16 @@
 #include "argparse.h"
 
 
-/* Shared --table flag (set by argparse storage pointer) */
+// Shared --table flag (set by argparse storage pointer)
 extern bool g_table_mode;
 
-/* Register all commands on the parser */
+// Register all commands on the parser
 void cmd_register_all(ArgParser *parser);
 
-/* Register the --table flag on a command */
+// Register the --table flag on a command
 void cmd_register_table_flag(ArgCommand *cmd);
 
-/* Individual command registration functions */
+// Individual command registration functions
 void cmd_register_list(ArgParser *parser);
 void cmd_register_add(ArgParser *parser);
 void cmd_register_remove(ArgParser *parser);

@@ -22,7 +22,7 @@
  * and at any subcommand nesting depth.
  */
 
-#define _POSIX_C_SOURCE 200809L /* for fileno() under strict -std=c17 */
+#define _POSIX_C_SOURCE 200809L // for fileno() under strict -std=c17
 
 #include <stdio.h>
 #include <string.h>
@@ -30,9 +30,9 @@
 
 #include "argparse.h"
 
-/* ── Internal ANSI codes ──────────────────────────────────────────────────── */
+// ── Internal ANSI codes ────────────────────────────────────────────────────
 
-static int g_use_color = -1; /* -1 = not detected yet */
+static int g_use_color = -1; // -1 = not detected yet
 
 static void detect_color(void)
 {
@@ -50,9 +50,9 @@ static void detect_color(void)
 
 #define GUTTER_MIN 12
 #define GUTTER_MAX 36
-#define GUTTER_PAD 2 /* spaces between the widest flag string and the description */
+#define GUTTER_PAD 2 // spaces between the widest flag string and the description
 
-/* ── Helpers ───────────────────────────────────────────────────────────────── */
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 static size_t visible_len(const char *s)
 {
@@ -94,7 +94,7 @@ static size_t clamp_width(size_t w)
 	return w;
 }
 
-/* Builds the coloured "-x, --flag=METAVAR" text for a real option. */
+// Builds the coloured "-x, --flag=METAVAR" text for a real option.
 #define APPEND_INTO(buf, bufsz, lenvar, ...)                                     \
 	do {                                                                         \
 		if ((lenvar) < (bufsz)) {                                                \
@@ -102,7 +102,7 @@ static size_t clamp_width(size_t w)
 			if (n > 0)                                                           \
 				(lenvar) += (size_t) n;                                          \
 			if ((lenvar) > (bufsz))                                              \
-				(lenvar) = (bufsz); /* clamp on truncation */                    \
+				(lenvar) = (bufsz); // clamp on truncation                    \
 		}                                                                        \
 	} while (0)
 
@@ -144,7 +144,7 @@ static void build_builtin_flags(
 		APPEND_INTO(buf, bufsz, len, "=%s%s%s", C_DIM, metavar, C_RESET);
 }
 
-/* Builds "name (alias1, alias2)" for a command/subcommand listing. */
+// Builds "name (alias1, alias2)" for a command/subcommand listing.
 static void build_command_label(
     char *buf, size_t bufsz, const char *name, const char *const *aliases, int alias_count)
 {
@@ -249,7 +249,7 @@ static size_t commands_gutter_width(const ArgCommand *const *cmds, int count)
 	return clamp_width(max + GUTTER_PAD);
 }
 
-/* ── Command tree printing ─────────────────────────────────────────────────── */
+// ── Command tree printing ───────────────────────────────────────────────────
 
 static void print_commands_flat(const ArgCommand *cmd, int depth)
 {
@@ -276,7 +276,7 @@ static void print_commands_flat(const ArgCommand *cmd, int depth)
 	}
 }
 
-/* ── Public API ────────────────────────────────────────────────────────────── */
+// ── Public API ──────────────────────────────────────────────────────────────
 
 void argparse_usage(const ArgParser *parser, const ArgCommand *cmd)
 {
@@ -294,7 +294,7 @@ void argparse_usage(const ArgParser *parser, const ArgCommand *cmd)
 		return;
 	}
 
-	/* Build full usage name by walking the parent chain */
+	// Build full usage name by walking the parent chain
 	const ArgCommand *chain[ARGPARSE_MAX_CHAIN_DEPTH];
 	int               chain_len = 0;
 	for (const ArgCommand *p = cmd->parent; p && p->name && p->name[0] != '\0'; p = p->parent) {
@@ -322,7 +322,7 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 {
 	detect_color();
 
-	/* Root command — show global help with commands list */
+	// Root command — show global help with commands list
 	if (cmd == NULL || cmd == &parser->root) {
 		fprintf(stderr,
 		        "%sUsage:%s %s%s [OPTIONS] COMMAND [ARGS]%s\n",
@@ -358,7 +358,7 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 			fprintf(stderr, "\n");
 		}
 
-		/* Global + built-in options, aligned in one block */
+		// Global + built-in options, aligned in one block
 		size_t opt_width
 		    = options_gutter_width(parser->root.options, parser->root.option_count, true);
 
@@ -383,7 +383,7 @@ void argparse_help(const ArgParser *parser, const ArgCommand *cmd)
 			        parser->prog_name,
 			        C_RESET);
 
-		/* Footer */
+		// Footer
 		if (parser->bug_url || parser->author) {
 			fputs(C_DIM, stderr);
 			if (parser->bug_url)

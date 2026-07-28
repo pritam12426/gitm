@@ -299,7 +299,7 @@ ArgCommand *remote_add = argparse_add_subcommand(remote, "add",    "Add a remote
 ArgCommand *remote_rm  = argparse_add_subcommand(remote, "remove", "Remove a remote", cmd_remote_rm);
 ArgCommand *remote_ls  = argparse_add_subcommand(remote, "list",   "List remotes",    cmd_remote_ls);
 
-/* One more level: myapp remote add url origin --type=ssh */
+// One more level: myapp remote add url origin --type=ssh
 ArgCommand *remote_add_url = argparse_add_subcommand(remote_add, "url", "Set the remote URL", cmd_remote_add_url);
 ```
 
@@ -691,27 +691,27 @@ int main(int argc, char *argv[])
     ArgParser *parser = argparse_new(&config);
     if (!parser) return 1;
 
-    /* Global options */
+    // Global options
     argparse_add_option(&parser->root, "dry-run", 'n', ARG_TYPE_NONE,  NULL,
                         "Dry run", &g_dry_run);
     argparse_add_option(&parser->root, "verbose", 'v', ARG_TYPE_COUNT, NULL,
                         "Verbose output", &g_verbose);
 
-    /* Top-level commands */
+    // Top-level commands
     ArgCommand *list_cmd = argparse_add_command(parser, "list", "List items", cmd_list);
     ArgCommand *add_cmd  = argparse_add_command(parser, "add",  "Add an item", cmd_add);
     argparse_add_positional(add_cmd, "NAME");
 
-    /* Aliases */
+    // Aliases
     const char *list_aliases[] = { "ls" };
     argparse_command_set_aliases(list_cmd, list_aliases, 1);
 
-    /* Nested subcommands */
+    // Nested subcommands
     ArgCommand *remote = argparse_add_command(parser, "remote", "Manage remotes", NULL);
     argparse_add_subcommand(remote, "add",  "Add remote",  cmd_remote_add);
     argparse_add_subcommand(remote, "list", "List remotes", cmd_remote_list);
 
-    /* Parse and run */
+    // Parse and run
     int rc = argparse_parse(parser, argc, argv);
     if (rc == 0)
         rc = argparse_dispatch(parser);

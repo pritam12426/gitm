@@ -27,7 +27,7 @@ int config_add(GitConfig *cfg, const char *path, const char *name, const char *t
 		return -1;
 	}
 
-	/* Validate name: must not contain ':' (config file delimiter) */
+	// Validate name: must not contain ':' (config file delimiter)
 	for (const char *p = name; *p; p++) {
 		if (*p == ':') {
 			LOG_ERROR("name contains invalid character ':': %s", name);
@@ -35,7 +35,7 @@ int config_add(GitConfig *cfg, const char *path, const char *name, const char *t
 		}
 	}
 
-	/* Validate path: must be absolute */
+	// Validate path: must be absolute
 	if (path[0] != '/') {
 		LOG_ERROR("path must be absolute: %s", path);
 		return -1;
@@ -54,7 +54,7 @@ int config_add(GitConfig *cfg, const char *path, const char *name, const char *t
 	if (config_ensure_capacity(cfg) != 0)
 		return -1;
 
-	/* Resolve to absolute path */
+	// Resolve to absolute path
 	char abs_path[PATH_MAX];
 	const char *resolved = realpath(path, abs_path) ? abs_path : path;
 
@@ -126,7 +126,7 @@ int config_rename(GitConfig *cfg, const char *old_name, const char *new_name)
 		return -1;
 	}
 
-	/* Save old pointer in case strdup fails */
+	// Save old pointer in case strdup fails
 	char *saved_name = entry->name;
 	char *new_dup    = strdup(new_name);
 	if (!new_dup) {

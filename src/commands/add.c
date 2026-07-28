@@ -37,20 +37,20 @@ static int cmd_add(const ArgParseResult *result)
 
 	LOG_DEBUG("adding repo: path=%s name=%s", repo_path, repo_name ? repo_name : "(auto)");
 
-	/* Validate: is it a git repo? */
+	// Validate: is it a git repo?
 	if (!git_is_repo(repo_path)) {
 		LOG_ERROR("not a git repository: %s", repo_path);
 		return 1;
 	}
 
-	/* Resolve to absolute path */
+	// Resolve to absolute path
 	char abs_path[PATH_MAX];
 	if (realpath(repo_path, abs_path) == NULL) {
 		LOG_ERROR("could not resolve path: %s", repo_path);
 		return 1;
 	}
 
-	/* Derive name from path if not provided */
+	// Derive name from path if not provided
 	char name_buf[MAX_NAME_LEN];
 	if (!repo_name) {
 		const char *base = strrchr(abs_path, '/');

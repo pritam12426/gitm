@@ -73,11 +73,11 @@ static int cmd_doctor(const ArgParseResult *result)
 
 	LOG_DEBUG("running health check on %zu repos", filtered);
 
-	/* Phase 1: parallel collection */
+	// Phase 1: parallel collection
 	DoctorResult results[MAX_REPOS] = { 0 };
 	parallel_collect(&cfg, indices, filtered, doctor_collect, sizeof(DoctorResult), results);
 
-	/* Phase 2: display sequentially */
+	// Phase 2: display sequentially
 	int errors = 0;
 	for (size_t i = 0; i < filtered; i++) {
 		if (!results[i].is_ok)

@@ -41,7 +41,7 @@ typedef struct {
 	pthread_t threads[TP_MAX_THREADS];
 	size_t    thread_count;
 
-	/* Ring buffer task queue */
+	// Ring buffer task queue
 	struct {
 		tp_task_fn fn;
 		void      *arg;
@@ -88,4 +88,4 @@ void tp_destroy(ThreadPool *tp);
 #endif
 
 
-#endif /* _THREAD_POOL__H_ */
+#endif // _THREAD_POOL__H_

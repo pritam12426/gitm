@@ -28,41 +28,34 @@
 #include "project_config.h"
 #include "share.h"
 
-/* Global options (stored on root command) */
+// Global options (stored on root command)
 static bool        g_edit_entry    = false;
 static const char *g_log_level_str = NULL;
 static const char *g_log_file      = NULL;
 
 static Log_level_t parse_log_level(const char *str)
 {
-	if (!str)
-		return LOG_LEVEL_WARN;
-	if (strcmp(str, "off") == 0)
-		return LOG_LEVEL_OFF;
-	if (strcmp(str, "fatal") == 0)
-		return LOG_LEVEL_FATAL;
-	if (strcmp(str, "error") == 0)
-		return LOG_LEVEL_ERROR;
-	if (strcmp(str, "warn") == 0)
-		return LOG_LEVEL_WARN;
-	if (strcmp(str, "info") == 0)
-		return LOG_LEVEL_INFO;
-	if (strcmp(str, "debug") == 0)
-		return LOG_LEVEL_DEBUG;
-	if (strcmp(str, "trace") == 0)
-		return LOG_LEVEL_TRACE;
+	if (!str)                      return LOG_LEVEL_WARN;
+	if (strcmp(str, "off")   == 0) return LOG_LEVEL_OFF;
+	if (strcmp(str, "fatal") == 0) return LOG_LEVEL_FATAL;
+	if (strcmp(str, "error") == 0) return LOG_LEVEL_ERROR;
+	if (strcmp(str, "warn")  == 0) return LOG_LEVEL_WARN;
+	if (strcmp(str, "info")  == 0) return LOG_LEVEL_INFO;
+	if (strcmp(str, "debug") == 0) return LOG_LEVEL_DEBUG;
+	if (strcmp(str, "trace") == 0) return LOG_LEVEL_TRACE;
 
 	fprintf(stderr,
 	        "%s: invalid log level: %s\n"
 	        "Valid levels: off, fatal, error, warn, info, debug, trace\n",
 	        MAIN_BINARY,
 	        str);
+
 	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
 {
-	/* Create parser */
+	// Create parser
 	ArgParserConfig config = {
 		.prog_name   = MAIN_BINARY,
 		.version     = PROJECT_VERSION,
@@ -78,7 +71,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	/* Register global options */
+	// Register global options
 	ArgCommand *root = &parser->root;
 
 	argparse_add_option(root,
@@ -89,8 +82,13 @@ int main(int argc, char *argv[])
 	                    "Set log verbosity: off, fatal, error, warn, info, debug, trace",
 	                    &g_log_level_str);
 
-	argparse_add_option(
-	    root, "log-file", 'F', ARG_TYPE_STRING, "FILE", "Set logging file", &g_log_file);
+	argparse_add_option(root,
+	                    "log-file",
+	                    'F',
+	                    ARG_TYPE_STRING,
+	                    "FILE",
+	                    "Set logging file",
+	                    &g_log_file);
 
 	argparse_add_option(root,
 	                    "edit-entry",
@@ -104,7 +102,7 @@ int main(int argc, char *argv[])
 	 * Re-init after parsing if user specified different options. */
 	log_init(NULL, LOG_LEVEL_WARN);
 
-	/* Verify git is available before doing anything else */
+	// Verify git is available before doing anything else
 	{
 		ProcessResult r = process_exec(NULL, (char *const[]) { GIT_BINARY, "--version", NULL });
 		if (r.exit_code != 0) {
@@ -115,14 +113,14 @@ int main(int argc, char *argv[])
 		process_result_free(&r);
 	}
 
-	/* Register all subcommands */
+	// Register all subcommands
 	cmd_register_all(parser);
 	LOG_DEBUG("logging initialized at INFO level");
 
-	/* Parse only — no dispatch yet */
+	// Parse only — no dispatch yet
 	int rc = argparse_parse(parser, argc, argv);
 
-	/* Re-init logging with user-specified options */
+	// Re-init logging with user-specified options
 	log_init(g_log_file, parse_log_level(g_log_level_str));
 
 	if (LOG_LEVEL_IS_ENABLED(LOG_LEVEL_DEBUG)) {
@@ -139,7 +137,7 @@ int main(int argc, char *argv[])
 	          g_log_level_str ? g_log_level_str : "info",
 	          g_log_file ? g_log_file : "(stderr)");
 
-	/* Handle --edit-entry before dispatching to commands */
+	// Handle --edit-entry before dispatching to commands
 	if (g_edit_entry) {
 		LOG_TRACE("handling --edit-entry");
 		char *path = config_default_path();
@@ -171,12 +169,12 @@ int main(int argc, char *argv[])
 		}
 
 		if (pid == 0) {
-			/* Child: exec editor with config path */
+			// Child: exec editor with config path
 			execlp(editor, editor, path, (char *) NULL);
 			_exit(EXIT_CMD_NOT_FOUND);
 		}
 
-		/* Parent: wait for editor to exit */
+		// Parent: wait for editor to exit
 		int status;
 		waitpid(pid, &status, 0);
 
@@ -194,7 +192,7 @@ int main(int argc, char *argv[])
 		argparse_help(parser, NULL);
 	}
 
-	/* Dispatch command callback (logging is already at correct level) */
+	// Dispatch command callback (logging is already at correct level)
 	int dispatch_rc = argparse_dispatch(parser);
 
 	parallel_cleanup();

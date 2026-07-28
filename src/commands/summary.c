@@ -70,7 +70,7 @@ static int count_branches(const char *path)
 				count++;
 			p++;
 		}
-		/* Count last line if it doesn't end with newline */
+		// Count last line if it doesn't end with newline
 		if (r.stdout_len > 0 && r.stdout_buf[r.stdout_len - 1] != '\n')
 			count++;
 	}
@@ -119,11 +119,11 @@ static int cmd_summary(const ArgParseResult *result)
 
 	LOG_DEBUG("computing summary for %zu repos", filtered);
 
-	/* Phase 1: parallel collection */
+	// Phase 1: parallel collection
 	SummaryResult results[MAX_REPOS] = { 0 };
 	parallel_collect(&cfg, indices, filtered, summary_collect, sizeof(SummaryResult), results);
 
-	/* Phase 2: aggregate sequentially */
+	// Phase 2: aggregate sequentially
 	int  total_branches = 0;
 	long total_size     = 0;
 

@@ -51,7 +51,7 @@ static void recent_collect(const RepoEntry *entry, void *out)
 	}
 }
 
-/* Sort key for decorating results before qsort */
+// Sort key for decorating results before qsort
 typedef struct {
 	size_t result_index;
 	long   timestamp;
@@ -85,7 +85,7 @@ static int cmd_recent(const ArgParseResult *result)
 	size_t indices[MAX_REPOS];
 	size_t filtered = cmd_filter_entries(&cfg, filter_tag, filter_group, indices, MAX_REPOS);
 
-	/* Phase 1: parallel collection */
+	// Phase 1: parallel collection
 	RecentResult results[MAX_REPOS] = { 0 };
 	if (parallel_collect(&cfg, indices, filtered, recent_collect, sizeof(RecentResult), results)
 	    != 0) {
@@ -94,7 +94,7 @@ static int cmd_recent(const ArgParseResult *result)
 		return 1;
 	}
 
-	/* Phase 2: sort by timestamp (most recent first) */
+	// Phase 2: sort by timestamp (most recent first)
 	SortKey keys[MAX_REPOS];
 	for (size_t i = 0; i < filtered; i++) {
 		keys[i].result_index = i;
@@ -103,7 +103,7 @@ static int cmd_recent(const ArgParseResult *result)
 	qsort(keys, filtered, sizeof(SortKey), cmp_sort_key);
 	LOG_DEBUG("sorted %zu repos by commit date", filtered);
 
-	/* Phase 3: display in sorted order */
+	// Phase 3: display in sorted order
 	if (g_table_mode) {
 		LOG_DEBUG("table mode enabled");
 		const char *headers[] = { "Name", "Path", "Last Commit Relative", "Last Commit" };

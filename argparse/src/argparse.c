@@ -34,7 +34,7 @@
  * options are only visible once we've actually entered it.
  */
 
-#define _POSIX_C_SOURCE 200809L /* for fileno() under strict -std=c17 */
+#define _POSIX_C_SOURCE 200809L // for fileno() under strict -std=c17
 
 #include "argparse.h"
 #include "argparse_internal.h"
@@ -47,9 +47,9 @@
 #include "error.h"
 #include "lexer.h"
 
-/* ── Colour support for validation messages ───────────────────────────────── */
+// ── Colour support for validation messages ─────────────────────────────────
 
-static int g_val_use_color = -1; /* -1 = not detected yet */
+static int g_val_use_color = -1; // -1 = not detected yet
 
 static void detect_val_color(void)
 {
@@ -62,7 +62,7 @@ static void detect_val_color(void)
 #define V_C_BOLD     (g_val_use_color ? "\x1b[1m" : "")
 #define V_C_BOLD_RED (g_val_use_color ? "\x1b[1;31m" : "")
 
-/* ── Option lookup ─────────────────────────────────────────────────────────── */
+// ── Option lookup ───────────────────────────────────────────────────────────
 
 static ArgOption *find_option_long(ArgCommand *cmd, const char *name)
 {
@@ -106,14 +106,14 @@ static ArgOption *find_option_short_chain(ArgCommand *cmd, char name)
 	return NULL;
 }
 
-/* ── Default value initialization ──────────────────────────────────────────── */
+// ── Default value initialization ────────────────────────────────────────────
 
 static void apply_defaults(ArgCommand *cmd)
 {
 	for (int i = 0; i < cmd->option_count; i++) {
 		ArgOption *opt = &cmd->options[i];
 
-		/* Apply env var fallback first (env < default < CLI) */
+		// Apply env var fallback first (env < default < CLI)
 		if (opt->env_var && !opt->was_set) {
 			const char *env_val = getenv(opt->env_var);
 			if (env_val) {
@@ -134,7 +134,7 @@ static void apply_defaults(ArgCommand *cmd)
 			}
 		}
 
-		/* Apply default value */
+		// Apply default value
 		if (opt->default_val && !opt->was_set) {
 			switch (opt->type) {
 			case ARG_TYPE_STRING:
@@ -153,7 +153,7 @@ static void apply_defaults(ArgCommand *cmd)
 	}
 }
 
-/* ── Exclusive group validation ────────────────────────────────────────────── */
+// ── Exclusive group validation ──────────────────────────────────────────────
 
 static int validate_exclusive(ArgParser *parser, ArgCommand *cmd)
 {
@@ -181,7 +181,7 @@ static int validate_exclusive(ArgParser *parser, ArgCommand *cmd)
 	return 0;
 }
 
-/* ── Required options validation ───────────────────────────────────────────── */
+// ── Required options validation ─────────────────────────────────────────────
 
 static int validate_required(ArgParser *parser, ArgCommand *cmd)
 {
@@ -212,7 +212,7 @@ static int validate_required(ArgParser *parser, ArgCommand *cmd)
 	return 0;
 }
 
-/* ── Command matching ──────────────────────────────────────────────────────── */
+// ── Command matching ────────────────────────────────────────────────────────
 
 ArgCommand *match_command(ArgParser *parser, const char *name)
 {
@@ -253,7 +253,7 @@ static const char *chain_program_name(const ArgParser *parser, const ArgCommand 
 	return (cmd == &parser->root) ? parser->prog_name : cmd->name;
 }
 
-/* ── Token processing ──────────────────────────────────────────────────────── */
+// ── Token processing ────────────────────────────────────────────────────────
 
 /*
  * Single forward pass over the whole token stream. `current` starts at
@@ -281,7 +281,7 @@ static int parse_tokens(ArgParser      *parser,
 			return 0;
 
 		case TOKEN_LONG_OPTION: {
-			const char *raw = tok.value + 2; /* skip "--" */
+			const char *raw = tok.value + 2; // skip "--"
 
 			char        key[256] = { 0 };
 			const char *eq       = strchr(raw, '=');
@@ -373,7 +373,7 @@ static int parse_tokens(ArgParser      *parser,
 		}
 
 		case TOKEN_SHORT_OPTION: {
-			const char *flags = tok.value + 1; /* skip "-" */
+			const char *flags = tok.value + 1; // skip "-"
 
 			for (size_t i = 0; flags[i] != '\0'; i++) {
 				char c = flags[i];
@@ -394,7 +394,7 @@ static int parse_tokens(ArgParser      *parser,
 				if (!opt && c == 'S') {
 					const char *shell;
 					if (flags[i + 1] != '\0') {
-						/* Attached: -Sbash */
+						// Attached: -Sbash
 						shell = &flags[i + 1];
 					} else {
 						Token vtok = lexer_next(lex);
@@ -435,7 +435,7 @@ static int parse_tokens(ArgParser      *parser,
 				case ARG_TYPE_INT:
 				case ARG_TYPE_STRING: {
 					if (flags[i + 1] != '\0') {
-						/* Attached value: -Ldebug, -j4 */
+						// Attached value: -Ldebug, -j4
 						if (opt->storage) {
 							if (opt->type == ARG_TYPE_INT)
 								*(int *) opt->storage = atoi(&flags[i + 1]);
@@ -469,7 +469,7 @@ static int parse_tokens(ArgParser      *parser,
 		}
 
 		case TOKEN_POSITIONAL: {
-			/* Tokens after "--" are raw data, never subcommands. */
+			// Tokens after "--" are raw data, never subcommands.
 			if (lex->stop_options) {
 				if (result->rest_count < ARGPARSE_MAX_POSITIONAL)
 					result->rest[result->rest_count++] = tok.value;
@@ -515,7 +515,7 @@ static int parse_tokens(ArgParser      *parser,
 	}
 }
 
-/* ── Main parse entry point ────────────────────────────────────────────────── */
+// ── Main parse entry point ──────────────────────────────────────────────────
 
 int argparse_parse(ArgParser *parser, int argc, char **argv)
 {
@@ -524,7 +524,7 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 
 	Lexer lex;
 	lexer_init(&lex, argc, argv);
-	lexer_next(&lex); /* skip argv[0] (program name) */
+	lexer_next(&lex); // skip argv[0] (program name)
 
 	ArgParseResult result = { 0 };
 	result.parser         = parser;
@@ -539,7 +539,7 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 	int rc = parse_tokens(parser, &lex, &result, chain, &chain_len, &current);
 
 	if (rc == -2 || rc == -3 || rc == -4) {
-		/* help, version, or shell-completion was already printed */
+		// help, version, or shell-completion was already printed
 		parser->matched_command    = NULL;
 		parser->matched_subcommand = NULL;
 		return 0;
@@ -568,18 +568,18 @@ int argparse_parse(ArgParser *parser, int argc, char **argv)
 
 	result.command = current;
 
-	/* Store for dispatch — caller calls argparse_dispatch() after re-init */
+	// Store for dispatch — caller calls argparse_dispatch() after re-init
 	parser->dispatch_cmd    = current;
 	parser->dispatch_result = malloc(sizeof(*parser->dispatch_result));
 	if (!parser->dispatch_result)
 		return -1;
 	memcpy(parser->dispatch_result, &result, sizeof(result));
 
-	/* No callback — return 0, let caller decide what to do */
+	// No callback — return 0, let caller decide what to do
 	return 0;
 }
 
-/* ── Dispatch ──────────────────────────────────────────────────────────────── */
+// ── Dispatch ────────────────────────────────────────────────────────────────
 
 int argparse_dispatch(ArgParser *parser)
 {

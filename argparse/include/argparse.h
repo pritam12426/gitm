@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-/* ── Limits ─────────────────────────────────────────────────────────────────── */
+// ── Limits ───────────────────────────────────────────────────────────────────
 
 #define ARGPARSE_MAX_OPTIONS          32
 #define ARGPARSE_MAX_COMMANDS         32
@@ -42,44 +42,44 @@ extern "C" {
 #define ARGPARSE_MAX_LINE_LEN         1024
 #define ARGPARSE_MAX_ALIASES          4
 #define ARGPARSE_MAX_EXCLUSIVE_GROUPS 8
-#define ARGPARSE_MAX_CHAIN_DEPTH      16 /* root + command + arbitrarily nested subcommands */
+#define ARGPARSE_MAX_CHAIN_DEPTH      16 //root + command + arbitrarily nested subcommands
 
-/* ── Option types ───────────────────────────────────────────────────────────── */
+// ── Option types ─────────────────────────────────────────────────────────────
 
 typedef enum {
-	ARG_TYPE_NONE,   /* boolean flag (no value) */
-	ARG_TYPE_STRING, /* takes a string value */
-	ARG_TYPE_INT,    /* takes an integer value */
-	ARG_TYPE_COUNT,  /* increments a counter */
+	ARG_TYPE_NONE,   // boolean flag (no value)
+	ARG_TYPE_STRING, // takes a string value
+	ARG_TYPE_INT,    // takes an integer value
+	ARG_TYPE_COUNT,  // increments a counter
 } ArgOptionType;
 
-/* ── Option ─────────────────────────────────────────────────────────────────── */
+// ── Option ───────────────────────────────────────────────────────────────────
 
 typedef struct ArgOption {
-	const char   *long_name;  /* "--name" (without --) */
-	char          short_name; /* 'n' or '\0' if no short form */
+	const char   *long_name;  // "--name" (without --)
+	char          short_name; // 'n' or '\0' if no short form
 	const char   *description;
-	const char   *metavar; /* placeholder for help text, e.g. "FILE" */
+	const char   *metavar;    // placeholder for help text, e.g. "FILE"
 	ArgOptionType type;
 	bool          required;
-	const char   *default_val;     /* string representation of default */
-	const char   *env_var;         /* environment variable fallback, e.g. "EDITOR" */
-	int           exclusive_group; /* 0 = none, >0 = group ID */
+	const char   *default_val;     // string representation of default
+	const char   *env_var;         // environment variable fallback, e.g. "EDITOR" */
+	int           exclusive_group; // 0 = none, >0 = group ID
 
-	/* Storage pointers — caller owns the memory */
-	void *storage; /* bool*, int*, or char** */
+	// Storage pointers — caller owns the memory
+	void *storage; // bool*, int*, or char**
 
-	/* Internal: set by parser to track if option was explicitly provided */
+	// Internal: set by parser to track if option was explicitly provided
 	bool was_set;
 } ArgOption;
 
-/* ── Command callback ───────────────────────────────────────────────────────── */
+// ── Command callback ─────────────────────────────────────────────────────────
 
 typedef struct ArgParseResult ArgParseResult;
 
 typedef int (*arg_callback)(const ArgParseResult *result);
 
-/* ── Command ────────────────────────────────────────────────────────────────── */
+// ── Command ──────────────────────────────────────────────────────────────────
 
 typedef struct ArgCommand {
 	const char  *name;
@@ -89,16 +89,16 @@ typedef struct ArgCommand {
 	ArgOption options[ARGPARSE_MAX_OPTIONS];
 	int       option_count;
 
-	/* Positional argument names (for help display) */
+	// Positional argument names (for help display)
 	const char *positionals[ARGPARSE_MAX_POSITIONAL];
 	int         positional_count;
-	bool        takes_rest; /* remaining args go to "args" */
+	bool        takes_rest; // remaining args go to "args"
 
-	/* Aliases (e.g., "st" for "status") */
+	// Aliases (e.g., "st" for "status")
 	const char *aliases[ARGPARSE_MAX_ALIASES];
 	int         alias_count;
 
-	/* Nested subcommands */
+	// Nested subcommands
 	struct ArgCommand *subcommands[ARGPARSE_MAX_COMMANDS];
 	int                subcommand_count;
 
@@ -112,17 +112,17 @@ typedef struct ArgCommand {
 	struct ArgCommand *parent;
 } ArgCommand;
 
-/* ── Parser configuration (all program metadata in one place) ──────────────── */
+// ── Parser configuration (all program metadata in one place) ────────────────
 
 typedef struct ArgParserConfig {
-	const char *prog_name;   /* required: program name */
-	const char *version;     /* required: version string */
-	const char *description; /* one-line description */
-	const char *bug_url;     /* "Report bugs to: <url>" */
-	const char *author;      /* "Author: <name>" */
+	const char *prog_name;   // required: program name
+	const char *version;     // required: version string
+	const char *description; // one-line description
+	const char *bug_url;     // "Report bugs to: <url>"
+	const char *author;      // "Author: <name>"
 } ArgParserConfig;
 
-/* ── Parser ─────────────────────────────────────────────────────────────────── */
+// ── Parser ───────────────────────────────────────────────────────────────────
 
 typedef struct ArgParser {
 	const char *prog_name;
@@ -131,65 +131,65 @@ typedef struct ArgParser {
 	const char *bug_url;
 	const char *author;
 
-	ArgCommand root; /* root command (global options) */
+	ArgCommand root; // root command (global options)
 	ArgCommand commands[ARGPARSE_MAX_COMMANDS];
 	int        command_count;
 
-	/* Filled after parse */
+	// Filled after parse
 	ArgCommand *matched_command;
-	ArgCommand *matched_subcommand; /* deepest matched subcommand */
+	ArgCommand *matched_subcommand; // deepest matched subcommand
 	int         argc;
 	char      **argv;
 
-	/* Stored for dispatch — caller uses argparse_dispatch() after parse */
+	// Stored for dispatch — caller uses argparse_dispatch() after parse
 	ArgCommand    *dispatch_cmd;
 	ArgParseResult *dispatch_result;
 } ArgParser;
 
-/* ── Parse result ───────────────────────────────────────────────────────────── */
+// ── Parse result ─────────────────────────────────────────────────────────────
 
 struct ArgParseResult {
 	ArgParser  *parser;
-	ArgCommand *command; /* deepest matched command */
+	ArgCommand *command; // deepest matched command
 	int         argc;
 	char      **argv;
 
-	/* Positional arguments */
+	// Positional arguments
 	const char *positionals[ARGPARSE_MAX_POSITIONAL];
 	int         positional_count;
 
-	/* Remaining args (after --) */
+	// Remaining args (after --)
 	const char *rest[ARGPARSE_MAX_POSITIONAL];
 	int         rest_count;
 };
 
-/* ── Public API ─────────────────────────────────────────────────────────────── */
+// ── Public API ───────────────────────────────────────────────────────────────
 
-/* Create / destroy */
+// Create / destroy
 ArgParser *argparse_new(const ArgParserConfig *config);
 void argparse_free(ArgParser *parser);
 
-/* Set individual metadata fields (optional, if not using config) */
+// Set individual metadata fields (optional, if not using config)
 void argparse_set_description(ArgParser *parser, const char *desc);
 void argparse_set_bug_url(ArgParser *parser, const char *url);
 void argparse_set_author(ArgParser *parser, const char *author);
 
-/* Add a top-level subcommand */
+// Add a top-level subcommand
 ArgCommand *argparse_add_command(ArgParser   *parser,
                                  const char  *name,
                                  const char  *description,
                                  arg_callback callback);
 
-/* Add a nested subcommand under a parent command */
+// Add a nested subcommand under a parent command
 ArgCommand *argparse_add_subcommand(ArgCommand  *parent,
                                     const char  *name,
                                     const char  *description,
                                     arg_callback callback);
 
-/* Set aliases for a command */
+// Set aliases for a command
 void argparse_command_set_aliases(ArgCommand *cmd, const char **aliases, int count);
 
-/* Add an option to a command (use &parser->root for global options) */
+// Add an option to a command (use &parser->root for global options)
 void argparse_add_option(ArgCommand   *command,
                          const char   *long_name,
                          char          short_name,
@@ -198,7 +198,7 @@ void argparse_add_option(ArgCommand   *command,
                          const char   *description,
                          void         *storage);
 
-/* Add an option with environment variable fallback */
+// Add an option with environment variable fallback
 void argparse_add_option_with_env(ArgCommand   *command,
                                   const char   *long_name,
                                   char          short_name,
@@ -208,7 +208,7 @@ void argparse_add_option_with_env(ArgCommand   *command,
                                   void         *storage,
                                   const char   *env_var);
 
-/* Add an option to a mutually exclusive group */
+// Add an option to a mutually exclusive group
 void argparse_add_option_exclusive(ArgCommand   *command,
                                    const char   *long_name,
                                    char          short_name,
@@ -218,23 +218,23 @@ void argparse_add_option_exclusive(ArgCommand   *command,
                                    void         *storage,
                                    int           exclusive_group);
 
-/* Mark a command's positional arg name (for help text) */
+// Mark a command's positional arg name (for help text)
 void argparse_add_positional(ArgCommand *command, const char *name);
 
-/* Parse argv. Returns 0 on success, -1 on error, -2 for help, -3 for version. */
+// Parse argv. Returns 0 on success, -1 on error, -2 for help, -3 for version.
 int argparse_parse(ArgParser *parser, int argc, char **argv);
 
 /* Dispatch the matched command's callback. Call after argparse_parse().
  * Returns the callback's return value, or 0 if no callback was matched. */
 int argparse_dispatch(ArgParser *parser);
 
-/* Print usage line for a command (or global usage if cmd is NULL) */
+// Print usage line for a command (or global usage if cmd is NULL)
 void argparse_usage(const ArgParser *parser, const ArgCommand *cmd);
 
-/* Print help for a command (or global help if cmd is NULL) */
+// Print help for a command (or global help if cmd is NULL)
 void argparse_help(const ArgParser *parser, const ArgCommand *cmd);
 
-/* Generate shell completion candidates */
+// Generate shell completion candidates
 void argparse_complete(const ArgParser *parser, int argc, char **argv);
 
 #ifdef __cplusplus

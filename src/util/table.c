@@ -19,12 +19,12 @@
 
 #define INITIAL_ROW_CAP 16
 
-static const char PADDING[] = "                                        "; /* 40 spaces */
-static const char DASHES[]  = "----------------------------------------"; /* 40 dashes */
+static const char PADDING[] = "                                        "; // 40 spaces
+static const char DASHES[]  = "----------------------------------------"; // 40 dashes
 
-/* ── ANSI helpers ────────────────────────────────────────────────────────────── */
+// ── ANSI helpers ──────────────────────────────────────────────────────────────
 
-/* Returns the number of visible characters (skipping ANSI escape sequences). */
+// Returns the number of visible characters (skipping ANSI escape sequences).
 static size_t visible_width(const char *s)
 {
 	if (!s)
@@ -35,12 +35,12 @@ static size_t visible_width(const char *s)
 
 	while (*p) {
 		if (*p == '\x1b' && *(p + 1) == '[') {
-			/* Skip ANSI escape sequence: \x1b[ ... letter */
+			// Skip ANSI escape sequence: \x1b[ ... letter
 			p += 2;
 			while (*p && ((*p >= '0' && *p <= '?') || *p == ';' || *p == ' '))
 				p++;
 			if (*p)
-				p++; /* skip the final letter (e.g. 'm') */
+				p++; // skip the final letter (e.g. 'm')
 		} else {
 			width++;
 			p++;
@@ -50,7 +50,7 @@ static size_t visible_width(const char *s)
 	return width;
 }
 
-/* ── Table creation ──────────────────────────────────────────────────────────── */
+// ── Table creation ────────────────────────────────────────────────────────────
 
 static int table_ensure_capacity(Table *table)
 {
@@ -69,7 +69,7 @@ Table *table_create(int col_count, const char **headers)
 {
 	LOG_TRACE("table_create(%d cols)", col_count);
 
-	/* Clamp to maximum supported columns */
+	// Clamp to maximum supported columns
 	if (col_count > 8)
 		col_count = 8;
 	if (col_count < 0)
@@ -81,7 +81,7 @@ Table *table_create(int col_count, const char **headers)
 
 	t->col_count   = col_count;
 	t->show_header = (headers != NULL);
-	t->use_color   = isatty(fileno(stdout)); /* default: auto-detect */
+	t->use_color   = isatty(fileno(stdout)); // default: auto-detect
 
 	if (headers) {
 		for (int i = 0; i < col_count && i < 8; i++)
@@ -153,7 +153,7 @@ void table_set_color(Table *table, bool use_color)
 		table->use_color = use_color;
 }
 
-/* ── Printing ────────────────────────────────────────────────────────────────── */
+// ── Printing ──────────────────────────────────────────────────────────────────
 
 void table_print(const Table *table, FILE *out)
 {
@@ -164,10 +164,10 @@ void table_print(const Table *table, FILE *out)
 	          table->col_count,
 	          table->row_count);
 
-	/* Calculate max width per column — stack, no heap */
+	// Calculate max width per column — stack, no heap
 	size_t widths[8] = { 0 };
 
-	/* Header widths */
+	// Header widths
 	if (table->show_header) {
 		for (int i = 0; i < table->col_count && i < 8; i++) {
 			if (!table->headers[i])
@@ -178,7 +178,7 @@ void table_print(const Table *table, FILE *out)
 		}
 	}
 
-	/* Row widths */
+	// Row widths
 	for (size_t r = 0; r < table->row_count; r++) {
 		for (int c = 0; c < table->rows[r].count && c < table->col_count; c++) {
 			if (table->rows[r].widths[c] > widths[c])
@@ -186,7 +186,7 @@ void table_print(const Table *table, FILE *out)
 		}
 	}
 
-	/* Print header */
+	// Print header
 	if (table->show_header) {
 		LOG_TRACE("table_print: printing header");
 		for (int i = 0; i < table->col_count; i++) {
@@ -200,7 +200,7 @@ void table_print(const Table *table, FILE *out)
 			else
 				fputs(hdr, out);
 
-			/* Pad header to column width */
+			// Pad header to column width
 			if (i < table->col_count - 1) {
 				size_t pad = widths[i] - w + 1;
 				while (pad > 0) {
@@ -215,7 +215,7 @@ void table_print(const Table *table, FILE *out)
 			}
 		}
 
-		/* Print separator line */
+		// Print separator line
 		LOG_TRACE("table_print: printing separator line");
 		for (int i = 0; i < table->col_count; i++) {
 			size_t w = widths[i];
@@ -234,7 +234,7 @@ void table_print(const Table *table, FILE *out)
 		}
 	}
 
-	/* Print rows */
+	// Print rows
 	LOG_TRACE("table_print: printing %zu data rows", table->row_count);
 	for (size_t r = 0; r < table->row_count; r++) {
 		const TableRow *row = &table->rows[r];
@@ -245,7 +245,7 @@ void table_print(const Table *table, FILE *out)
 
 			if (c < table->col_count - 1) {
 				size_t padding = (widths[c] > row->widths[c]) ? widths[c] - row->widths[c] : 0;
-				padding++; /* separator column */
+				padding++; // separator column
 				while (padding > 0) {
 					size_t chunk = padding > sizeof(PADDING) - 1 ? sizeof(PADDING) - 1 : padding;
 					fwrite(PADDING, 1, chunk, out);

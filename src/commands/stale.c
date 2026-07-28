@@ -81,7 +81,7 @@ static int cmd_stale(const ArgParseResult *result)
 	StaleResult results[MAX_REPOS] = { 0 };
 	parallel_collect(&cfg, indices, filtered, stale_collect, sizeof(StaleResult), results);
 
-	/* Count stale repos */
+	// Count stale repos
 	size_t stale_count = 0;
 	for (size_t i = 0; i < filtered; i++) {
 		if (results[i].is_stale)

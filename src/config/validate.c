@@ -42,7 +42,7 @@ int config_validate(GitConfig *cfg)
 	LOG_TRACE("config_validate(%zu entries)", cfg->count);
 	int errors = 0;
 
-	/* Check for duplicate names and paths */
+	// Check for duplicate names and paths
 	for (size_t i = 0; i < cfg->count; i++) {
 		if (config_has_duplicate_name(cfg, cfg->entries[i].name, i)) {
 			LOG_ERROR("duplicate name: %s", cfg->entries[i].name);
@@ -54,7 +54,7 @@ int config_validate(GitConfig *cfg)
 		}
 	}
 
-	/* Check for existence and git validity in parallel */
+	// Check for existence and git validity in parallel
 	if (cfg->count > 0) {
 		size_t indices[MAX_REPOS];
 		for (size_t i = 0; i < cfg->count && i < MAX_REPOS; i++)
@@ -104,7 +104,7 @@ int config_remove_at_indices(GitConfig *cfg, const size_t *indices, size_t count
 	if (!cfg || !indices || count == 0)
 		return -1;
 
-	/* Validate indices are in bounds and sorted */
+	// Validate indices are in bounds and sorted
 	for (size_t k = 0; k < count; k++) {
 		if (indices[k] >= cfg->count)
 			return -1;

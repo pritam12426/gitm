@@ -47,7 +47,7 @@ int config_load(const char *path, GitConfig *cfg)
 
 	char line[MAX_LINE_LEN];
 	while (fgets(line, sizeof(line), f)) {
-		/* Strip trailing newlines */
+		// Strip trailing newlines
 		size_t len = strlen(line);
 		while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
 			line[--len] = '\0';
@@ -55,7 +55,7 @@ int config_load(const char *path, GitConfig *cfg)
 		if (len == 0 || line[0] == '#')
 			continue;
 
-		/* Parse: /path:name[:tags[:groups]] */
+		// Parse: /path:name[:tags[:groups]]
 		char *first_colon = strchr(line, ':');
 		if (!first_colon) {
 			LOG_WARN("skipping malformed line: %s", line);
@@ -97,7 +97,7 @@ int config_load(const char *path, GitConfig *cfg)
 			name_str = rest;
 		}
 
-		/* Trim whitespace */
+		// Trim whitespace
 		while (*path_str == ' ' || *path_str == '\t')
 			path_str++;
 		while (*name_str == ' ' || *name_str == '\t')

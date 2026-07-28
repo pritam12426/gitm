@@ -13,7 +13,7 @@
  * red error description.
  */
 
-#define _POSIX_C_SOURCE 200809L /* for fileno() under strict -std=c17 */
+#define _POSIX_C_SOURCE 200809L // for fileno() under strict -std=c17
 
 #include "error.h"
 
@@ -22,7 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 
-/* ── Internal ANSI codes ──────────────────────────────────────────────────── */
+// ── Internal ANSI codes ────────────────────────────────────────────────────
 
 static int g_use_color = -1;
 
@@ -39,13 +39,13 @@ static void detect_color(void)
 #define C_BOLD_RED (g_use_color ? "\x1b[1;31m" : "")
 #define C_DIM      (g_use_color ? "\x1b[2m" : "")
 
-/* Simple Levenshtein distance */
+// Simple Levenshtein distance
 static int levenshtein(const char *a, const char *b)
 {
 	int la = (int) strlen(a);
 	int lb = (int) strlen(b);
 
-	int d[128][128]; /* small limits */
+	int d[128][128]; // small limits
 
 	if (la > 127 || lb > 127)
 		return 999;
@@ -85,7 +85,7 @@ void arg_error_unknown_option(const char        *program,
 	        option,
 	        C_RESET);
 
-	/* Find closest match */
+	// Find closest match
 	int best_dist  = 999;
 	int best_index = -1;
 

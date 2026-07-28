@@ -20,14 +20,14 @@ static void *worker_fn(void *arg)
 
 	pthread_mutex_lock(&tp->mutex);
 	for (;;) {
-		/* Wait for work or shutdown */
+		// Wait for work or shutdown
 		while (tp->count == 0 && !tp->shutdown)
 			pthread_cond_wait(&tp->has_task, &tp->mutex);
 
 		if (tp->shutdown && tp->count == 0)
 			break;
 
-		/* Dequeue one task */
+		// Dequeue one task
 		tp_task_fn fn   = tp->queue[tp->head].fn;
 		void      *farg = tp->queue[tp->head].arg;
 		tp->head        = (tp->head + 1) % TP_MAX_TASKS;
@@ -65,7 +65,7 @@ ThreadPool *tp_create(size_t n)
 
 	for (size_t i = 0; i < n; i++) {
 		if (pthread_create(&tp->threads[i], NULL, worker_fn, tp) != 0) {
-			/* Signal existing workers to shut down */
+			// Signal existing workers to shut down
 			pthread_mutex_lock(&tp->mutex);
 			tp->shutdown = true;
 			pthread_cond_broadcast(&tp->has_task);

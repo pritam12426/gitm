@@ -37,41 +37,41 @@ Token lexer_next(Lexer *lex)
 
 	const char *arg = lex->argv[lex->pos++];
 
-	/* "--" terminates option parsing — rest are positional */
+	// "--" terminates option parsing — rest are positional
 	if (strcmp(arg, "--") == 0) {
 		lex->stop_options = true;
-		/* Consume and return the next arg as the first positional, if any */
+		// Consume and return the next arg as the first positional, if any
 		if (lex->pos < lex->argc) {
 			tok.type  = TOKEN_POSITIONAL;
 			tok.value = lex->argv[lex->pos++];
 			return tok;
 		}
-		/* "--" at end of args */
+		// "--" at end of args
 		return tok;
 	}
 
-	/* After "--", everything is positional */
+	// After "--", everything is positional
 	if (lex->stop_options) {
 		tok.type  = TOKEN_POSITIONAL;
 		tok.value = arg;
 		return tok;
 	}
 
-	/* Long option: "--something" */
+	// Long option: "--something"
 	if (arg[0] == '-' && arg[1] == '-' && arg[2] != '\0') {
 		tok.type  = TOKEN_LONG_OPTION;
 		tok.value = arg;
 		return tok;
 	}
 
-	/* Short option: "-x" or combined "-abc" */
+	// Short option: "-x" or combined "-abc"
 	if (arg[0] == '-' && arg[1] != '\0' && arg[1] != '-') {
 		tok.type  = TOKEN_SHORT_OPTION;
 		tok.value = arg;
 		return tok;
 	}
 
-	/* Everything else is positional */
+	// Everything else is positional
 	tok.type  = TOKEN_POSITIONAL;
 	tok.value = arg;
 	return tok;

@@ -33,14 +33,14 @@ static int cmd_clone(const ArgParseResult *result)
 	const char *name = result->positional_count > 1 ? result->positionals[1] : NULL;
 	LOG_DEBUG("cloning %s", url);
 
-	/* Derive name from URL if not provided */
+	// Derive name from URL if not provided
 	char name_buf[MAX_NAME_LEN];
 	if (!name) {
 		const char *base = strrchr(url, '/');
 		if (base && *(base + 1)) {
 			base++;
 			snprintf(name_buf, sizeof(name_buf), "%s", base);
-			/* Strip .git suffix */
+			// Strip .git suffix
 			size_t len = strlen(name_buf);
 			if (len > 4 && strcmp(name_buf + len - 4, ".git") == 0)
 				name_buf[len - 4] = '\0';
@@ -50,7 +50,7 @@ static int cmd_clone(const ArgParseResult *result)
 		}
 	}
 
-	/* Build destination: current dir / name */
+	// Build destination: current dir / name
 	char        dest[PATH_MAX];
 	const char *pwd = getenv("PWD");
 	if (pwd)
@@ -72,7 +72,7 @@ static int cmd_clone(const ArgParseResult *result)
 
 	process_result_free(&r);
 
-	/* Register the cloned repo */
+	// Register the cloned repo
 	if (cmd_ensure_config_dir() != 0)
 		return 1;
 
@@ -89,7 +89,7 @@ static int cmd_clone(const ArgParseResult *result)
 
 	if (cmd_save_config(&cfg, loaded_path) != 0) {
 		LOG_WARN("cloned successfully but failed to save config");
-		/* cmd_save_config already called cmd_cleanup on failure */
+		// cmd_save_config already called cmd_cleanup on failure
 		return 1;
 	}
 
